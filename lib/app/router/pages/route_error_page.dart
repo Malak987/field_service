@@ -1,9 +1,13 @@
-import 'package:field_service/core/localization/app_localizations.dart';
-import 'package:field_service/core/theme/app_dimensions.dart';
-import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 
 /// Shown by the router when a location cannot be resolved.
+///
+/// This covers broken deep links and malformed parameters (for example a job id
+/// that does not exist), which matters in the field where technicians open links
+/// from messages.
+///
+/// Phase 3 status: **temporary** — replaced by the product's error screen, but
+/// the route-level error handling itself is permanent.
 class RouteErrorPage extends StatelessWidget {
   const RouteErrorPage({required this.location, this.error, super.key});
 
@@ -16,25 +20,20 @@ class RouteErrorPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final AppLocalizations l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.pageNotFoundTitle)),
+      appBar: AppBar(title: const Text('Page not found')),
       body: Center(
         child: Padding(
-          padding: AppSpacing.pagePadding,
+          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(
-                Icons.link_off,
-                size: AppDimensions.iconXl,
-                color: theme.colorScheme.outline,
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              Icon(Icons.link_off, size: 40, color: theme.colorScheme.outline),
+              const SizedBox(height: 16),
               Text(location, style: theme.textTheme.titleMedium),
               if (error != null) ...<Widget>[
-                const SizedBox(height: AppSpacing.sm),
+                const SizedBox(height: 8),
                 Text(
                   error.toString(),
                   textAlign: TextAlign.center,

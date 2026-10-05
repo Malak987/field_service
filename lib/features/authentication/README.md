@@ -1,11 +1,23 @@
 # features/authentication
 
-Role-based authentication, registration, password recovery, and session handling for `admin` and `technician` users.
+Login and session handling for the two roles of the system (admin, technician).
+
+**Phase 3 status: structure only — nothing is implemented in this folder yet.**
 
 ## Layers
 
 | Folder | Contents | May depend on |
 |---|---|---|
-| `domain/` | `AppUser`, `AuthSessionEvent`, `AuthenticationRepository`, use cases (`SignIn`, `SignUp`, `SendPasswordResetEmail`, `UpdatePassword`, `GetCurrentUser`, `SignOut`, `WatchAuthStateChanges`) | Dart only |
-| `data/` | `AuthenticationRemoteDataSource`, `AppUserModel`, `AuthenticationRepositoryImpl` | `domain/`, `core/network`, `supabase_flutter` |
-| `presentation/` | `AuthenticationCubit`, `AuthenticationState`, `AuthenticationErrorMapper`, screens (`AuthGatePage`, `LoginPage`, `RegisterPage`, `ForgotPasswordPage`, `ResetPasswordPage`), and single-responsibility reusable widgets | `domain/` use cases, `core/` theme/localization/validators |
+| `domain/` | `User` / `Session` entities, the `AuthenticationRepository` contract, use cases (`SignIn`, `SignOut`, `RestoreSession`, `RefreshSession`) | Dart only, plus `core/errors` |
+| `data/` | `AuthenticationRemoteDataSource` (backend later), `AuthenticationLocalDataSource` (cached session so a technician keeps working offline), DTO models, `AuthenticationRepositoryImpl` | `domain/`, `core/network`, `core/database`, `core/storage` |
+| `presentation/` | `AuthenticationCubit` + its states, the login page, page-private widgets | `domain/` use cases only |
+
+## Notes
+
+- The session must be **cached locally**: an expired token with no signal must
+  not lock a technician out of work already scheduled for today. Offline
+  behaviour is defined with the sync phase, not here.
+- Supabase is not referenced in this feature yet; it will be added behind
+  `data/datasources/` so `domain/` never learns about it.
+- Role-based navigation (admin vs. technician) is decided by the router in
+  `lib/app/router/`, not by this feature.

@@ -1,7 +1,6 @@
 import 'package:field_service/core/network/connectivity_network_info.dart';
 import 'package:field_service/core/network/network_info.dart';
 import 'package:get_it/get_it.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Registers cross-cutting infrastructure that every feature may depend on.
 ///
@@ -21,11 +20,5 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Note that repositories and data sources are registered by their *feature*
 /// module, not here: only genuinely shared infrastructure belongs to core.
 void registerCoreModule(GetIt sl) {
-  sl.registerLazySingleton<NetworkInfo>(
-    ConnectivityNetworkInfo.new,
-  );
-
-  sl.registerLazySingleton<SupabaseClient>(
-        () => Supabase.instance.client,
-  );
+  sl.registerLazySingleton<NetworkInfo>(ConnectivityNetworkInfo.new);
 }
