@@ -41,8 +41,9 @@ class CustomersPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAdmin =
-        context.read<AuthenticationCubit?>()?.state.user?.isAdmin ?? false;
+    final bool isAdmin = context.select<AuthenticationCubit, bool>(
+      (AuthenticationCubit cubit) => cubit.state.user?.isAdmin ?? false,
+    );
 
     return MultiBlocProvider(
       // Elements type inferred (nested's SingleChildWidget is not a direct
@@ -95,6 +96,10 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(AppRoutes.root),
+        ),
         title: Text(l10n.customersTitle),
         actions: <Widget>[
           const CustomerSyncStatusBar(),
@@ -175,7 +180,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                                 final Customer customer = visible[index];
                                 return CustomerCard(
                                   customer: customer,
-                                  onTap: () => context.goNamed(
+                                  onTap: () => context.pushNamed(
                                     'customerDetails',
                                     pathParameters: <String, String>{
                                       'id': customer.id,

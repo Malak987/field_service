@@ -16,20 +16,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthenticationCubit extends Cubit<AuthenticationState> {
   AuthenticationCubit({
-    required SignIn signIn,
-    required SignOut signOut,
-    required GetCurrentUser getCurrentUser,
-    SignUp? signUp,
-    SendPasswordResetEmail? sendPasswordResetEmail,
-    UpdatePassword? updatePassword,
+    required this._signIn,
+    required this._signOut,
+    required this._getCurrentUser,
+    this._signUp,
+    this._sendPasswordResetEmail,
+    this._updatePassword,
     WatchAuthStateChanges? watchAuthStateChanges,
-  }) : _signIn = signIn,
-       _signOut = signOut,
-       _getCurrentUser = getCurrentUser,
-       _signUp = signUp,
-       _sendPasswordResetEmail = sendPasswordResetEmail,
-       _updatePassword = updatePassword,
-       super(const AuthenticationState()) {
+  }) : super(const AuthenticationState()) {
     if (watchAuthStateChanges != null) {
       _authSubscription = watchAuthStateChanges().listen(
         _onAuthSessionEvent,
@@ -53,6 +47,11 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
   StreamSubscription<AuthSessionEvent>? _authSubscription;
 
+  // Invalidate in-flight employee lookups when the session ends. Otherwise a
+  // slow startup/signedIn lookup can emit authenticated *after* signedOut.
+  int _sessionRevision = 0;
+  bool _signOutInProgress = false;
+
   void _onAuthSessionEvent(AuthSessionEvent event) {
     if (isClosed) {
       return;
@@ -60,6 +59,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
     switch (event) {
       case AuthSessionEvent.passwordRecovery:
+        _sessionRevision++;
         // Supabase only emits this after the recovery deep link has been
         // exchanged for a real session, so this is the safe moment to show the
         // "set a new password" screen. Navigating earlier (e.g. on the raw
@@ -83,13 +83,15 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         // We skip this when we already hold a user (a normal form login already
         // emitted `authenticated`) and never while a password recovery is in
         // progress, so a recovery is never turned into a full sign-in.
-        if (!state.isAuthenticated &&
+        if (!_signOutInProgress &&
+            !state.isAuthenticated &&
             state.status != AuthenticationStatus.passwordRecovery) {
           unawaited(checkCurrentUser());
         }
         break;
 
       case AuthSessionEvent.signedOut:
+        _sessionRevision++;
         // Session dropped out of band (expired on another device, etc.).
         emit(
           state.copyWith(
@@ -111,9 +113,12 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
   Future<void> checkCurrentUser() async {
     // Do not interrupt an active password-recovery flow initiated by a deep link.
-    if (state.status == AuthenticationStatus.passwordRecovery) {
+    if (isClosed ||
+        _signOutInProgress ||
+        state.status == AuthenticationStatus.passwordRecovery) {
       return;
     }
+    final int sessionRevision = _sessionRevision;
 
     emit(
       state.copyWith(
@@ -129,7 +134,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
       // If a password-recovery deep link arrived while the employee lookup was
       // in flight, never clobber the recovery state with a normal session
       // state (recovery must stay in the foreground until the password is set).
-      if (state.status == AuthenticationStatus.passwordRecovery) {
+      if (isClosed ||
+          sessionRevision != _sessionRevision ||
+          state.status == AuthenticationStatus.passwordRecovery) {
         return;
       }
 
@@ -161,17 +168,20 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
       );
       // Same guard as above: a late-arriving recovery must win over the
       // employee-lookup failure.
-      if (state.status == AuthenticationStatus.passwordRecovery) {
+      if (isClosed ||
+          _signOutInProgress ||
+          state.status == AuthenticationStatus.passwordRecovery) {
         return;
       }
       _emitFailure(error, clearUser: true);
     }
   }
 
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> signIn({required String email, required String password}) async {
+    if (isClosed || _signOutInProgress) {
+      return;
+    }
+    final int sessionRevision = _sessionRevision;
     emit(
       state.copyWith(
         status: AuthenticationStatus.loading,
@@ -181,10 +191,13 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     );
 
     try {
-      final AppUser user = await _signIn(
-        email: email,
-        password: password,
-      );
+      final AppUser user = await _signIn(email: email, password: password);
+
+      if (isClosed ||
+          sessionRevision != _sessionRevision ||
+          state.status == AuthenticationStatus.passwordRecovery) {
+        return;
+      }
 
       emit(
         state.copyWith(
@@ -259,9 +272,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     }
   }
 
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) async {
+  Future<void> sendPasswordResetEmail({required String email}) async {
     final SendPasswordResetEmail? useCase = _sendPasswordResetEmail;
     if (useCase == null) {
       _emitFailure(AuthErrorCode.unexpected);
@@ -296,9 +307,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     }
   }
 
-  Future<void> updatePassword({
-    required String newPassword,
-  }) async {
+  Future<void> updatePassword({required String newPassword}) async {
     final UpdatePassword? useCase = _updatePassword;
     if (useCase == null) {
       _emitFailure(AuthErrorCode.unexpected);
@@ -335,6 +344,11 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
   }
 
   Future<void> signOut() async {
+    if (isClosed || _signOutInProgress) {
+      return;
+    }
+    _signOutInProgress = true;
+    _sessionRevision++;
     emit(
       state.copyWith(
         status: AuthenticationStatus.loading,
@@ -345,6 +359,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
     try {
       await _signOut();
+      if (isClosed) {
+        return;
+      }
 
       emit(
         state.copyWith(
@@ -360,7 +377,11 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         error: error,
         stackTrace: stackTrace,
       );
-      _emitFailure(error);
+      if (!isClosed) {
+        _emitFailure(error);
+      }
+    } finally {
+      _signOutInProgress = false;
     }
   }
 
@@ -413,6 +434,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
   @override
   Future<void> close() async {
+    _sessionRevision++;
     await _authSubscription?.cancel();
     return super.close();
   }

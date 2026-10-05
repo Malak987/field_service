@@ -33,8 +33,9 @@ class CustomerDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isAdmin =
-        context.read<AuthenticationCubit?>()?.state.user?.isAdmin ?? false;
+    final bool isAdmin = context.select<AuthenticationCubit, bool>(
+      (AuthenticationCubit cubit) => cubit.state.user?.isAdmin ?? false,
+    );
 
     return BlocProvider<CustomersCubit>(
       create: (_) => cubit ?? sl<CustomersCubit>()

@@ -9,10 +9,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthenticationRepositoryImpl implements AuthenticationRepository {
   AuthenticationRepositoryImpl({
-    required AuthenticationRemoteDataSource remoteDataSource,
-    required SupabaseClient supabase,
-  }) : _remoteDataSource = remoteDataSource,
-       _supabase = supabase;
+    required this._remoteDataSource,
+    required this._supabase,
+  });
 
   final AuthenticationRemoteDataSource _remoteDataSource;
   final SupabaseClient _supabase;

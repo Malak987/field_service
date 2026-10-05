@@ -15,6 +15,9 @@ class TechnicianHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final bool isLoading = context.select<AuthenticationCubit, bool>(
+      (AuthenticationCubit cubit) => cubit.state.isLoading,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -26,13 +29,10 @@ class TechnicianHomePage extends StatelessWidget {
           ),
           IconButton(
             tooltip: l10n.logoutButton,
-            icon: const Icon(
-              Icons.logout_outlined,
-              size: AppDimensions.iconMd,
-            ),
-            onPressed: () {
-              context.read<AuthenticationCubit?>()?.signOut();
-            },
+            icon: const Icon(Icons.logout_outlined, size: AppDimensions.iconMd),
+            onPressed: isLoading
+                ? null
+                : () => context.read<AuthenticationCubit>().signOut(),
           ),
           const SizedBox(width: AppSpacing.xs),
         ],
@@ -58,6 +58,15 @@ class TechnicianHomePage extends StatelessWidget {
                   size: AppDimensions.iconMd,
                 ),
                 label: Text(l10n.viewJobsButton),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              FilledButton.tonalIcon(
+                onPressed: () => context.push(AppRoutes.customers),
+                icon: const Icon(
+                  Icons.people_outline,
+                  size: AppDimensions.iconMd,
+                ),
+                label: Text(l10n.customersTitle),
               ),
             ],
           ),

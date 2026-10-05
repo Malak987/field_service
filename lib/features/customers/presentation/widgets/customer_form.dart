@@ -187,6 +187,7 @@ class _CustomerFormState extends State<CustomerForm> {
             _field(
               controller: _notes,
               label: l10n.customerNotesLabel,
+              keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
               textCapitalization: TextCapitalization.sentences,
               maxLines: 3,

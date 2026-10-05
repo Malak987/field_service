@@ -14,9 +14,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 void registerAuthenticationModule(GetIt sl) {
   sl.registerLazySingleton<AuthenticationRemoteDataSource>(
-    () => AuthenticationRemoteDataSourceImpl(
-      sl<SupabaseClient>(),
-    ),
+    () => AuthenticationRemoteDataSourceImpl(sl<SupabaseClient>()),
   );
 
   sl.registerLazySingleton<AuthenticationRepository>(
@@ -54,7 +52,8 @@ void registerAuthenticationModule(GetIt sl) {
     () => WatchAuthStateChanges(sl<AuthenticationRepository>()),
   );
 
-  sl.registerFactory<AuthenticationCubit>(
+  // One session owner for the gate, router and all feature/authentication pages.
+  sl.registerLazySingleton<AuthenticationCubit>(
     () => AuthenticationCubit(
       signIn: sl<SignIn>(),
       signUp: sl<SignUp>(),
@@ -64,5 +63,6 @@ void registerAuthenticationModule(GetIt sl) {
       getCurrentUser: sl<GetCurrentUser>(),
       watchAuthStateChanges: sl<WatchAuthStateChanges>(),
     ),
+    dispose: (AuthenticationCubit cubit) => cubit.close(),
   );
 }

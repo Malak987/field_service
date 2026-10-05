@@ -1,32 +1,28 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:field_service/app/app.dart';
 import 'package:field_service/app/di/injection.dart';
-import 'package:field_service/app/router/app_router.dart';
-import 'package:flutter/material.dart';
+import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'support/app_test_harness.dart';
+import 'support/test_authentication_repository.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(FieldServiceApp(router: sl<AppRouter>().router));
+  testWidgets('app rebuild preserves its one shared authentication cubit', (
+    tester,
+  ) async {
+    final app = AppTestHarness();
+    await app.configure(user: adminUser);
+    addTearDown(app.dispose);
+    await app.pump(tester);
+    final cubit = sl<AuthenticationCubit>();
+    expect(app.authentication.currentUserCalls, 1);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(FieldServiceApp(router: app.router));
+    await tester.pumpAndSettle();
+    expect(sl<AuthenticationCubit>(), same(cubit));
+    expect(app.authentication.currentUserCalls, 1);
+    expect(cubit.isClosed, isFalse);
+    expect(find.text('Customers'), findsOneWidget);
+    expect(find.text('View Jobs'), findsOneWidget);
   });
 }

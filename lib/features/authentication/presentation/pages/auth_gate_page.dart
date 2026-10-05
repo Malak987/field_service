@@ -7,6 +7,7 @@ import 'package:field_service/features/authentication/presentation/cubit/authent
 import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/reset_password_page.dart';
+import 'package:field_service/features/authentication/presentation/utils/authentication_error_mapper.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_scaffold.dart';
@@ -29,18 +30,49 @@ class _AuthGateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthenticationCubit, AuthenticationState>(
-      buildWhen:
-          (AuthenticationState previous, AuthenticationState current) =>
-              previous.status != current.status ||
-              previous.user != current.user,
+    return BlocConsumer<AuthenticationCubit, AuthenticationState>(
+      listenWhen: (previous, current) =>
+          current.hasError && current.user != null,
+      listener: (BuildContext context, AuthenticationState state) {
+        // Sign-out failures keep the real session and allow the user to retry.
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AuthenticationErrorMapper.toLocalizedMessage(
+                context.l10n,
+                code: state.errorCode,
+                error: state.message,
+              ),
+            ),
+          ),
+        );
+      },
+      buildWhen: (AuthenticationState previous, AuthenticationState current) =>
+          previous.status != current.status || previous.user != current.user,
       builder: (BuildContext context, AuthenticationState state) {
+        final AppUser? user = state.user;
+        if (user != null &&
+            (state.status == AuthenticationStatus.authenticated ||
+                state.status == AuthenticationStatus.loading ||
+                state.status == AuthenticationStatus.failure)) {
+          if (!user.isActive) {
+            return _AccessDeniedGateView(
+              message: context.l10n.errorEmployeeInactive,
+            );
+          }
+          if (user.isAdmin) {
+            return const AdminHomePage();
+          }
+          if (user.isTechnician) {
+            return const TechnicianHomePage();
+          }
+          return _AccessDeniedGateView(message: context.l10n.errorInvalidRole);
+        }
+
         switch (state.status) {
           case AuthenticationStatus.initial:
             return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
+              body: Center(child: CircularProgressIndicator()),
             );
 
           case AuthenticationStatus.passwordRecovery:
@@ -55,30 +87,7 @@ class _AuthGateView extends StatelessWidget {
             return const LoginPage();
 
           case AuthenticationStatus.authenticated:
-            final AppUser? user = state.user;
-
-            if (user == null) {
-              return const LoginPage();
-            }
-
-            if (!user.isActive) {
-              return _AccessDeniedGateView(
-                message: context.l10n.errorEmployeeInactive,
-              );
-            }
-
-            if (user.isAdmin) {
-              return const AdminHomePage();
-            }
-
-            if (user.isTechnician) {
-              return const TechnicianHomePage();
-            }
-
-            // Unknown or invalid roles are never silently granted access.
-            return _AccessDeniedGateView(
-              message: context.l10n.errorInvalidRole,
-            );
+            return const LoginPage();
         }
       },
     );

@@ -1,6 +1,7 @@
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/app/router/pages/route_error_page.dart';
-import 'package:field_service/features/admin/presentation/pages/admin_home_page.dart';
+import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
+import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
 import 'package:field_service/features/authentication/presentation/pages/auth_gate_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
@@ -12,8 +13,8 @@ import 'package:field_service/features/customers/presentation/pages/customers_pa
 import 'package:field_service/features/customers/presentation/pages/edit_customer_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/job_details_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/jobs_page.dart';
-import 'package:field_service/features/technician/presentation/pages/technician_home_page.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 /// Owns the application's [GoRouter].
@@ -58,8 +59,7 @@ class AppRouter {
     GoRoute(
       path: AppRoutes.login,
       name: 'login',
-      builder: (BuildContext context, GoRouterState state) =>
-          const LoginPage(),
+      builder: (BuildContext context, GoRouterState state) => const LoginPage(),
     ),
     GoRoute(
       path: AppRoutes.register,
@@ -80,26 +80,25 @@ class AppRouter {
           const ResetPasswordPage(),
     ),
 
+    // Home URLs are aliases of the gate, not unguarded copies of the homes.
+    // The employee role is resolved by AuthGatePage, never by the URL.
     // --- Role shells ----------------------------------------------------------
     GoRoute(
       path: AppRoutes.admin,
       name: 'admin',
-      builder: (BuildContext context, GoRouterState state) =>
-          const AdminHomePage(),
+      redirect: (BuildContext context, GoRouterState state) => AppRoutes.root,
     ),
     GoRoute(
       path: AppRoutes.technician,
       name: 'technician',
-      builder: (BuildContext context, GoRouterState state) =>
-          const TechnicianHomePage(),
+      redirect: (BuildContext context, GoRouterState state) => AppRoutes.root,
     ),
 
     // --- Jobs ------------------------------------------------------------------
     GoRoute(
       path: AppRoutes.jobs,
       name: 'jobs',
-      builder: (BuildContext context, GoRouterState state) =>
-          const JobsPage(),
+      builder: (BuildContext context, GoRouterState state) => const JobsPage(),
       routes: <RouteBase>[
         GoRoute(
           path: ':id',
@@ -142,6 +141,48 @@ class AppRouter {
     ),
   ];
 
+  /// FieldServiceApp refreshes this router on the shared cubit's session
+  /// changes, including a Supabase signedOut event on a feature page.
+  /// Redirect through the gate so it remains the owner of login/role selection.
+  static String? _redirect(BuildContext context, GoRouterState route) {
+    final AuthenticationState auth = context.read<AuthenticationCubit>().state;
+    final String path = route.uri.path;
+
+    // Recovery can arrive while any screen is open. Leave the recovery route
+    // alone while it saves/signs out so its success/error feedback is preserved.
+    if (auth.status == AuthenticationStatus.passwordRecovery) {
+      return path == AppRoutes.resetPassword ? null : AppRoutes.resetPassword;
+    }
+
+    final bool isProtected =
+        path == AppRoutes.admin ||
+        path == AppRoutes.technician ||
+        path == AppRoutes.jobs ||
+        path.startsWith('${AppRoutes.jobs}/') ||
+        path == AppRoutes.customers ||
+        path.startsWith('${AppRoutes.customers}/');
+    if (!isProtected) {
+      // Keep login, registration, confirmation callbacks and recovery public.
+      return null;
+    }
+
+    final user = auth.user;
+    // A pending/failed sign-out retains the validated user until Supabase
+    // actually ends the session. Never pretend a failed request logged out.
+    if (user == null || !user.isActive || !user.hasValidRole) {
+      return AppRoutes.root;
+    }
+
+    final bool isCustomerWrite =
+        route.topRoute?.name == 'customerCreate' ||
+        route.topRoute?.name == 'customerEdit';
+    if (isCustomerWrite && !user.isAdmin) {
+      return AppRoutes.customers;
+    }
+
+    return null;
+  }
+
   /// The configured router instance.
   ///
   /// Built lazily so the dependency graph can construct [AppRouter] without
@@ -149,6 +190,7 @@ class AppRouter {
   late final GoRouter router = GoRouter(
     initialLocation: initialLocation,
     routes: routes,
+    redirect: _redirect,
     errorBuilder: (BuildContext context, GoRouterState state) =>
         RouteErrorPage(location: state.uri.toString(), error: state.error),
   );
