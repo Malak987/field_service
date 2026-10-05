@@ -10,19 +10,30 @@ enum SyncOperationType {
 
   /// The entity was deleted offline.
   delete,
+
+  /// Binary content (photo / signature bytes) must be uploaded to storage.
+  /// The payload carries the local reference and the target metadata.
+  upload,
 }
 
 /// The aggregate a [SyncOperation] refers to.
 ///
 /// Deliberately explicit rather than a table name: the local schema may change
 /// (a table may be split or renamed) without changing the meaning of the queue.
+///
+/// Open set by convention: new values may be appended (they are stored as
+/// plain strings), existing values are never renamed or removed.
 enum SyncEntityType {
   /// A renovation / installation / maintenance job.
   job,
 
   /// A file attached to a job (photo, signature, document) — the operation
   /// refers to its metadata, the upload of the bytes is part of the payload.
+  /// Customer signatures are job files of type `signature`.
   jobFile,
+
+  /// An append-only event attached to a job.
+  jobEvent,
 
   /// A customer record.
   customer,
@@ -66,6 +77,7 @@ class SyncOperation extends Equatable {
     required this.type,
     required this.payload,
     required this.createdAt,
+    this.dependsOn,
     this.attempts = 0,
     this.status = SyncOperationStatus.pending,
     this.lastAttemptAt,
@@ -95,6 +107,15 @@ class SyncOperation extends Equatable {
 
   /// When the local change happened (ordering key of the queue).
   final DateTime createdAt;
+
+  /// Optional id of another operation that must have reached `synced` before
+  /// this one may be pushed (dependency ordering).
+  ///
+  /// This is what keeps a chain like *customer created → job created
+  /// referencing that customer → job event → job file → signature* consistent
+  /// when it is built offline: the sync engine will never hand a dependent
+  /// operation to the backend while its parent is still pending.
+  final String? dependsOn;
 
   /// How many push attempts already failed; drives retry/backoff and lets the
   /// UI flag operations that need attention.
@@ -138,6 +159,7 @@ class SyncOperation extends Equatable {
     type,
     payload,
     createdAt,
+    dependsOn,
     status,
     attempts,
     lastAttemptAt,

@@ -1,4 +1,8 @@
 import 'package:field_service/core/theme/app_colors.dart';
+import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
+import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
 /// Builds the light and dark [ThemeData] of the application.
@@ -6,15 +10,7 @@ import 'package:flutter/material.dart';
 /// Scope: one consistent starting point shared by both modes — Material 3
 /// colour roles, control shapes and field spacing — so that feature teams
 /// extend the theme here instead of overriding styles widget by widget.
-///
-/// It is deliberately not a finished design system: no custom fonts, no
-/// component library beyond what Material 3 provides. Touch targets stay large
-/// and text styles stay readable because the app is used on site, often with
-/// gloves or in bright sunlight.
 abstract final class AppTheme {
-  /// Corner radius shared by cards, fields and buttons.
-  static const double _radius = 12;
-
   /// The light theme.
   static ThemeData get light => _build(Brightness.light);
 
@@ -26,11 +22,15 @@ abstract final class AppTheme {
     final ColorScheme colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       brightness: brightness,
+      error: AppColors.error,
     );
     final Color borderColor = isDark
         ? AppColors.borderDark
         : AppColors.borderLight;
-    final BorderRadius radius = BorderRadius.circular(_radius);
+    final Color cardColor = isDark ? AppColors.cardDark : AppColors.cardLight;
+    final Color secondaryTextColor = isDark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondaryLight;
 
     return ThemeData(
       useMaterial3: true,
@@ -39,71 +39,135 @@ abstract final class AppTheme {
           ? AppColors.surfaceDark
           : AppColors.surfaceLight,
 
+      // --- Typography ------------------------------------------------------
+      textTheme: TextTheme(
+        headlineMedium: AppTextStyles.headlineMedium.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        titleLarge: AppTextStyles.titleLarge.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        titleMedium: AppTextStyles.titleMedium.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        titleSmall: AppTextStyles.titleSmall.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        bodyLarge: AppTextStyles.bodyLarge.copyWith(
+          color: colorScheme.onSurface,
+        ),
+        bodyMedium: AppTextStyles.bodyMedium.copyWith(
+          color: secondaryTextColor,
+        ),
+        bodySmall: AppTextStyles.bodySmall.copyWith(
+          color: secondaryTextColor,
+        ),
+        labelLarge: AppTextStyles.buttonLabel,
+      ),
+
       // --- App bar ---------------------------------------------------------
       appBarTheme: AppBarThemeData(
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 1,
-        backgroundColor: colorScheme.surface,
+        backgroundColor: cardColor,
         foregroundColor: colorScheme.onSurface,
       ),
 
       // --- Cards and containers -------------------------------------------
       cardTheme: CardThemeData(
         elevation: 0,
+        color: cardColor,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(color: borderColor),
+          borderRadius: AppRadius.card,
+          side: BorderSide(
+            color: borderColor,
+            width: AppDimensions.borderWidth,
+          ),
         ),
       ),
       dividerTheme: DividerThemeData(
         color: borderColor,
-        thickness: 1,
-        space: 1,
+        thickness: AppDimensions.borderWidth,
+        space: AppDimensions.borderWidth,
       ),
 
       // --- Inputs ----------------------------------------------------------
       // Sized for one-handed use on site: tall fields, clear focus state.
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
-        fillColor: colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 14,
-        ),
+        fillColor: cardColor,
+        contentPadding: AppSpacing.inputContentPadding,
         border: OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: borderColor),
+          borderRadius: AppRadius.control,
+          borderSide: BorderSide(
+            color: borderColor,
+            width: AppDimensions.borderWidth,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: borderColor),
+          borderRadius: AppRadius.control,
+          borderSide: BorderSide(
+            color: borderColor,
+            width: AppDimensions.borderWidth,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: colorScheme.primary, width: 1.6),
+          borderRadius: AppRadius.control,
+          borderSide: BorderSide(
+            color: colorScheme.primary,
+            width: AppDimensions.focusedBorderWidth,
+          ),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: radius,
-          borderSide: BorderSide(color: colorScheme.error),
+          borderRadius: AppRadius.control,
+          borderSide: BorderSide(
+            color: colorScheme.error,
+            width: AppDimensions.borderWidth,
+          ),
         ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: AppRadius.control,
+          borderSide: BorderSide(
+            color: colorScheme.error,
+            width: AppDimensions.focusedBorderWidth,
+          ),
+        ),
+        errorMaxLines: 2,
       ),
 
       // --- Buttons ---------------------------------------------------------
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          // Full-width, thumb-friendly primary action.
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
+          padding: AppSpacing.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.control,
+          ),
+          textStyle: AppTextStyles.buttonLabel,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: radius),
-          side: BorderSide(color: borderColor),
+          minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
+          padding: AppSpacing.buttonPadding,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.control,
+          ),
+          side: BorderSide(
+            color: borderColor,
+            width: AppDimensions.borderWidth,
+          ),
+          textStyle: AppTextStyles.buttonLabel,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          textStyle: AppTextStyles.linkLabel,
+          shape: const RoundedRectangleBorder(
+            borderRadius: AppRadius.control,
+          ),
         ),
       ),
     );

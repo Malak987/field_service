@@ -3,6 +3,8 @@ import 'package:field_service/app/di/modules/core_module.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 import 'package:field_service/app/di/modules/authentication_module.dart';
+import 'package:field_service/app/di/modules/jobs_module.dart';
+import 'package:field_service/app/di/modules/offline_module.dart';
 
 
 /// The single service locator of the application.
@@ -22,8 +24,9 @@ final GetIt sl = GetIt.instance;
 /// that already exist. Feature modules are appended as they are implemented:
 ///
 /// ```dart
-/// registerAuthenticationModule(sl); // later phase
-/// registerJobsModule(sl);           // later phase
+/// registerAuthenticationModule(sl);
+/// registerJobsModule(sl);
+/// registerOfflineModule(sl);
 /// ```
 ///
 /// The function is asynchronous on purpose: later phases must open the local
@@ -33,7 +36,10 @@ Future<void> configureDependencies() async {
   registerAppModule(sl);
   registerCoreModule(sl);
   registerAuthenticationModule(sl);
+  registerJobsModule(sl);
+  registerOfflineModule(sl);
 }
+
 /// Disposes and clears the graph.
 ///
 /// Tests call this between cases so each one gets a clean container; production

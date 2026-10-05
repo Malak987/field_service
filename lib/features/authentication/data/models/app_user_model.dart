@@ -6,6 +6,10 @@ class AppUserModel extends AppUser {
     required super.email,
     required super.role,
     super.employeeId,
+    super.employeeCode,
+    super.name,
+    super.phone,
+    super.isActive = true,
   });
 
   factory AppUserModel.fromMap({
@@ -13,11 +17,19 @@ class AppUserModel extends AppUser {
     required String authUserId,
     required String email,
   }) {
+    final String rawRole = (map['role'] as String? ?? '').trim().toLowerCase();
+    final String resolvedEmail =
+        email.isNotEmpty ? email : (map['email'] as String? ?? '');
+
     return AppUserModel(
       id: authUserId,
-      email: email,
-      role: map['role'] as String? ?? 'technician',
+      email: resolvedEmail,
+      role: rawRole,
       employeeId: map['id'] as String?,
+      employeeCode: map['employee_code'] as String?,
+      name: map['name'] as String?,
+      phone: map['phone'] as String?,
+      isActive: map['is_active'] as bool? ?? false,
     );
   }
 }
