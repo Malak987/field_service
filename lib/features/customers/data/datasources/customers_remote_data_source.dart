@@ -58,8 +58,10 @@ class CustomersRemoteDataSourceImpl implements CustomersRemoteDataSource {
         .order('id', ascending: true);
 
     return rows
-        .map((Map<String, dynamic> row) =>
-            CustomerModel.fromRemoteRow(row as Map<String, Object?>))
+        .map(
+          (Map<String, dynamic> row) =>
+              CustomerModel.fromRemoteRow(row as Map<String, Object?>),
+        )
         .toList();
   }
 
@@ -67,10 +69,7 @@ class CustomersRemoteDataSourceImpl implements CustomersRemoteDataSource {
   Future<void> upsertRow(Map<String, Object?> row) async {
     await supabase
         .from('customers')
-        .upsert(
-          Map<String, dynamic>.from(row),
-          onConflict: 'id',
-        );
+        .upsert(Map<String, dynamic>.from(row), onConflict: 'id');
   }
 
   @override

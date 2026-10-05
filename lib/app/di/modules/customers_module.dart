@@ -91,8 +91,8 @@ void registerCustomersModule(GetIt sl) {
     ),
   );
 
-  sl<MutableSyncHandlerRegistry>().register(
+  sl<MutableSyncHandlerRegistry>().registerFactory(
     SyncEntityType.customer,
-    sl<CustomerSyncHandler>(),
+    () => sl<CustomerSyncHandler>(),
   );
 }

@@ -7,6 +7,5 @@ class UpdateCustomer {
 
   final CustomersRepository _repository;
 
-  Future<void> call(Customer customer) =>
-      _repository.updateCustomer(customer);
+  Future<void> call(Customer customer) => _repository.updateCustomer(customer);
 }

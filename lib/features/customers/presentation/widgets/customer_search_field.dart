@@ -12,10 +12,7 @@ import 'package:flutter/material.dart';
 /// captures the query and throttles re-renders with
 /// [AppConstants.customerSearchDebounce]. Works identically offline.
 class CustomerSearchField extends StatefulWidget {
-  const CustomerSearchField({
-    super.key,
-    required this.onQueryChanged,
-  });
+  const CustomerSearchField({super.key, required this.onQueryChanged});
 
   /// Called with the (already trimmed) query after the debounce window.
   final ValueChanged<String> onQueryChanged;
@@ -64,10 +61,7 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
       decoration: InputDecoration(
         isDense: true,
         hintText: l10n.searchCustomersHint,
-        prefixIcon: const Icon(
-          Icons.search,
-          size: AppDimensions.iconMd,
-        ),
+        prefixIcon: const Icon(Icons.search, size: AppDimensions.iconMd),
         suffixIcon: _controller.text.isEmpty
             ? null
             : IconButton(

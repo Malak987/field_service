@@ -78,24 +78,26 @@ class DriftCustomersLocalDataSource implements CustomersLocalDataSource {
             (t) => OrderingTerm.asc(t.id),
           ]))
         .watch()
-        .map((List<LocalCustomer> rows) =>
-            rows.map(CustomerModel.fromLocalRow).toList());
+        .map(
+          (List<LocalCustomer> rows) =>
+              rows.map(CustomerModel.fromLocalRow).toList(),
+        );
   }
 
   @override
   Stream<Customer?> watchById(String id) {
     final $CustomersTableTable t = _table;
-    return (_db.select(t)..where((t) => t.id.equals(id)))
-        .watch()
-        .map((List<LocalCustomer> rows) =>
-            rows.isEmpty ? null : CustomerModel.fromLocalRow(rows.first));
+    return (_db.select(t)..where((t) => t.id.equals(id))).watch().map(
+      (List<LocalCustomer> rows) =>
+          rows.isEmpty ? null : CustomerModel.fromLocalRow(rows.first),
+    );
   }
 
   @override
   Future<Customer?> getById(String id) async {
-    final LocalCustomer? row = await (
-      _db.select(_table)..where((t) => t.id.equals(id))
-    ).getSingleOrNull();
+    final LocalCustomer? row = await (_db.select(
+      _table,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
 
     return row == null ? null : CustomerModel.fromLocalRow(row);
   }
@@ -108,7 +110,9 @@ class DriftCustomersLocalDataSource implements CustomersLocalDataSource {
 
   @override
   Future<Customer> update(CustomerModel model) async {
-    final DateTime now = DateTime.now();
+    // UTC stamp: `toRemoteRow`-style payloads keep the exact instant that
+    // is written to Drift, independent of the device time zone.
+    final DateTime now = DateTime.now().toUtc();
     final CustomerModel pending = model.copyWithSyncStatus(
       CustomerSyncStatus.pending,
     );
@@ -145,9 +149,7 @@ class DriftCustomersLocalDataSource implements CustomersLocalDataSource {
     return (_db.update(_table)..where((t) => t.id.equals(id))).write(
       CustomersTableCompanion(
         syncStatus: Value(status.name),
-        lastSyncedAt: syncedAt == null
-            ? const Value.absent()
-            : Value(syncedAt),
+        lastSyncedAt: syncedAt == null ? const Value.absent() : Value(syncedAt),
       ),
     );
   }
@@ -192,10 +194,12 @@ class DriftCustomersLocalDataSource implements CustomersLocalDataSource {
     // Aggregated count over the local jobs mirror (same custom-query style as
     // `DriftSyncQueue._countByStatus`). It reads only the schema the tables
     // folder owns — no dependency on the Jobs feature's code.
-    final QueryRow row = await _db.customSelect(
-      'SELECT COUNT(*) AS c FROM jobs WHERE customer_id = ?',
-      variables: <Variable<Object>>[Variable.withString(customerId)],
-    ).getSingle();
+    final QueryRow row = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS c FROM jobs WHERE customer_id = ?',
+          variables: <Variable<Object>>[Variable.withString(customerId)],
+        )
+        .getSingle();
 
     return row.read<int>('c');
   }

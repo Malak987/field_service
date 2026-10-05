@@ -32,11 +32,7 @@ import 'package:go_router/go_router.dart';
 /// * **Technician** — read-only list of the customers on their jobs; the
 ///   `+` action is not rendered at all.
 class CustomersPage extends StatelessWidget {
-  const CustomersPage({
-    super.key,
-    this.customersCubit,
-    this.syncStatusCubit,
-  });
+  const CustomersPage({super.key, this.customersCubit, this.syncStatusCubit});
 
   /// Test/DI seam: inject pre-wired cubits (widget tests); `null` resolves
   /// the configured instances from the service locator, like `JobsPage`.
@@ -53,7 +49,8 @@ class CustomersPage extends StatelessWidget {
       // dependency of this package, so it must not be named here).
       providers: [
         BlocProvider<CustomersCubit>(
-          create: (_) => customersCubit ?? sl<CustomersCubit>()..loadCustomers(),
+          create: (_) => customersCubit ?? sl<CustomersCubit>()
+            ..loadCustomers(),
         ),
         BlocProvider<SyncStatusCubit>(
           create: (_) => syncStatusCubit ?? sl<SyncStatusCubit>(),
@@ -158,8 +155,8 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                               physics: const AlwaysScrollableScrollPhysics(),
                               children: <Widget>[
                                 SizedBox(
-                                  height: MediaQuery.sizeOf(context).height *
-                                      0.55,
+                                  height:
+                                      MediaQuery.sizeOf(context).height * 0.55,
                                   child: CustomerEmptyState(
                                     queryActive: _query.isNotEmpty,
                                   ),
@@ -170,9 +167,10 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: AppSpacing.pagePadding,
                               itemCount: visible.length,
-                              separatorBuilder:
-                                  (BuildContext context, int index) =>
-                                      const SizedBox(height: AppSpacing.sm),
+                              separatorBuilder: (
+                                BuildContext context,
+                                int index,
+                              ) => const SizedBox(height: AppSpacing.sm),
                               itemBuilder: (BuildContext context, int index) {
                                 final Customer customer = visible[index];
                                 return CustomerCard(

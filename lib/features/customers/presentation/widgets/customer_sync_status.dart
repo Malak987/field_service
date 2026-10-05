@@ -80,8 +80,11 @@ class CustomerSyncStatusBar extends StatelessWidget {
 
     return BlocBuilder<SyncStatusCubit, SyncHealth>(
       builder: (BuildContext context, SyncHealth health) {
-        final (IconData icon, String label, Color color) = switch (
-            health.displayStatus) {
+        final (
+          IconData icon,
+          String label,
+          Color color,
+        ) = switch (health.displayStatus) {
           SyncDisplayStatus.synced => (
             Icons.cloud_done_outlined,
             l10n.syncedLabel,

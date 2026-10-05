@@ -23,11 +23,7 @@ import 'package:go_router/go_router.dart';
 /// * **Technician** — read-only: the actions are not rendered (writes are
 ///   refused by Supabase RLS regardless).
 class CustomerDetailsPage extends StatelessWidget {
-  const CustomerDetailsPage({
-    super.key,
-    required this.customerId,
-    this.cubit,
-  });
+  const CustomerDetailsPage({super.key, required this.customerId, this.cubit});
 
   /// The client-generated customer UUID (also the remote primary key).
   final String customerId;
@@ -41,7 +37,8 @@ class CustomerDetailsPage extends StatelessWidget {
         context.read<AuthenticationCubit?>()?.state.user?.isAdmin ?? false;
 
     return BlocProvider<CustomersCubit>(
-      create: (_) => cubit ?? sl<CustomersCubit>()..loadCustomer(customerId),
+      create: (_) => cubit ?? sl<CustomersCubit>()
+        ..loadCustomer(customerId),
       child: CustomerDetailsView(customerId: customerId, isAdmin: isAdmin),
     );
   }
@@ -115,10 +112,7 @@ class CustomerDetailsView extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    Customer customer,
-  ) async {
+  Future<void> _confirmDelete(BuildContext context, Customer customer) async {
     final AppLocalizations l10n = context.l10n;
 
     final bool? confirmed = await showDialog<bool>(
@@ -148,8 +142,9 @@ class CustomerDetailsView extends StatelessWidget {
       return;
     }
 
-    final CustomerDeleteOutcome outcome =
-        await context.read<CustomersCubit>().deleteCustomer(customer.id);
+    final CustomerDeleteOutcome outcome = await context
+        .read<CustomersCubit>()
+        .deleteCustomer(customer.id);
     if (!context.mounted) {
       return;
     }
@@ -164,13 +159,12 @@ class CustomerDetailsView extends StatelessWidget {
           Navigator.of(context).pop();
         }
       case CustomerDeleteOutcome.linkedToJobs:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.customerLinkedJobsError)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.customerLinkedJobsError)));
       case CustomerDeleteOutcome.failure:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.customerSaveFailed)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l10n.customerSaveFailed)));
     }
   }
 }
@@ -209,13 +203,22 @@ class _CustomerDetailsBody extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                _DetailField(label: l10n.customerPhoneLabel, value: customer.phone),
-                _DetailField(label: l10n.customerEmailLabel, value: customer.email),
+                _DetailField(
+                  label: l10n.customerPhoneLabel,
+                  value: customer.phone,
+                ),
+                _DetailField(
+                  label: l10n.customerEmailLabel,
+                  value: customer.email,
+                ),
                 _DetailField(
                   label: l10n.customerAddressLabel,
                   value: customer.address,
                 ),
-                _DetailField(label: l10n.customerCityLabel, value: cityLine.isEmpty ? null : cityLine),
+                _DetailField(
+                  label: l10n.customerCityLabel,
+                  value: cityLine.isEmpty ? null : cityLine,
+                ),
                 _DetailField(
                   label: l10n.customerNotesLabel,
                   value: customer.notes,
@@ -260,10 +263,7 @@ class _CustomerDetailsBody extends StatelessWidget {
               foregroundColor: context.colors.error,
               side: BorderSide(color: context.colors.error),
             ),
-            icon: const Icon(
-              Icons.delete_outline,
-              size: AppDimensions.iconMd,
-            ),
+            icon: const Icon(Icons.delete_outline, size: AppDimensions.iconMd),
             label: Text(l10n.deleteCustomer),
           ),
         ],
@@ -360,10 +360,7 @@ class _DetailsErrorView extends StatelessWidget {
               style: context.textStyles.titleMedium,
             ),
             const SizedBox(height: AppSpacing.xl),
-            FilledButton(
-              onPressed: onRetry,
-              child: Text(l10n.tryAgainButton),
-            ),
+            FilledButton(onPressed: onRetry, child: Text(l10n.tryAgainButton)),
           ],
         ),
       ),

@@ -30,7 +30,7 @@ class CustomerSyncHandler implements SyncOperationHandler {
     required this._remote,
     required this._local,
     DateTime Function()? now,
-  }) : _now = now ?? DateTime.now;
+  }) : _now = now ?? _utcNow;
 
   final CustomersRemoteDataSource _remote;
   final CustomersLocalDataSource _local;
@@ -117,3 +117,9 @@ class CustomerSyncHandler implements SyncOperationHandler {
     }
   }
 }
+
+/// Clock with a UTC representation: the instant written to Drift and
+/// serialized into the sync payload is then byte-for-byte the same value, so
+/// retries, `updated_at` comparisons and tests never depend on the device
+/// time zone (a UTC `DateTime` is deliberately *not* `==` to the local one).
+DateTime _utcNow() => DateTime.now().toUtc();

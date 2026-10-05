@@ -51,9 +51,8 @@ class _CreateCustomerForm extends StatelessWidget {
       if (!context.mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.customerSaveFailed)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.customerSaveFailed)));
       return;
     }
 
@@ -77,11 +76,11 @@ class _CreateCustomerForm extends StatelessWidget {
                   a.isSaving != b.isSaving,
               builder: (BuildContext context, CustomersState state) =>
                   CustomerForm(
-                submitLabel: l10n.saveButton,
-                isBusy: state.isSaving,
-                onSubmit: (CustomerFormData data) => _submit(context, data),
-                onCancel: () => context.pop(),
-              ),
+                    submitLabel: l10n.saveButton,
+                    isBusy: state.isSaving,
+                    onSubmit: (CustomerFormData data) => _submit(context, data),
+                    onCancel: () => context.pop(),
+                  ),
             ),
           ],
         ),

@@ -19,10 +19,7 @@ abstract final class CustomerFormValidators {
   ///
   /// The actual syntax check reuses the single project-wide email rule in
   /// [PasswordValidator] — no second regex anywhere.
-  static String? validateOptionalEmail(
-    String? value,
-    AppLocalizations l10n,
-  ) {
+  static String? validateOptionalEmail(String? value, AppLocalizations l10n) {
     final String trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) {
       return null;

@@ -26,7 +26,8 @@ class EditCustomerPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<CustomersCubit>(
-      create: (_) => cubit ?? sl<CustomersCubit>()..loadCustomer(customerId),
+      create: (_) => cubit ?? sl<CustomersCubit>()
+        ..loadCustomer(customerId),
       child: const _EditCustomerForm(),
     );
   }
@@ -65,9 +66,8 @@ class _EditCustomerForm extends StatelessWidget {
     }
 
     if (!saved) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.customerSaveFailed)),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(l10n.customerSaveFailed)));
       return;
     }
 

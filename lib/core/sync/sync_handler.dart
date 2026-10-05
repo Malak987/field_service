@@ -3,9 +3,7 @@ import 'package:field_service/core/sync/sync_operation.dart';
 /// Outcome of one remote push attempt.
 class RemotePushResult {
   /// The backend accepted the change.
-  const RemotePushResult.ok()
-    : success = true,
-      reason = null;
+  const RemotePushResult.ok() : success = true, reason = null;
 
   /// The change was not (yet) accepted; [reason] must be a short,
   /// user-safe description (see `SyncErrorMapper`) — never a raw exception.
@@ -52,23 +50,35 @@ abstract interface class SyncHandlerRegistry {
 class MutableSyncHandlerRegistry implements SyncHandlerRegistry {
   final Map<SyncEntityType, SyncOperationHandler> _handlers =
       <SyncEntityType, SyncOperationHandler>{};
+  final Map<SyncEntityType, SyncOperationHandler Function()> _factories =
+      <SyncEntityType, SyncOperationHandler Function()>{};
 
-  /// Registers (or replaces) the handler for [type].
-  ///
-  /// Called by feature DI modules, e.g.:
-  /// ```dart
-  /// sl<SyncHandlerRegistry>().register(
-  ///   SyncEntityType.customer,
-  ///   CustomerSyncHandler(sl<CustomersRepository>()),
-  /// );
-  /// ```
+  /// Registers (or replaces) an already-created handler for [type].
   void register(SyncEntityType type, SyncOperationHandler handler) {
+    _factories.remove(type);
     _handlers[type] = handler;
   }
 
+  /// Registers a lazy handler factory for [type].
+  ///
+  /// Useful for feature modules whose handler transitively depends on runtime
+  /// services (such as an initialized Supabase client). The feature can join
+  /// the sync registry while the dependency graph is being assembled, without
+  /// eagerly opening a database or constructing the backend client.
+  void registerFactory(
+    SyncEntityType type,
+    SyncOperationHandler Function() createHandler,
+  ) {
+    _handlers.remove(type);
+    _factories[type] = createHandler;
+  }
+
   @override
-  SyncOperationHandler? handlerFor(SyncEntityType type) => _handlers[type];
+  SyncOperationHandler? handlerFor(SyncEntityType type) {
+    return _handlers[type] ?? _factories[type]?.call();
+  }
 
   /// Diagnostic: which entity types are currently integrated.
-  Set<SyncEntityType> get registeredTypes => Set.unmodifiable(_handlers.keys);
+  Set<SyncEntityType> get registeredTypes =>
+      Set.unmodifiable(<SyncEntityType>{..._handlers.keys, ..._factories.keys});
 }

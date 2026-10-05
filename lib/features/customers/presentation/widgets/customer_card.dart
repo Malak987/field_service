@@ -11,11 +11,7 @@ import 'package:flutter/material.dart';
 /// assembled from the entity, the sync chip reflects the local row state,
 /// and navigation is injected via [onTap] — no router inside.
 class CustomerCard extends StatelessWidget {
-  const CustomerCard({
-    super.key,
-    required this.customer,
-    required this.onTap,
-  });
+  const CustomerCard({super.key, required this.customer, required this.onTap});
 
   final Customer customer;
 
