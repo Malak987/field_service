@@ -101,5 +101,45 @@
   "statusCancelled": "Cancelled",
   "jobTypeRenovation": "Renovation",
   "jobTypeKitchenInstallation": "Kitchen Installation",
-  "jobTypeMaintenance": "Maintenance"
+  "jobTypeMaintenance": "Maintenance",
+  "customersTitle": "Customers",
+  "customerTitle": "Customer",
+  "addCustomer": "Add customer",
+  "editCustomer": "Edit customer",
+  "deleteCustomer": "Delete customer",
+  "searchCustomersHint": "Search customers",
+  "customerNameLabel": "Name",
+  "customerPhoneLabel": "Phone",
+  "customerEmailLabel": "Email",
+  "customerAddressLabel": "Address",
+  "customerCityLabel": "City",
+  "customerPostalCodeLabel": "Postal code",
+  "customerNotesLabel": "Notes",
+  "saveButton": "Save",
+  "cancelButton": "Cancel",
+  "deleteButton": "Delete",
+  "updatedAtLabel": "Updated at",
+  "customersEmptyTitle": "No customers",
+  "customersEmptySubtitle": "Customers you add will appear here — even without an internet connection. Changes are sent to the server as soon as you are back online.",
+  "customersNoResultsTitle": "No matching customers",
+  "customersErrorTitle": "Customers could not be loaded",
+  "customersErrorSubtitle": "The local copy could not be read. Please try again.",
+  "customerNotFoundTitle": "Customer not found",
+  "customerNotFoundSubtitle": "It may have been deleted on this device.",
+  "customerSaveFailed": "The change could not be saved.",
+  "customerLinkedJobsError": "This customer still has jobs linked to it and cannot be deleted.",
+  "deleteCustomerConfirmation": "This deletes \"{name}\" from the app and, once you are online, from the server. Linked jobs are never deleted automatically.",
+  "@deleteCustomerConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineLabel": "Offline",
+  "syncingLabel": "Syncing…",
+  "pendingSyncLabel": "Pending sync",
+  "syncedLabel": "Synced",
+  "syncFailedLabel": "Sync failed",
+  "validationRequiredField": "This field is required."
 }

@@ -5,6 +5,7 @@ import 'package:field_service/core/network/network_info.dart';
 import 'package:field_service/core/sync/drift_sync_queue.dart';
 import 'package:field_service/core/sync/sync_handler.dart';
 import 'package:field_service/core/sync/sync_manager.dart';
+import 'package:field_service/core/sync/sync_processor.dart';
 import 'package:field_service/core/sync/sync_queue.dart';
 import 'package:field_service/core/sync/sync_status_cubit.dart';
 import 'package:field_service/core/storage/app_file_storage.dart';
@@ -41,8 +42,15 @@ void registerOfflineModule(GetIt sl) {
   );
 
   // --- Sync engine ------------------------------------------------------------
-  sl.registerLazySingleton<SyncHandlerRegistry>(
+  // The mutable registry is the singleton; the read-only contract view points
+  // at the same instance so feature modules can `register(...)` their handlers
+  // while the manager only ever looks handlers up.
+  sl.registerLazySingleton<MutableSyncHandlerRegistry>(
     MutableSyncHandlerRegistry.new,
+  );
+
+  sl.registerLazySingleton<SyncHandlerRegistry>(
+    () => sl<MutableSyncHandlerRegistry>(),
   );
 
   sl.registerLazySingleton<SyncManager>(
@@ -52,6 +60,11 @@ void registerOfflineModule(GetIt sl) {
       handlers: sl<SyncHandlerRegistry>(),
     ),
   );
+
+  // The engine's *contract* points at the one engine instance: features may
+  // nudge it after an enqueue (`processPendingOperations`) but must never
+  // construct their own sync loop.
+  sl.registerLazySingleton<SyncProcessor>(() => sl<SyncManager>());
 
   // --- File storage -------------------------------------------------------------
   sl.registerLazySingleton<FileStorage>(AppFileStorage.new);

@@ -40,11 +40,14 @@ class AppDatabaseFactory {
   /// Opens the platform-appropriate connection.
   ///
   /// Native platforms store `<documents>/<databaseName>.sqlite` through
-  /// `path_provider`. Web would additionally require the `sqlite3.wasm` and
-  /// `drift_worker.js` assets, which is out of scope for this mobile-first
-  /// project for now.
+  /// `path_provider`. On Web, Drift uses the SQLite WebAssembly module and
+  /// worker shipped in the Flutter `web/` directory.
   DatabaseConnection open() => driftDatabase(
     name: databaseName,
     native: DriftNativeOptions(shareAcrossIsolates: shareAcrossIsolates),
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
   );
 }

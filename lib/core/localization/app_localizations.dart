@@ -158,6 +158,41 @@ abstract class AppLocalizations {
   String get jobTypeRenovation;
   String get jobTypeKitchenInstallation;
   String get jobTypeMaintenance;
+
+  // --- Customers -----------------------------------------------------------
+  String get customersTitle;
+  String get customerTitle;
+  String get addCustomer;
+  String get editCustomer;
+  String get deleteCustomer;
+  String get searchCustomersHint;
+  String get customerNameLabel;
+  String get customerPhoneLabel;
+  String get customerEmailLabel;
+  String get customerAddressLabel;
+  String get customerCityLabel;
+  String get customerPostalCodeLabel;
+  String get customerNotesLabel;
+  String get saveButton;
+  String get cancelButton;
+  String get deleteButton;
+  String get updatedAtLabel;
+  String get customersEmptyTitle;
+  String get customersEmptySubtitle;
+  String get customersNoResultsTitle;
+  String get customersErrorTitle;
+  String get customersErrorSubtitle;
+  String get customerNotFoundTitle;
+  String get customerNotFoundSubtitle;
+  String get customerSaveFailed;
+  String get customerLinkedJobsError;
+  String deleteCustomerConfirmation(String name);
+  String get offlineLabel;
+  String get syncingLabel;
+  String get pendingSyncLabel;
+  String get syncedLabel;
+  String get syncFailedLabel;
+  String get validationRequiredField;
 }
 
 class _AppLocalizationsDelegate
@@ -525,6 +560,114 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jobTypeMaintenance => 'Maintenance';
+
+  // --- Customers -------------------------------------------------------------
+  @override
+  String get customersTitle => 'Customers';
+
+  @override
+  String get customerTitle => 'Customer';
+
+  @override
+  String get addCustomer => 'Add customer';
+
+  @override
+  String get editCustomer => 'Edit customer';
+
+  @override
+  String get deleteCustomer => 'Delete customer';
+
+  @override
+  String get searchCustomersHint => 'Search customers';
+
+  @override
+  String get customerNameLabel => 'Name';
+
+  @override
+  String get customerPhoneLabel => 'Phone';
+
+  @override
+  String get customerEmailLabel => 'Email';
+
+  @override
+  String get customerAddressLabel => 'Address';
+
+  @override
+  String get customerCityLabel => 'City';
+
+  @override
+  String get customerPostalCodeLabel => 'Postal code';
+
+  @override
+  String get customerNotesLabel => 'Notes';
+
+  @override
+  String get saveButton => 'Save';
+
+  @override
+  String get cancelButton => 'Cancel';
+
+  @override
+  String get deleteButton => 'Delete';
+
+  @override
+  String get updatedAtLabel => 'Updated at';
+
+  @override
+  String get customersEmptyTitle => 'No customers';
+
+  @override
+  String get customersEmptySubtitle =>
+      'Customers you add will appear here — even without an internet '
+      'connection. Changes are sent to the server as soon as you are back '
+      'online.';
+
+  @override
+  String get customersNoResultsTitle => 'No matching customers';
+
+  @override
+  String get customersErrorTitle => 'Customers could not be loaded';
+
+  @override
+  String get customersErrorSubtitle =>
+      'The local copy could not be read. Please try again.';
+
+  @override
+  String get customerNotFoundTitle => 'Customer not found';
+
+  @override
+  String get customerNotFoundSubtitle =>
+      'It may have been deleted on this device.';
+
+  @override
+  String get customerSaveFailed => 'The change could not be saved.';
+
+  @override
+  String get customerLinkedJobsError =>
+      'This customer still has jobs linked to it and cannot be deleted.';
+
+  @override
+  String deleteCustomerConfirmation(String name) =>
+      'This deletes "$name" from the app and, once you are online, from the '
+      'server. Linked jobs are never deleted automatically.';
+
+  @override
+  String get offlineLabel => 'Offline';
+
+  @override
+  String get syncingLabel => 'Syncing…';
+
+  @override
+  String get pendingSyncLabel => 'Pending sync';
+
+  @override
+  String get syncedLabel => 'Synced';
+
+  @override
+  String get syncFailedLabel => 'Sync failed';
+
+  @override
+  String get validationRequiredField => 'This field is required.';
 }
 
 /// German (`de`) translations — natural, idiomatic German for professional field service use.
@@ -869,6 +1012,116 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get jobTypeMaintenance => 'Wartung';
+
+  // --- Customers -------------------------------------------------------------
+  @override
+  String get customersTitle => 'Kunden';
+
+  @override
+  String get customerTitle => 'Kunde';
+
+  @override
+  String get addCustomer => 'Kunde hinzufügen';
+
+  @override
+  String get editCustomer => 'Kunden bearbeiten';
+
+  @override
+  String get deleteCustomer => 'Kunden löschen';
+
+  @override
+  String get searchCustomersHint => 'Kunden suchen';
+
+  @override
+  String get customerNameLabel => 'Name';
+
+  @override
+  String get customerPhoneLabel => 'Telefon';
+
+  @override
+  String get customerEmailLabel => 'E-Mail';
+
+  @override
+  String get customerAddressLabel => 'Adresse';
+
+  @override
+  String get customerCityLabel => 'Stadt';
+
+  @override
+  String get customerPostalCodeLabel => 'PLZ';
+
+  @override
+  String get customerNotesLabel => 'Anmerkungen';
+
+  @override
+  String get saveButton => 'Speichern';
+
+  @override
+  String get cancelButton => 'Abbrechen';
+
+  @override
+  String get deleteButton => 'Löschen';
+
+  @override
+  String get updatedAtLabel => 'Aktualisiert am';
+
+  @override
+  String get customersEmptyTitle => 'Keine Kunden';
+
+  @override
+  String get customersEmptySubtitle =>
+      'Hinzugefügte Kunden erscheinen hier – auch ohne Internetverbindung. '
+      'Änderungen werden gesendet, sobald Sie wieder online sind.';
+
+  @override
+  String get customersNoResultsTitle => 'Keine passenden Kunden';
+
+  @override
+  String get customersErrorTitle => 'Kunden konnten nicht geladen werden';
+
+  @override
+  String get customersErrorSubtitle =>
+      'Die lokale Kopie konnte nicht gelesen werden. Bitte erneut versuchen.';
+
+  @override
+  String get customerNotFoundTitle => 'Kunde nicht gefunden';
+
+  @override
+  String get customerNotFoundSubtitle =>
+      'Er wurde möglicherweise auf diesem Gerät gelöscht.';
+
+  @override
+  String get customerSaveFailed =>
+      'Die Änderung konnte nicht gespeichert werden.';
+
+  @override
+  String get customerLinkedJobsError =>
+      'Für diesen Kunden existieren noch Aufträge. Er kann nicht gelöscht '
+      'werden.';
+
+  @override
+  String deleteCustomerConfirmation(String name) =>
+      'Dadurch wird „$name“ aus der App und nach der nächsten Verbindung '
+      'auch vom Server gelöscht. Verknüpfte Aufträge werden niemals '
+      'automatisch gelöscht.';
+
+  @override
+  String get offlineLabel => 'Offline';
+
+  @override
+  String get syncingLabel => 'Synchronisiere…';
+
+  @override
+  String get pendingSyncLabel => 'Sync ausstehend';
+
+  @override
+  String get syncedLabel => 'Synchronisiert';
+
+  @override
+  String get syncFailedLabel => 'Sync fehlgeschlagen';
+
+  @override
+  String get validationRequiredField => 'Pflichtfeld.';
 }
 
 /// Ergonomic shorthand on [BuildContext] for localized strings.

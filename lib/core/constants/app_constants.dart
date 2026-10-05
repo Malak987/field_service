@@ -12,4 +12,16 @@ abstract final class AppConstants {
   /// Stored without extension because drift appends `.sqlite`. The concrete
   /// database class is added in a later phase.
   static const String databaseFileName = 'field_service';
+
+  /// Whether unauthenticated users may self-register from the login screen.
+  ///
+  /// Registration always creates a *pending* employee account: activation and
+  /// role assignment stay with an admin (`employees.is_active` /
+  /// `employees.role`), so toggling this flag off only hides the sign-up
+  /// entry points — it is not a security control (RLS is).
+  static const bool allowSelfRegistration = true;
+
+  /// Debounce applied to customer search input so list filtering does not
+  /// re-run on every keystroke of a field technician on a slow device.
+  static const Duration customerSearchDebounce = Duration(milliseconds: 250);
 }

@@ -101,5 +101,45 @@
   "statusCancelled": "Storniert",
   "jobTypeRenovation": "Renovierung",
   "jobTypeKitchenInstallation": "Kücheneinbau",
-  "jobTypeMaintenance": "Wartung"
+  "jobTypeMaintenance": "Wartung",
+  "customersTitle": "Kunden",
+  "customerTitle": "Kunde",
+  "addCustomer": "Kunde hinzufügen",
+  "editCustomer": "Kunden bearbeiten",
+  "deleteCustomer": "Kunden löschen",
+  "searchCustomersHint": "Kunden suchen",
+  "customerNameLabel": "Name",
+  "customerPhoneLabel": "Telefon",
+  "customerEmailLabel": "E-Mail",
+  "customerAddressLabel": "Adresse",
+  "customerCityLabel": "Stadt",
+  "customerPostalCodeLabel": "PLZ",
+  "customerNotesLabel": "Anmerkungen",
+  "saveButton": "Speichern",
+  "cancelButton": "Abbrechen",
+  "deleteButton": "Löschen",
+  "updatedAtLabel": "Aktualisiert am",
+  "customersEmptyTitle": "Keine Kunden",
+  "customersEmptySubtitle": "Hinzugefügte Kunden erscheinen hier – auch ohne Internetverbindung. Änderungen werden gesendet, sobald Sie wieder online sind.",
+  "customersNoResultsTitle": "Keine passenden Kunden",
+  "customersErrorTitle": "Kunden konnten nicht geladen werden",
+  "customersErrorSubtitle": "Die lokale Kopie konnte nicht gelesen werden. Bitte erneut versuchen.",
+  "customerNotFoundTitle": "Kunde nicht gefunden",
+  "customerNotFoundSubtitle": "Er wurde möglicherweise auf diesem Gerät gelöscht.",
+  "customerSaveFailed": "Die Änderung konnte nicht gespeichert werden.",
+  "customerLinkedJobsError": "Für diesen Kunden existieren noch Aufträge. Er kann nicht gelöscht werden.",
+  "deleteCustomerConfirmation": "Dadurch wird „{name}“ aus der App und nach der nächsten Verbindung auch vom Server gelöscht. Verknüpfte Aufträge werden niemals automatisch gelöscht.",
+  "@deleteCustomerConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineLabel": "Offline",
+  "syncingLabel": "Synchronisiere…",
+  "pendingSyncLabel": "Sync ausstehend",
+  "syncedLabel": "Synchronisiert",
+  "syncFailedLabel": "Sync fehlgeschlagen",
+  "validationRequiredField": "Pflichtfeld."
 }

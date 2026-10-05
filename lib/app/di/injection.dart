@@ -1,5 +1,9 @@
 import 'package:field_service/app/di/modules/app_module.dart';
+import 'package:field_service/app/di/modules/authentication_module.dart';
 import 'package:field_service/app/di/modules/core_module.dart';
+import 'package:field_service/app/di/modules/customers_module.dart';
+import 'package:field_service/app/di/modules/jobs_module.dart';
+import 'package:field_service/app/di/modules/offline_module.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get_it/get_it.dart';
 
@@ -16,20 +20,17 @@ final GetIt sl = GetIt.instance;
 
 /// Builds the dependency graph.
 ///
-/// Phase 3 registers the application shell plus the cross-cutting abstractions
-/// that already exist. Feature modules are appended as they are implemented:
-///
-/// ```dart
-/// registerAuthenticationModule(sl); // later phase
-/// registerJobsModule(sl);           // later phase
-/// ```
-///
-/// The function is asynchronous on purpose: later phases must open the local
-/// database and read persisted settings (auth session, theme choice) before the
-/// first frame, using `registerSingletonAsync`.
+/// Registration order matters once: the offline module must exist before
+/// feature modules register their sync handlers into its registry, and the
+/// Supabase client (core module) must exist before the feature data sources
+/// resolve it.
 Future<void> configureDependencies() async {
   registerAppModule(sl);
   registerCoreModule(sl);
+  registerOfflineModule(sl);
+  registerAuthenticationModule(sl);
+  registerJobsModule(sl);
+  registerCustomersModule(sl);
 }
 
 /// Disposes and clears the graph.

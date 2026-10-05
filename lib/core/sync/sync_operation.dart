@@ -10,6 +10,10 @@ enum SyncOperationType {
 
   /// The entity was deleted offline.
   delete,
+
+  /// A file's bytes must be uploaded to the backend (job files: photos,
+  /// signatures). Not applicable to record-type aggregates.
+  upload,
 }
 
 /// The aggregate a [SyncOperation] refers to.
@@ -66,6 +70,7 @@ class SyncOperation extends Equatable {
     required this.type,
     required this.payload,
     required this.createdAt,
+    this.dependsOn,
     this.attempts = 0,
     this.status = SyncOperationStatus.pending,
     this.lastAttemptAt,
@@ -96,6 +101,11 @@ class SyncOperation extends Equatable {
   /// When the local change happened (ordering key of the queue).
   final DateTime createdAt;
 
+  /// Id of another operation that must reach `synced` before this one may be
+  /// pushed (dependency ordering, e.g. an update chained after the create of
+  /// the same record). `null` when there is no dependency.
+  final String? dependsOn;
+
   /// How many push attempts already failed; drives retry/backoff and lets the
   /// UI flag operations that need attention.
   final int attempts;
@@ -123,6 +133,7 @@ class SyncOperation extends Equatable {
       type: type,
       payload: payload,
       createdAt: createdAt,
+      dependsOn: dependsOn,
       status: status ?? this.status,
       attempts: attempts ?? this.attempts,
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
@@ -138,6 +149,7 @@ class SyncOperation extends Equatable {
     type,
     payload,
     createdAt,
+    dependsOn,
     status,
     attempts,
     lastAttemptAt,

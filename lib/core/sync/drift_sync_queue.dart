@@ -237,6 +237,26 @@ class DriftSyncQueue implements SyncQueue {
     );
   }
 
+  @override
+  Future<Set<String>> unfinishedEntityIds(SyncEntityType type) async {
+    final $SyncQueueTableTable t = _table;
+
+    final List<SyncQueueEntry> entries = await (
+      _db.select(t)
+        ..where(
+          (t) =>
+              t.entityType.equals(type.name) &
+              t.status.isIn(<String>[
+                SyncOperationStatus.pending.name,
+                SyncOperationStatus.inProgress.name,
+                SyncOperationStatus.failed.name,
+              ]),
+        )
+    ).get();
+
+    return entries.map((SyncQueueEntry e) => e.entityId).toSet();
+  }
+
   // --- Internals ---------------------------------------------------------------
 
   Future<int> _countByStatus(List<String> statuses) async {

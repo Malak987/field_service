@@ -42,4 +42,49 @@ abstract final class AppColors {
 
   /// Hairline borders and dividers in dark mode.
   static const Color borderDark = Color(0xFF2A2F38);
+
+  // --- Elevated card surfaces ----------------------------------------------
+
+  /// Card / form-container background in light mode (pure white so it stands
+  /// out from [surfaceLight]).
+  static const Color cardLight = Color(0xFFFFFFFF);
+
+  /// Card / form-container background in dark mode (raised above
+  /// [surfaceDark]).
+  static const Color cardDark = Color(0xFF1D2129);
+
+  /// Secondary text (hints, captions, requirement lines) in light mode.
+  static const Color textSecondaryLight = Color(0xFF6B7280);
+
+  /// Secondary text in dark mode.
+  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+
+  // --- Tinted status surfaces -------------------------------------------------
+  // Background washes behind success/warning/error/primary chips, banners and
+  // badges. The alpha channel keeps them readable over both card tones, so
+  // each semantic colour gets a light and a dark variant.
+
+  /// Success wash (synced, completed) in light mode.
+  static const Color successSurfaceLight = Color(0x142E7D32);
+
+  /// Success wash in dark mode.
+  static const Color successSurfaceDark = Color(0x332E7D32);
+
+  /// Warning wash (pending, deadline approaching) in light mode.
+  static const Color warningSurfaceLight = Color(0x14ED6C02);
+
+  /// Warning wash in dark mode.
+  static const Color warningSurfaceDark = Color(0x33ED6C02);
+
+  /// Error wash (failures, destructive confirmations) in light mode.
+  static const Color errorSurfaceLight = Color(0x14D32F2F);
+
+  /// Error wash in dark mode.
+  static const Color errorSurfaceDark = Color(0x33D32F2F);
+
+  /// Primary/info wash (selected states, informational chips) in light mode.
+  static const Color primarySurfaceLight = Color(0x141B4B8F);
+
+  /// Primary/info wash in dark mode.
+  static const Color primarySurfaceDark = Color(0x331B4B8F);
 }
