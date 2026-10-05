@@ -1,4 +1,3 @@
-import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -16,22 +15,13 @@ import 'package:field_service/features/technician/presentation/pages/technician_
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+/// Selects the login, password-recovery or role-specific home screen from the
+/// app-scoped [AuthenticationCubit] state.
 class AuthGatePage extends StatelessWidget {
   const AuthGatePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final AuthenticationCubit? existingCubit = context
-        .read<AuthenticationCubit?>();
-    if (existingCubit != null) {
-      return const _AuthGateView();
-    }
-
-    return BlocProvider<AuthenticationCubit>(
-      create: (_) => sl<AuthenticationCubit>()..checkCurrentUser(),
-      child: const _AuthGateView(),
-    );
-  }
+  Widget build(BuildContext context) => const _AuthGateView();
 }
 
 class _AuthGateView extends StatelessWidget {

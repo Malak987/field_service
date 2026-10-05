@@ -1,7 +1,7 @@
 import 'package:field_service/app/router/app_routes.dart';
-import 'package:field_service/app/router/pages/app_root_page.dart';
 import 'package:field_service/app/router/pages/route_error_page.dart';
 import 'package:field_service/features/admin/presentation/pages/admin_home_page.dart';
+import 'package:field_service/features/authentication/presentation/pages/auth_gate_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/register_page.dart';
@@ -22,10 +22,11 @@ import 'package:go_router/go_router.dart';
 /// authentication redirects, role-based shells (admin vs. technician) and deep
 /// links all span several features, so they need one owner.
 ///
-/// Access protection: pages read the role from the [AuthenticationCubit]
-/// provided above them by the auth gate (`AppUser.isAdmin`) and hide
-/// not-permitted actions; **Supabase RLS is the actual security boundary**.
-/// The router deliberately does not duplicate that role logic.
+/// Startup routing: `/` always builds [AuthGatePage]. The gate resolves the
+/// destination from the shared [AuthenticationCubit], whose session and
+/// employee role are restored through the authentication feature. The router
+/// deliberately does not infer authentication from Supabase initialization;
+/// **Supabase RLS remains the actual security boundary**.
 class AppRouter {
   /// Creates the router.
   ///
@@ -50,7 +51,7 @@ class AppRouter {
       path: AppRoutes.root,
       name: 'root',
       builder: (BuildContext context, GoRouterState state) =>
-          const AppRootPage(),
+          const AuthGatePage(),
     ),
 
     // --- Authentication ------------------------------------------------------

@@ -8,8 +8,9 @@
 /// navigate via the static routes (`AppRoutes.customerCreate`) where no
 /// parameter exists.
 abstract final class AppRoutes {
-  /// Application entry point (later: splash + the "where does this user go?"
-  /// decision). Currently renders a development placeholder.
+  /// Application entry point. Always resolves through the authentication gate
+  /// (`AuthGatePage`), which restores the Supabase-backed employee session and
+  /// selects the destination.
   static const String root = '/';
 
   /// Authentication flow.
