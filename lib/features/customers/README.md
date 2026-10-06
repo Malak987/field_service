@@ -15,6 +15,10 @@ site notes for the technician.
 
 ## Notes
 
+- **Customers is admin-only.** The technician dashboard has no Customers
+  entry point and the router refuses every `/customers` route for non-admin
+  roles; `public.customers` is admin-only in Supabase RLS. Technicians will
+  later see only the customer info of their assigned jobs inside Job Details.
 - This is the most offline-hostile feature of the app: a technician often meets
   a new customer on site with no signal, so **creation must work fully offline**
   with a client-generated UUID and be pushed later.

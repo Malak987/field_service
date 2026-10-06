@@ -144,15 +144,24 @@ class LocalFileStorage {
   /// All files of a job, oldest first. A job may have any number of files of
   /// any kind — there is no one-before / one-after assumption.
   Future<List<LocalJobFile>> filesForJob(String jobId) async {
-    return (
-      _database
-          .select(_database.jobFilesTable)
-          ..where((t) => t.jobId.equals(jobId))
-          ..orderBy(<OrderingTerm Function(JobFilesTable)>[
-            (t) => OrderingTerm.asc(t.capturedAt),
-            (t) => OrderingTerm.asc(t.id),
-          ])
-    ).get();
+    return _filesOfJobQuery(jobId).get();
+  }
+
+  /// Reactive variant of [filesForJob]: re-emits whenever the job's file
+  /// rows change (new capture, upload confirmed, …).
+  Stream<List<LocalJobFile>> watchFilesForJob(String jobId) {
+    return _filesOfJobQuery(jobId).watch();
+  }
+
+  SimpleSelectStatement<JobFilesTable, LocalJobFile> _filesOfJobQuery(
+    String jobId,
+  ) {
+    return _database.select(_database.jobFilesTable)
+      ..where((t) => t.jobId.equals(jobId))
+      ..orderBy(<OrderingTerm Function(JobFilesTable)>[
+        (t) => OrderingTerm.asc(t.capturedAt),
+        (t) => OrderingTerm.asc(t.id),
+      ]);
   }
 
   /// Called by the upload handler **after** the backend confirms the upload:

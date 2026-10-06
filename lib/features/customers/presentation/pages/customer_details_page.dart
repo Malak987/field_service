@@ -19,9 +19,9 @@ import 'package:go_router/go_router.dart';
 /// offline, updates live after a local edit, and its sync chip flips when
 /// the queued operation reaches the backend.
 ///
-/// * **Admin** — gets Edit / Delete actions.
-/// * **Technician** — read-only: the actions are not rendered (writes are
-///   refused by Supabase RLS regardless).
+/// Customers is **admin-only**: the router guard refuses every `/customers`
+/// route (including this details page) for non-admin roles, and Supabase
+/// RLS remains the security boundary on top of that.
 class CustomerDetailsPage extends StatelessWidget {
   const CustomerDetailsPage({super.key, required this.customerId, this.cubit});
 

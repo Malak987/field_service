@@ -3,6 +3,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/home_navigation_tile.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:flutter/material.dart';
@@ -49,24 +50,21 @@ class AdminHomePage extends StatelessWidget {
                 style: context.textStyles.headlineMedium,
               ),
               const SizedBox(height: AppSpacing.xl),
-              FilledButton.icon(
-                onPressed: () {
-                  context.go(AppRoutes.jobs);
-                },
-                icon: const Icon(
-                  Icons.event_note_outlined,
-                  size: AppDimensions.iconMd,
-                ),
-                label: Text(l10n.viewJobsButton),
+              // The admin's main navigation: one reusable tile per feature
+              // that actually exists. Jobs replaces the stack (`go`);
+              // Customers is pushed so its Back button returns here.
+              HomeNavigationTile(
+                key: const Key('nav_jobs'),
+                icon: Icons.event_note_outlined,
+                label: l10n.viewJobsButton,
+                onTap: () => context.go(AppRoutes.jobs),
               ),
               const SizedBox(height: AppSpacing.md),
-              FilledButton.tonalIcon(
-                onPressed: () => context.push(AppRoutes.customers),
-                icon: const Icon(
-                  Icons.people_outline,
-                  size: AppDimensions.iconMd,
-                ),
-                label: Text(l10n.customersTitle),
+              HomeNavigationTile(
+                key: const Key('nav_customers'),
+                icon: Icons.people_outline,
+                label: l10n.customersTitle,
+                onTap: () => context.push(AppRoutes.customers),
               ),
             ],
           ),

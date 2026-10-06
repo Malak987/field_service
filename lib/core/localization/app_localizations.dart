@@ -146,6 +146,27 @@ abstract class AppLocalizations {
   String get createdAtLabel;
   String get expiresAtLabel;
   String get descriptionLabel;
+  String get jobInformationTitle;
+  String get customerInfoUnavailable;
+  String get startJobButton;
+  String jobStartedAt(String time);
+  String get jobStartedMessage;
+  String get startJobFailedMessage;
+  String get jobAlreadyStartedMessage;
+  // --- Before Photos ---------------------------------------------------------
+  String get beforePhotosTitle;
+  String get addBeforePhotoButton;
+  String get takePhotoButton;
+  String get chooseFromGalleryButton;
+  String get noBeforePhotosYet;
+  String get uploadingLabel;
+  String get uploadFailedLabel;
+  String get photoSyncedLabel;
+  String get retryButton;
+  String get cameraUnavailableError;
+  String get photoAccessDeniedError;
+  String get invalidImageError;
+  String get addBeforePhotoFailedError;
   String get jobsEmptyTitle;
   String get jobsEmptySubtitle;
   String get jobsErrorTitle;
@@ -523,6 +544,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get descriptionLabel => 'Description';
+
+  @override
+  @override
+  String get jobInformationTitle => 'Job Information';
+
+  @override
+  String get customerInfoUnavailable =>
+      'Customer information is not available for this job.';
+
+  @override
+  String get startJobButton => 'Start Job';
+
+  @override
+  String jobStartedAt(String time) => 'Started: $time';
+
+  @override
+  String get jobStartedMessage => 'Job started';
+
+  @override
+  String get startJobFailedMessage => 'Unable to start job';
+
+  @override
+  String get jobAlreadyStartedMessage => 'Job has already been started';
+
+  @override
+  String get beforePhotosTitle => 'Before Photos';
+
+  @override
+  String get addBeforePhotoButton => 'Add Before Photo';
+
+  @override
+  String get takePhotoButton => 'Take Photo';
+
+  @override
+  String get chooseFromGalleryButton => 'Choose from Gallery';
+
+  @override
+  String get noBeforePhotosYet => 'No before photos yet';
+
+  @override
+  String get uploadingLabel => 'Uploading';
+
+  @override
+  String get uploadFailedLabel => 'Upload failed';
+
+  @override
+  String get photoSyncedLabel => 'Synced';
+
+  @override
+  String get retryButton => 'Retry';
+
+  @override
+  String get cameraUnavailableError => 'The camera is not available on this device.';
+
+  @override
+  String get photoAccessDeniedError => 'Access to the camera or photo library was denied.';
+
+  @override
+  String get invalidImageError => 'The selected image could not be read.';
+
+  @override
+  String get addBeforePhotoFailedError => 'Unable to add the before photo.';
 
   @override
   String get jobsEmptyTitle => 'No jobs yet';
@@ -977,6 +1060,68 @@ class AppLocalizationsDe extends AppLocalizations {
   String get descriptionLabel => 'Beschreibung';
 
   @override
+  @override
+  String get jobInformationTitle => 'Auftragsinformationen';
+
+  @override
+  String get customerInfoUnavailable =>
+      'Für diesen Auftrag sind keine Kundeninformationen verfügbar.';
+
+  @override
+  String get startJobButton => 'Auftrag starten';
+
+  @override
+  String jobStartedAt(String time) => 'Gestartet: $time';
+
+  @override
+  String get jobStartedMessage => 'Auftrag gestartet';
+
+  @override
+  String get startJobFailedMessage => 'Auftrag konnte nicht gestartet werden';
+
+  @override
+  String get jobAlreadyStartedMessage => 'Auftrag wurde bereits gestartet';
+
+  @override
+  String get beforePhotosTitle => 'Vorher-Fotos';
+
+  @override
+  String get addBeforePhotoButton => 'Vorher-Foto hinzufügen';
+
+  @override
+  String get takePhotoButton => 'Foto aufnehmen';
+
+  @override
+  String get chooseFromGalleryButton => 'Aus Galerie auswählen';
+
+  @override
+  String get noBeforePhotosYet => 'Noch keine Vorher-Fotos';
+
+  @override
+  String get uploadingLabel => 'Wird hochgeladen';
+
+  @override
+  String get uploadFailedLabel => 'Upload fehlgeschlagen';
+
+  @override
+  String get photoSyncedLabel => 'Synchronisiert';
+
+  @override
+  String get retryButton => 'Erneut versuchen';
+
+  @override
+  String get cameraUnavailableError => 'Die Kamera ist auf diesem Gerät nicht verfügbar.';
+
+  @override
+  String get photoAccessDeniedError => 'Der Zugriff auf Kamera oder Fotobibliothek wurde verweigert.';
+
+  @override
+  String get invalidImageError => 'Das ausgewählte Bild konnte nicht gelesen werden.';
+
+  @override
+  String get addBeforePhotoFailedError => 'Das Vorher-Foto konnte nicht hinzugefügt werden.';
+
+  @override
   String get jobsEmptyTitle => 'Noch keine Aufträge';
 
   @override
@@ -1112,7 +1257,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get syncingLabel => 'Synchronisiere…';
 
   @override
-  String get pendingSyncLabel => 'Sync ausstehend';
+  String get pendingSyncLabel => 'Synchronisierung ausstehend';
 
   @override
   String get syncedLabel => 'Synchronisiert';

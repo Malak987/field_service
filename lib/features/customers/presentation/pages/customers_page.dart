@@ -25,12 +25,11 @@ import 'package:go_router/go_router.dart';
 /// 2. the remote pull runs afterwards and updates the same stream;
 /// 3. with no internet, step 2 is a no-op and the local list simply shows.
 ///
-/// Role behavior (mirrors the Jobs pages — the role comes from the
-/// authenticated [AppUser], never from a UI selector; RLS is the security
-/// boundary):
-/// * **Admin** — sees the create button and full records.
-/// * **Technician** — read-only list of the customers on their jobs; the
-///   `+` action is not rendered at all.
+/// Role behavior: Customers is **admin-only**. The router guard refuses
+/// every `/customers` route for non-admin roles (so a technician never
+/// builds this page and never reads the Drift mirror); the technician
+/// dashboard exposes no entry point either. Supabase RLS remains the
+/// security boundary — this is the in-app layer on top of it.
 class CustomersPage extends StatelessWidget {
   const CustomersPage({super.key, this.customersCubit, this.syncStatusCubit});
 
@@ -110,8 +109,9 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      // Admin-only creation. Technicians never see this action (and RLS
-      // rejects their writes server-side even if a build flipped a flag).
+      // Admin-only feature (router guard refuses non-admins every
+      // `/customers` route); the check stays as defense in depth, and RLS
+      // rejects unauthorized writes server-side regardless.
       floatingActionButton: widget.isAdmin
           ? FloatingActionButton(
               key: const Key('add_customer_fab'),

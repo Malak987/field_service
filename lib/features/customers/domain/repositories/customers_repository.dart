@@ -6,9 +6,10 @@ import 'package:field_service/features/customers/domain/entities/customer.dart';
 /// which is the source of truth for the UI. Write paths commit locally and
 /// enqueue a `SyncOperation` (create/update/delete) for the sync engine;
 /// Supabase is reached only by the engine (push) and by [refreshFromRemote]
-/// (pull). Remote visibility per role (admins: all rows; technicians: only
-/// customers of jobs assigned to them) is enforced by **Supabase RLS**, not
-/// by this contract.
+/// (pull). `public.customers` is **admin-only** in Supabase RLS — this
+/// contract is only ever exercised for admin sessions (enforced in-app by
+/// the router guard); technicians will later see per-job customer info
+/// through their assigned jobs, never through this global contract.
 abstract interface class CustomersRepository {
   /// The complete local customer list, ordered by name.
   ///

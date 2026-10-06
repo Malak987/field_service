@@ -173,11 +173,18 @@ class AppRouter {
       return AppRoutes.root;
     }
 
-    final bool isCustomerWrite =
-        route.topRoute?.name == 'customerCreate' ||
-        route.topRoute?.name == 'customerEdit';
-    if (isCustomerWrite && !user.isAdmin) {
-      return AppRoutes.customers;
+    // Customers is an **admin-only** feature. Every `/customers` route — the
+    // list, the details page and both forms — is refused for any non-admin
+    // role *before* a page builds, so no customer data is ever loaded (no
+    // `CustomersCubit`, no Drift read) for a technician. Hiding the button
+    // alone would not survive a typed URL / deep link; this guard is the
+    // in-app enforcement while Supabase RLS remains the security boundary.
+    // Redirecting through the gate lands the technician on their dashboard.
+    final bool isCustomersArea =
+        path == AppRoutes.customers ||
+        path.startsWith('${AppRoutes.customers}/');
+    if (isCustomersArea && !user.isAdmin) {
+      return AppRoutes.root;
     }
 
     return null;

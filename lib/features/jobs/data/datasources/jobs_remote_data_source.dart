@@ -1,5 +1,7 @@
+import 'package:field_service/features/jobs/data/models/job_customer_info_model.dart';
 import 'package:field_service/features/jobs/data/models/job_model.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Remote data source contract for the `public.jobs` table.
@@ -25,6 +27,29 @@ abstract interface class JobsRemoteDataSource {
     required String jobId,
     required String status,
   });
+
+  /// Calls the `get_job_customer(job_id)` SECURITY DEFINER RPC and maps the
+  /// (at most one) returned row.
+  ///
+  /// Authorization happens server-side inside the function: it returns zero
+  /// rows unless the job is assigned to the caller's active employee (or the
+  /// caller is an active admin). This data source never reads
+  /// `public.customers` directly — that table remains admin-only in RLS.
+  Future<JobCustomerInfo?> getJobCustomerInfo(String jobId);
+
+  /// Calls the `start_job(job_id)` SECURITY DEFINER RPC — the ONLY write
+  /// path for starting a job.
+  ///
+  /// The server verifies ownership (`auth.uid()` → active employee →
+  /// `jobs.assigned_employee_id`), applies `status = 'in_progress'` with
+  /// database-generated `started_at`/`updated_at`, appends the `job_started`
+  /// event — atomically — and returns the updated job row. The call is
+  /// idempotent: an already-`in_progress` job comes back unchanged (no
+  /// second event, `started_at` untouched), which makes sync retries safe.
+  ///
+  /// Throws for refused starts (not the assigned employee, unassigned job,
+  /// invalid state); the caller decides how to surface that.
+  Future<Job> startJob(String jobId);
 }
 
 class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
@@ -81,5 +106,40 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
         })
         .eq('id', jobId)
         .select();
+  }
+
+  @override
+  Future<JobCustomerInfo?> getJobCustomerInfo(String jobId) async {
+    // The RPC returns a row-set with zero or one rows. Zero rows means the
+    // caller is not entitled to this job's customer (the function is the
+    // authorizer) — surface that as `null`, never as an exception.
+    final List<dynamic> rows = await supabase.rpc(
+      'get_job_customer',
+      params: <String, dynamic>{'p_job_id': jobId},
+    );
+
+    if (rows.isEmpty) {
+      return null;
+    }
+
+    return JobCustomerInfoModel.fromRpcRow(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Job> startJob(String jobId) async {
+    // The RPC returns the updated job row (SETOF jobs, exactly one row on
+    // success). The client sends ONLY the job id — every timestamp and the
+    // event itself are created server-side, so retries and offline replays
+    // can never inject or reset a `started_at`.
+    final List<dynamic> rows = await supabase.rpc(
+      'start_job',
+      params: <String, dynamic>{'p_job_id': jobId},
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('start_job returned no row for job: $jobId');
+    }
+
+    return JobModel.fromMap(rows.first as Map<String, dynamic>);
   }
 }

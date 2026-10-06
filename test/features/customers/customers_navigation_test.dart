@@ -2,6 +2,7 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/sync/sync_queue.dart';
 import 'package:field_service/features/admin/presentation/pages/admin_home_page.dart';
+import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
 import 'package:field_service/features/customers/data/datasources/customers_local_data_source.dart';
@@ -40,55 +41,57 @@ void main() {
     }
   }
 
-  for (final user in [adminUser, technicianUser]) {
-    _testCustomers('${user.role}: home → Customers → search → details → home', (
-      tester,
-    ) async {
-      await app.configure(user: user, withCustomers: true);
-      await seedCustomers();
-      await app.pump(tester);
-      expect(find.text('View Jobs'), findsOneWidget);
-      await tester.tap(find.text('Customers'));
-      await tester.pumpAndSettle();
-      expect(find.byType(CustomersPage), findsOneWidget);
-      expect(find.text('Alice Customer'), findsOneWidget);
-      expect(find.text('Bob Customer'), findsOneWidget);
-      expect(
-        find.byKey(const Key('add_customer_fab')),
-        user.isAdmin ? findsOneWidget : findsNothing,
-      );
-
-      await tester.enterText(find.byType(TextField), 'Alice');
-      await tester.pump(const Duration(milliseconds: 500));
-      expect(find.text('Bob Customer'), findsNothing);
-      await tester.tap(find.text('Alice Customer'));
-      await tester.pumpAndSettle();
-      expect(find.byType(CustomerDetailsPage), findsOneWidget);
-      expect(
-        find.byKey(const Key('edit_customer_button')),
-        user.isAdmin ? findsOneWidget : findsNothing,
-      );
-      expect(
-        find.byKey(const Key('delete_customer_button')),
-        user.isAdmin ? findsOneWidget : findsNothing,
-      );
-
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      expect(find.byType(CustomersPage), findsOneWidget);
-      expect(
-        tester.widget<TextField>(find.byType(TextField)).controller!.text,
-        'Alice',
-      );
-      expect(find.text('Bob Customer'), findsNothing);
-      await tester.tap(find.byType(BackButton));
-      await tester.pumpAndSettle();
-      expect(
-        find.byType(user.isAdmin ? AdminHomePage : TechnicianHomePage),
-        findsOneWidget,
-      );
-    });
+  /// Simulates the next account signing in through the shared authentication
+  /// session (same mechanism the app sees from Supabase after a login).
+  Future<void> signInAs(WidgetTester tester, AppUser user) async {
+    app.authentication.currentUser = user;
+    app.authentication.events.add(AuthSessionEvent.signedIn);
+    await tester.pumpAndSettle();
   }
+
+  Future<void> signOutFromHome(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Sign Out'));
+    await tester.pumpAndSettle();
+    expect(app.authentication.currentUser, isNull);
+    expect(find.byType(LoginPage), findsOneWidget);
+  }
+
+  // Test 1 / Test 5 prerequisite: the admin surface keeps working end-to-end.
+  _testCustomers('admin: home → Customers → search → details → home', (
+    tester,
+  ) async {
+    await app.configure(user: adminUser, withCustomers: true);
+    await seedCustomers();
+    await app.pump(tester);
+    expect(find.text('View Jobs'), findsOneWidget);
+    await tester.tap(find.text('Customers'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomersPage), findsOneWidget);
+    expect(find.text('Alice Customer'), findsOneWidget);
+    expect(find.text('Bob Customer'), findsOneWidget);
+    expect(find.byKey(const Key('add_customer_fab')), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Alice');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Bob Customer'), findsNothing);
+    await tester.tap(find.text('Alice Customer'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomerDetailsPage), findsOneWidget);
+    expect(find.byKey(const Key('edit_customer_button')), findsOneWidget);
+    expect(find.byKey(const Key('delete_customer_button')), findsOneWidget);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomersPage), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'Alice',
+    );
+    expect(find.text('Bob Customer'), findsNothing);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(AdminHomePage), findsOneWidget);
+  });
 
   _testCustomers(
     'existing admin forms create/edit/delete through Drift and queue',
@@ -159,29 +162,127 @@ void main() {
     },
   );
 
+  // Test 2 (UI half): the technician dashboard has no Customers section.
+  _testCustomers('technician dashboard exposes no Customers entry point', (
+    tester,
+  ) async {
+    await app.configure(user: technicianUser, withCustomers: true);
+    await seedCustomers();
+    await app.pump(tester);
+    expect(find.byType(TechnicianHomePage), findsOneWidget);
+    expect(find.text('View Jobs'), findsOneWidget);
+    expect(find.text('Customers'), findsNothing);
+    expect(find.byIcon(Icons.people_outline), findsNothing);
+    expect(find.byType(CustomersPage), findsNothing);
+  });
+
+  // Test 3 — the exact reported cache leak:
+  // admin caches customers → logs out → technician logs in → nothing leaks.
+  _testCustomers(
+    'cached admin customers stay invisible after switching to a technician',
+    (tester) async {
+      await app.configure(user: adminUser, withCustomers: true);
+      await seedCustomers();
+      await app.pump(tester);
+
+      // 1) Admin opens Customers — the rows are served by the Drift mirror.
+      await tester.tap(find.text('Customers'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CustomersPage), findsOneWidget);
+      expect(find.text('Alice Customer'), findsOneWidget);
+      expect(find.text('Bob Customer'), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(AdminHomePage), findsOneWidget);
+
+      // 2) Admin logs out, technician logs in.
+      await signOutFromHome(tester);
+      await signInAs(tester, technicianUser);
+      expect(find.byType(TechnicianHomePage), findsOneWidget);
+
+      // 3) No Customers section and no previously cached admin rows anywhere.
+      expect(find.text('Customers'), findsNothing);
+      expect(find.byType(CustomersPage), findsNothing);
+      expect(find.byType(CustomerDetailsPage), findsNothing);
+      expect(find.text('Alice Customer'), findsNothing);
+      expect(find.text('Bob Customer'), findsNothing);
+
+      // 4) The offline database itself was NOT wiped — the admin mirror is
+      //    still there for the next admin session (jobs/queue untouched too).
+      final rows = await app.database!.select(app.database!.customersTable).get();
+      expect(rows.length, 2);
+    },
+  );
+
+  // Test 4: direct `/customers` URLs are refused for technicians — both as a
+  // cold-start URL and as an in-session navigation attempt.
   for (final path in [
+    AppRoutes.customers,
     AppRoutes.customerCreate,
+    '/customers/Alice%20Customer',
     '/customers/Alice%20Customer/edit',
   ]) {
-    _testCustomers('technician cannot open mutation form by URL: $path', (
+    _testCustomers('technician navigating to $path is redirected home', (
       tester,
     ) async {
       await app.configure(user: technicianUser, withCustomers: true);
       await seedCustomers();
       await app.pump(tester);
+
       app.router.go(path);
       await tester.pumpAndSettle();
+
       expect(
         app.router.routeInformationProvider.value.uri.path,
-        AppRoutes.customers,
+        AppRoutes.root,
       );
-      expect(find.byType(CustomersPage), findsOneWidget);
+      expect(find.byType(TechnicianHomePage), findsOneWidget);
+      expect(find.byType(CustomersPage), findsNothing);
+      expect(find.byType(CustomerDetailsPage), findsNothing);
       expect(find.byType(CreateCustomerPage), findsNothing);
       expect(find.byType(EditCustomerPage), findsNothing);
-      expect(find.byKey(const Key('add_customer_fab')), findsNothing);
-      expect(find.text('Save'), findsNothing);
+      expect(find.text('Alice Customer'), findsNothing);
+      expect(find.text('Bob Customer'), findsNothing);
     });
   }
+
+  _testCustomers('technician cold-starting on /customers lands on dashboard', (
+    tester,
+  ) async {
+    await app.configure(
+      user: technicianUser,
+      initialLocation: AppRoutes.customers,
+      withCustomers: true,
+    );
+    await seedCustomers();
+    await app.pump(tester);
+
+    expect(find.byType(TechnicianHomePage), findsOneWidget);
+    expect(find.byType(CustomersPage), findsNothing);
+    expect(find.text('Alice Customer'), findsNothing);
+  });
+
+  // Test 5: after a technician session, the admin gets Customers back intact.
+  _testCustomers('admin login after a technician restores full Customers', (
+    tester,
+  ) async {
+    await app.configure(user: technicianUser, withCustomers: true);
+    await seedCustomers();
+    await app.pump(tester);
+    expect(find.byType(TechnicianHomePage), findsOneWidget);
+    expect(find.text('Customers'), findsNothing);
+
+    await signOutFromHome(tester);
+    await signInAs(tester, adminUser);
+    expect(find.byType(AdminHomePage), findsOneWidget);
+
+    await tester.tap(find.text('Customers'));
+    await tester.pumpAndSettle();
+    expect(find.byType(CustomersPage), findsOneWidget);
+    expect(find.text('Alice Customer'), findsOneWidget);
+    expect(find.text('Bob Customer'), findsOneWidget);
+    expect(find.byKey(const Key('add_customer_fab')), findsOneWidget);
+  });
 
   _testCustomers(
     'signedOut on a pushed customer details route removes the stack',

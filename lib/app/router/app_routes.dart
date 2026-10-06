@@ -38,7 +38,9 @@ abstract final class AppRoutes {
   /// Job details; requires a `:id` path parameter.
   static const String jobDetails = '/jobs/:id';
 
-  /// Customers list (offline-first, local Drift source of truth).
+  /// Customers list — admin-only (offline-first, local Drift source of
+  /// truth). The router refuses this route (and every child route) for
+  /// non-admin roles.
   static const String customers = '/customers';
 
   /// Single customer; requires a `:id` path parameter (the client-generated
