@@ -11,6 +11,7 @@ import 'package:field_service/features/customers/presentation/pages/create_custo
 import 'package:field_service/features/customers/presentation/pages/customer_details_page.dart';
 import 'package:field_service/features/customers/presentation/pages/customers_page.dart';
 import 'package:field_service/features/customers/presentation/pages/edit_customer_page.dart';
+import 'package:field_service/features/jobs/presentation/pages/create_job_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/job_details_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/jobs_page.dart';
 import 'package:flutter/widgets.dart';
@@ -100,6 +101,14 @@ class AppRouter {
       name: 'jobs',
       builder: (BuildContext context, GoRouterState state) => const JobsPage(),
       routes: <RouteBase>[
+        // `create` is declared before `:id` so the static segment always
+        // wins over the placeholder.
+        GoRoute(
+          path: 'create',
+          name: 'jobCreate',
+          builder: (BuildContext context, GoRouterState state) =>
+              const CreateJobPage(),
+        ),
         GoRoute(
           path: ':id',
           name: 'jobDetails',
@@ -184,6 +193,14 @@ class AppRouter {
         path == AppRoutes.customers ||
         path.startsWith('${AppRoutes.customers}/');
     if (isCustomersArea && !user.isAdmin) {
+      return AppRoutes.root;
+    }
+
+    // Creating & assigning jobs is the admin's workflow. Technicians execute
+    // jobs — they never create them. The guard refuses the route before any
+    // page builds (survives typed URLs / deep links); the `create_job` RPC
+    // re-enforces the rule server-side regardless.
+    if (path == AppRoutes.jobCreate && !user.isAdmin) {
       return AppRoutes.root;
     }
 

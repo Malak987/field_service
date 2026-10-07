@@ -139,6 +139,8 @@ abstract class AppLocalizations {
   String get customerLabel;
   String get assignedTechnicianLabel;
   String get jobTypeLabel;
+  String get jobCategoryHomeRenovation;
+  String get jobCategoryKitchenRenovation;
   String get statusLabel;
   String get assignedDateLabel;
   String get startDateLabel;
@@ -176,9 +178,14 @@ abstract class AppLocalizations {
   String get statusInProgress;
   String get statusCompleted;
   String get statusCancelled;
-  String get jobTypeRenovation;
-  String get jobTypeKitchenInstallation;
-  String get jobTypeMaintenance;
+  // --- Job creation (admin workflow) ---------------------------------------
+  String get createJobButton;
+  String get createAndAssignJobButton;
+  String get selectCustomerLabel;
+  String get selectTechnicianLabel;
+  String get createJobSuccessMessage;
+  String get createJobFailedMessage;
+  String get noActiveTechniciansMessage;
 
   // --- Customers -----------------------------------------------------------
   String get customersTitle;
@@ -522,7 +529,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get assignedTechnicianLabel => 'Assigned Technician';
 
   @override
-  String get jobTypeLabel => 'Job Type';
+  String get jobTypeLabel => 'Job Category';
+
+  @override
+  String get jobCategoryHomeRenovation => 'Home Renovation';
+
+  @override
+  String get jobCategoryKitchenRenovation => 'Kitchen Renovation';
 
   @override
   String get statusLabel => 'Status';
@@ -635,14 +648,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get statusCancelled => 'Cancelled';
 
+  // --- Job creation (admin workflow) -----------------------------------------
   @override
-  String get jobTypeRenovation => 'Renovation';
+  String get createJobButton => 'Create Job';
 
   @override
-  String get jobTypeKitchenInstallation => 'Kitchen Installation';
+  String get createAndAssignJobButton => 'Create & Assign Job';
 
   @override
-  String get jobTypeMaintenance => 'Maintenance';
+  String get selectCustomerLabel => 'Select Customer';
+
+  @override
+  String get selectTechnicianLabel => 'Select Technician';
+
+  @override
+  String get createJobSuccessMessage => 'Job created and assigned.';
+
+  @override
+  String get createJobFailedMessage =>
+      'The job could not be created. Please try again.';
+
+  @override
+  String get noActiveTechniciansMessage =>
+      'No active technicians are available.';
 
   // --- Customers -------------------------------------------------------------
   @override
@@ -1036,7 +1064,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get assignedTechnicianLabel => 'Zugewiesener Techniker';
 
   @override
-  String get jobTypeLabel => 'Auftragsart';
+  String get jobTypeLabel => 'Jobkategorie';
+
+  @override
+  String get jobCategoryHomeRenovation => 'Hausrenovierung';
+
+  @override
+  String get jobCategoryKitchenRenovation => 'Küchenrenovierung';
 
   @override
   String get statusLabel => 'Status';
@@ -1149,14 +1183,29 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get statusCancelled => 'Storniert';
 
+  // --- Job creation (admin workflow) -----------------------------------------
   @override
-  String get jobTypeRenovation => 'Renovierung';
+  String get createJobButton => 'Auftrag erstellen';
 
   @override
-  String get jobTypeKitchenInstallation => 'Kücheneinbau';
+  String get createAndAssignJobButton => 'Auftrag erstellen & zuweisen';
 
   @override
-  String get jobTypeMaintenance => 'Wartung';
+  String get selectCustomerLabel => 'Kunde auswählen';
+
+  @override
+  String get selectTechnicianLabel => 'Techniker auswählen';
+
+  @override
+  String get createJobSuccessMessage => 'Auftrag erstellt und zugewiesen.';
+
+  @override
+  String get createJobFailedMessage =>
+      'Der Auftrag konnte nicht erstellt werden. Bitte versuche es erneut.';
+
+  @override
+  String get noActiveTechniciansMessage =>
+      'Keine aktiven Techniker verfügbar.';
 
   // --- Customers -------------------------------------------------------------
   @override

@@ -14,6 +14,7 @@ import 'package:field_service/features/jobs/data/datasources/job_files_remote_da
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/models/job_file_model.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
@@ -91,6 +92,35 @@ class JobsRepositoryImpl implements JobsRepository {
     return _remoteDataSource.updateJobStatus(
       jobId: jobId,
       status: status,
+    );
+  }
+
+  @override
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) {
+    // Client-side pre-flight guard (defense in depth): the business supports
+    // exactly two categories. The server (`create_job` RPC + table CHECK
+    // constraint) remains the authoritative validator — this only keeps an
+    // obviously invalid value from leaving the device.
+    if (!JobCategory.isSupported(jobType)) {
+      throw ArgumentError.value(
+        jobType,
+        'jobType',
+        'Unsupported job category',
+      );
+    }
+
+    // Direct RPC by design (see the domain contract): job number, assignment
+    // timestamp and events are server-authoritative — nothing to queue.
+    return _remoteDataSource.createJob(
+      customerId: customerId,
+      jobType: jobType,
+      description: description,
+      assignedEmployeeId: assignedEmployeeId,
     );
   }
 

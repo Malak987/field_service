@@ -45,7 +45,7 @@ Job _job({
     jobNumber: number,
     customerId: 'cust-$id',
     assignedEmployeeId: assignedEmployeeId,
-    jobType: 'maintenance',
+    jobType: 'kitchen_renovation',
     description: 'Fix the sink.',
     status: JobStatus(status),
     startedAt: null,

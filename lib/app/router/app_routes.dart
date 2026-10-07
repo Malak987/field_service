@@ -35,6 +35,11 @@ abstract final class AppRoutes {
   /// Jobs list.
   static const String jobs = '/jobs';
 
+  /// Create & assign a new job — admin-only (the router refuses this route
+  /// for non-admin roles; the `create_job` RPC re-enforces it server-side).
+  /// Declared before [jobDetails] so the static segment wins over `:id`.
+  static const String jobCreate = '/jobs/create';
+
   /// Job details; requires a `:id` path parameter.
   static const String jobDetails = '/jobs/:id';
 

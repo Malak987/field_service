@@ -13,7 +13,10 @@ import 'package:field_service/features/authentication/domain/entities/app_user.d
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
 import 'package:field_service/features/customers/data/datasources/customers_remote_data_source.dart';
 import 'package:field_service/features/customers/data/models/customer_model.dart';
+import 'package:field_service/features/employees/domain/entities/employee.dart';
+import 'package:field_service/features/employees/domain/repositories/employees_repository.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
@@ -43,10 +46,22 @@ class AppTestHarness {
   AppDatabase? database;
   _FakeJobsRepository? _fakeJobs;
 
+  /// Whether [configure] ran — plain (non-widget) tests may use the harness
+  /// type without booting the app; [dispose] must not crash for them.
+  bool _configured = false;
+
   /// Job ids the fake "server" accepted a start for (UI test assertions).
   /// Empty when running with the real sync-mode repository.
   List<String> get startedJobIds =>
       _fakeJobs?.startedJobIds ?? const <String>[];
+
+  /// The Create & Assign requests the fake "server" accepted, in order
+  /// (payload: customer id, category, description, assigned technician).
+  List<Map<String, Object?>> get createJobCalls =>
+      _fakeJobs?.createJobCalls ?? const <Map<String, Object?>>[];
+
+  /// Jobs the fake "server" created through the `create_job` RPC.
+  List<Job> get createdJobs => _fakeJobs?.createdJobs ?? const <Job>[];
 
   Future<void> configure({
     AppUser? user,
@@ -55,8 +70,11 @@ class AppTestHarness {
     List<Job> jobs = const <Job>[],
     Map<String, JobCustomerInfo?> jobCustomers =
         const <String, JobCustomerInfo?>{},
+    List<Employee> technicians = const <Employee>[],
+    Object? techniciansError,
     bool jobsOffline = false,
     Object? startJobError,
+    Object? createJobError,
     Set<String> alreadyStartedJobIds = const <String>{},
     bool withJobsSync = false,
     bool jobsOnline = false,
@@ -76,6 +94,7 @@ class AppTestHarness {
         jobCustomers: jobCustomers,
         offline: jobsOffline,
         startJobError: startJobError,
+        createJobError: createJobError,
         alreadyStartedJobIds: alreadyStartedJobIds,
         photoDeniedJobIds: photoDeniedJobIds,
         initialBeforePhotos: initialBeforePhotos,
@@ -83,6 +102,15 @@ class AppTestHarness {
       await sl.unregister<JobsRepository>();
       sl.registerSingleton<JobsRepository>(_fakeJobs!);
     }
+
+    // Employees read (assignee options of the admin Create Job screen).
+    await sl.unregister<EmployeesRepository>();
+    sl.registerSingleton<EmployeesRepository>(
+      _FakeEmployeesRepository(
+        technicians: technicians,
+        error: techniciansError,
+      ),
+    );
 
     if (withCustomers || withJobsSync) {
       database = AppDatabase(NativeDatabase.memory());
@@ -102,6 +130,7 @@ class AppTestHarness {
     }
 
     router = AppRouter(initialLocation: initialLocation).router;
+    _configured = true;
   }
 
   Future<void> pump(WidgetTester tester) async {
@@ -133,6 +162,10 @@ class AppTestHarness {
   }
 
   Future<void> dispose() async {
+    if (!_configured) {
+      await authentication.dispose();
+      return;
+    }
     router.dispose();
     _fakeJobs?.dispose();
     if (database != null) {
@@ -141,6 +174,24 @@ class AppTestHarness {
     }
     await resetDependencies();
     await authentication.dispose();
+  }
+}
+
+/// Test double for the Employees read: serves exactly the technicians the
+/// test configured (mirrors the RLS-scoped `employees` select). An optional
+/// [error] simulates a refused/failed lookup.
+class _FakeEmployeesRepository implements EmployeesRepository {
+  _FakeEmployeesRepository({required this.technicians, this.error});
+
+  final List<Employee> technicians;
+  final Object? error;
+
+  @override
+  Future<List<Employee>> getActiveTechnicians() async {
+    if (error != null) {
+      throw error!; // ignore: only_throw_errors
+    }
+    return technicians;
   }
 }
 
@@ -208,6 +259,7 @@ class _FakeJobsRepository implements JobsRepository {
     required this.jobCustomers,
     required this.offline,
     this.startJobError,
+    this.createJobError,
     this.alreadyStartedJobIds = const <String>{},
     Set<String> photoDeniedJobIds = const <String>{},
     Map<String, List<JobFile>> initialBeforePhotos =
@@ -224,10 +276,17 @@ class _FakeJobsRepository implements JobsRepository {
   final Map<String, JobCustomerInfo?> jobCustomers;
   final bool offline;
   final Object? startJobError;
+  final Object? createJobError;
   final Set<String> alreadyStartedJobIds;
 
   /// Job ids the fake server accepted a start for (test assertions).
   final List<String> startedJobIds = <String>[];
+
+  /// Create & Assign requests the fake server accepted (assertions).
+  final List<Map<String, Object?>> createJobCalls = <Map<String, Object?>>[];
+
+  /// Jobs the fake server created (mirrors the `create_job` RPC result).
+  final List<Job> createdJobs = <Job>[];
 
   // --- Before Photos (mirrors the `register_job_file` RPC semantics) ----------
 
@@ -328,6 +387,58 @@ class _FakeJobsRepository implements JobsRepository {
         );
       }
     }
+  }
+
+  @override
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    if (createJobError != null) {
+      throw createJobError!; // ignore: only_throw_errors
+    }
+    // Mirrors the `create_job` RPC: only the two supported categories,
+    // `status = 'assigned'` and a SERVER `assigned_at` — the client never
+    // contributes a timestamp. The job number is generated HERE, on the
+    // fake server (next free number, modeling the real identity column —
+    // the client never sends one and receives the generated value back).
+    if (!JobCategory.isSupported(jobType)) {
+      throw StateError('Unsupported job category: $jobType');
+    }
+
+    final int nextNumber = jobs.fold<int>(
+      0,
+      (int max, Job job) => job.jobNumber > max ? job.jobNumber : max,
+    ) + 1;
+
+    final Job created = Job(
+      id: 'fake-created-$nextNumber',
+      jobNumber: nextNumber,
+      customerId: customerId,
+      assignedEmployeeId: assignedEmployeeId,
+      jobType: jobType,
+      description: description,
+      status: const JobStatus(JobStatus.assigned),
+      assignedAt: serverStartedAt,
+      createdAt: serverStartedAt,
+      updatedAt: serverStartedAt,
+      expiresAt: serverStartedAt.add(const Duration(days: 90)),
+    );
+
+    jobs.insert(0, created);
+    createdJobs.add(created);
+    createJobCalls.add(<String, Object?>{
+      'customer_id': customerId,
+      'job_type': jobType,
+      'description': description,
+      'assigned_employee_id': assignedEmployeeId,
+    });
+    return created;
   }
 
   @override

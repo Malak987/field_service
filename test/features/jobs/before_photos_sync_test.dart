@@ -51,7 +51,9 @@ class _ServerLikeFilesRemote implements JobFilesRemoteDataSource {
   /// The employee row the signed-in user owns (`auth.uid()` → employee).
   final String? authorizedEmployeeId;
 
-  /// Active-admin sessions bypass the assignment check (as the RPC does).
+  /// The caller's session is an admin. Business-rule correction: admins are
+  /// REFUSED by `register_job_file` — capturing is a technician execution
+  /// action (admins keep read-only monitoring access).
   final bool isAdmin;
 
   /// Toggle to simulate a Storage outage.
@@ -75,7 +77,12 @@ class _ServerLikeFilesRemote implements JobFilesRemoteDataSource {
     if (job == null) {
       throw StateError('Job not found.');
     }
-    if (!isAdmin && job.assignedEmployeeId != authorizedEmployeeId) {
+    if (isAdmin) {
+      // Mirrors the corrected RPC (job_workflow_permissions_setup.sql):
+      // admins never capture job files, even by calling the RPC directly.
+      throw StateError('Only the assigned technician can add job files.');
+    }
+    if (job.assignedEmployeeId != authorizedEmployeeId) {
       // The storage policies / RPC refuse other technicians' jobs.
       throw StateError('This job is not assigned to you.');
     }
@@ -197,6 +204,14 @@ class _UnusedJobsRemote implements JobsRemoteDataSource {
   @override
   Future<JobCustomerInfo?> getJobCustomerInfo(String jobId) async =>
       throw UnimplementedError();
+
+  @override
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) async => throw UnimplementedError();
 
   @override
   Future<Job> startJob(String jobId) async => throw UnimplementedError();
@@ -606,8 +621,10 @@ void main() {
     await network.close();
   });
 
-  // 6 (server side) — admins may register for jobs they do not own.
-  test('admin sessions can register before photos for any job', () async {
+  // 6 (server side) — business-rule correction: capturing is a technician
+  // execution action. Admins are refused by `register_job_file` even though
+  // they can see every job (monitoring only — never execution).
+  test('backend rejects an admin before-photo registration', () async {
     final _ServerLikeFilesRemote remote = await configureSync(
       online: false,
       jobs: const <String, _RemoteJob>{
@@ -621,20 +638,23 @@ void main() {
     );
 
     final File source = capturedPhoto('shot.png');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
+    await sl<JobsRepository>().addBeforePhoto(
       jobId: 'job-tech',
       pickedFilePath: source.path,
     );
 
     final SyncOperationHandler handler =
         sl<SyncHandlerRegistry>().handlerFor(SyncEntityType.jobFile)!;
-    final RemotePushResult result = await handler.push(
-      (await sl<SyncQueue>().nextPending())!,
-    );
 
-    expect(result.success, isTrue);
-    expect(remote.files, hasLength(1));
-    expect(remote.files[fileId]!['employee_id'], 'emp-admin');
-    expect(remote.events, hasLength(1));
+    // The refusal propagates out of the handler — exactly what the shared
+    // `SyncManager` turns into a `failed` (retryable) queue row; the upload
+    // never reaches storage and the RPC is never invoked.
+    final SyncOperation pending = (await sl<SyncQueue>().nextPending())!;
+    await expectLater(() => handler.push(pending), throwsStateError);
+
+    expect(remote.uploadCalls, 1); // attempted…
+    expect(remote.registerCalls, 0); // …but refused before registration
+    expect(remote.files, isEmpty); // no file row
+    expect(remote.events, isEmpty); // no event for a refused photo
   });
 }

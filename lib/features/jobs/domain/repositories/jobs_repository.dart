@@ -26,6 +26,33 @@ abstract interface class JobsRepository {
     required String status,
   });
 
+  /// Creates a new job AND assigns it in one step — the admin's workflow.
+  ///
+  /// Backed by the `create_job` SECURITY DEFINER RPC, the ONLY job-creation
+  /// path. The server verifies that the caller is an active admin, that
+  /// [jobType] is one of the two supported `JobCategory` values, that the
+  /// customer exists and that [assignedEmployeeId] is an ACTIVE technician.
+  /// It generates the job number, sets `status = 'assigned'` and stamps
+  /// `assigned_at` with database time (the client never sends a timestamp),
+  /// appends the `job_created` / `job_assigned` events and returns the
+  /// authoritative row.
+  ///
+  /// This call is deliberately NOT offline-queued: the job number, the
+  /// assignment timestamp and the returned row are all server-authoritative,
+  /// and the admin picks from live customer/technician lists — so creation
+  /// either lands on the server or reports an error the admin can retry.
+  /// The offline-first sync queue remains the one path for the technician's
+  /// execution actions (Start Job, Before Photos).
+  ///
+  /// Throws when the server refuses the creation (non-admin caller,
+  /// unsupported category, unknown customer, invalid assignee, network).
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  });
+
   /// The customer information belonging to the job with [jobId] — and to
   /// that job only.
   ///

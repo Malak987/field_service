@@ -1,4 +1,5 @@
 import 'package:field_service/app/di/injection.dart';
+import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -63,6 +64,24 @@ class _JobsPageView extends StatelessWidget {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
+      // Create & Assign Job is the admin's workflow — technicians execute
+      // jobs, they never create them. The route is additionally guarded by
+      // the router (deep links) and by the `create_job` RPC (server side).
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              key: const Key('create_job_fab'),
+              onPressed: () async {
+                await context.push(AppRoutes.jobCreate);
+                if (context.mounted) {
+                  // The new job exists by the time the form pops — refresh
+                  // so it appears in the list without a manual pull.
+                  context.read<JobsCubit>().loadJobs();
+                }
+              },
+              icon: const Icon(Icons.add_rounded, size: AppDimensions.iconMd),
+              label: Text(l10n.createJobButton),
+            )
+          : null,
       body: BlocBuilder<JobsCubit, JobsState>(
         builder: (BuildContext context, JobsState state) {
           final JobsCubit cubit = context.read<JobsCubit>();

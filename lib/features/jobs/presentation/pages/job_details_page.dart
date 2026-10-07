@@ -2,6 +2,7 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
@@ -35,14 +36,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 ///   no create/edit/delete/search action for customers on this page for any
 ///   role. Admins manage customers through the Customers feature.
 ///
-/// Start Job model:
-/// * While the job is `assigned` the page shows [JobStartButton]; tapping it
-///   queues the start in the durable sync queue (works offline) and flips
-///   the local state to `in_progress` immediately. The server-side
-///   `start_job` RPC is the authority: it applies the status, the
-///   database-generated `started_at` and the `job_started` event atomically,
-///   and never twice. Once started, the button disappears and the Start Date
-///   field shows the server timestamp once the job is (re)loaded.
+/// Start Job model (technicians only — the admin creates/assigns/monitors):
+/// * While the job is `assigned`, the ASSIGNED TECHNICIAN's page shows
+///   [JobStartButton]; tapping it queues the start in the durable sync queue
+///   (works offline) and flips the local state to `in_progress` immediately.
+///   Admins never see the button — they see the job fields (status, started
+///   date, assignee) as monitoring information. The server-side `start_job`
+///   RPC is the authority: it refuses admins outright, applies the status,
+///   the database-generated `started_at` and the `job_started` event
+///   atomically, and never twice. Once started, the button disappears and
+///   the Start Date field shows the server timestamp once the job is
+///   (re)loaded.
 ///
 /// Before Photos model:
 /// * The section appears once the job is started. While it is `in_progress`,
@@ -96,6 +100,20 @@ class _JobDetailsView extends StatelessWidget {
         builder: (BuildContext context, JobsState state) {
           final JobsCubit cubit = context.read<JobsCubit>();
 
+          // Role comes exclusively from the authenticated session. The
+          // business workflow: the admin CREATES, ASSIGNS and MONITORS jobs;
+          // ONLY the assigned technician EXECUTES them (Start Job, Before
+          // Photos, …). Admins therefore never see the technician actions —
+          // they see the same job data as monitoring information. The server
+          // (`start_job` / `register_job_file` RPCs) enforces this even if
+          // the UI were bypassed.
+          final bool isTechnician = context
+                  .read<AuthenticationCubit?>()
+                  ?.state
+                  .user
+                  ?.isTechnician ??
+              false;
+
           switch (state.status) {
             case JobsStatus.initial:
             case JobsStatus.loading:
@@ -134,16 +152,19 @@ class _JobDetailsView extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  // Workflow action area: the Start Job button while
-                  // `assigned`; once started it is replaced by the explicit
-                  // "Started: <timestamp>" line (server-generated time, shown
-                  // as soon as the authoritative row is back). The button is
-                  // gone for good — no second start is ever possible.
-                  JobStartButton(
-                    job: job,
-                    isStarting: state.startingJobIds.contains(job.id),
-                    onPressed: () => _onStartJob(context, cubit, job.id),
-                  ),
+                  // Workflow action area (technicians only): the Start Job
+                  // button while `assigned`; once started it is replaced by
+                  // the explicit "Started: <timestamp>" line (server-generated
+                  // time, shown as soon as the authoritative row is back).
+                  // The button is gone for good — no second start is ever
+                  // possible. Admins never get the button: they monitor the
+                  // job, the `start_job` RPC refuses them server-side.
+                  if (isTechnician)
+                    JobStartButton(
+                      job: job,
+                      isStarting: state.startingJobIds.contains(job.id),
+                      onPressed: () => _onStartJob(context, cubit, job.id),
+                    ),
                   if (job.status.value == JobStatus.inProgress &&
                       job.startedAt != null)
                     _StartedAtLine(startedAt: job.startedAt!),
@@ -196,7 +217,10 @@ class _JobDetailsView extends StatelessWidget {
                         child: BeforePhotosSection(
                           photos: state.beforePhotos,
                           failedIds: state.beforePhotoFailedIds,
-                          canAdd: job.status.value == JobStatus.inProgress,
+                          // Capture is a technician execution action; admins
+                          // view the photos read-only (monitoring).
+                          canAdd: isTechnician &&
+                              job.status.value == JobStatus.inProgress,
                           isAdding: state.isAddingBeforePhoto,
                           onAdd: () => _onAddBeforePhoto(
                             context,

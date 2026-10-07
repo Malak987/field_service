@@ -28,7 +28,7 @@ Job _job({
     jobNumber: number,
     customerId: 'cust-$id',
     assignedEmployeeId: assignedEmployeeId,
-    jobType: 'maintenance',
+    jobType: 'kitchen_renovation',
     description: 'Fix the sink.',
     status: JobStatus(status),
     startedAt: startedAt,
@@ -52,8 +52,11 @@ void main() {
     expect(find.byType(JobDetailsPage), findsOneWidget);
   }
 
-  // Test 1 / 12 — admin can start; UI flips to in_progress immediately.
-  testWidgets('admin can start a job and the UI reflects in_progress', (
+  // Test 1 / 12 — business-rule correction: the admin CREATES, ASSIGNS and
+  // MONITORS jobs but never EXECUTES them. The admin's Job Details is a
+  // monitoring view: the Start Job button never exists for an admin (the
+  // `start_job` RPC refuses admins server-side regardless).
+  testWidgets('admin sees monitoring-only job details (no Start Job)', (
     tester,
   ) async {
     await app.configure(
@@ -66,19 +69,13 @@ void main() {
     expect(find.byType(AdminHomePage), findsOneWidget);
     await openFirstJobDetails(tester);
 
-    // Start Job is offered exactly while the job is `assigned`.
-    expect(find.byType(JobStartButton), findsOneWidget);
-    expect(find.byKey(const Key('start_job_button')), findsOneWidget);
+    // The monitoring view shows the job's state …
     expect(find.text('Assigned'), findsWidgets);
-
-    await tester.tap(find.byKey(const Key('start_job_button')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Job started'), findsOneWidget); // snackbar
-    expect(find.text('In Progress'), findsWidgets); // badge + status field
+    // … but never the technician's Start action.
+    expect(find.byType(JobStartButton), findsNothing);
     expect(find.byKey(const Key('start_job_button')), findsNothing);
-    expect(find.text('Assigned'), findsNothing);
-    expect(app.startedJobIds, <String>['job-1']);
+    // And nothing ever reached the backend.
+    expect(app.startedJobIds, isEmpty);
   });
 
   // Test 2 / 12 — technician can start their own assigned job.

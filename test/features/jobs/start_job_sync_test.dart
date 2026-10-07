@@ -35,7 +35,7 @@ Job _job({
     jobNumber: number,
     customerId: 'cust-$id',
     assignedEmployeeId: assignedEmployeeId,
-    jobType: 'maintenance',
+    jobType: 'kitchen_renovation',
     status: JobStatus(status),
     createdAt: DateTime.utc(2026, 9, 1),
     updatedAt: DateTime.utc(2026, 9, 1),
@@ -43,8 +43,9 @@ Job _job({
   );
 }
 
-/// Fake of the `start_job` RPC endpoint with the SAME semantics as the SQL:
-/// ownership check → duplicate-start protection → atomic update + event.
+/// Fake of the `start_job` RPC endpoint with the SAME semantics as the
+/// corrected SQL (job_workflow_permissions_setup.sql): role + ownership
+/// check → duplicate-start protection → atomic update + event.
 class _ServerLikeJobsRemote implements JobsRemoteDataSource {
   _ServerLikeJobsRemote({
     required Map<String, Job> jobs,
@@ -59,7 +60,9 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
   /// The employee row the signed-in user owns (`auth.uid()` → employee).
   final String? authorizedEmployeeId;
 
-  /// Active-admin sessions bypass the assignment check (as the RPC does).
+  /// The caller's session is an admin. Business-rule correction: admins are
+  /// REFUSED by `start_job` — they create/assign/monitor jobs but never
+  /// execute them, even by calling the RPC directly.
   final bool isAdmin;
 
   /// How many times the RPC was invoked (attempts, incl. retries).
@@ -92,15 +95,28 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
   }) async => throw UnimplementedError();
 
   @override
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) async => throw UnimplementedError();
+
+  @override
   Future<Job> startJob(String jobId) async {
     startCalls++;
     final Job? job = _jobs[jobId];
     if (job == null) {
       throw StateError('Job not found.');
     }
-    // Ownership: active admins may start any job; anyone else only their
-    // own assigned job (an unassigned job never matches).
-    if (!isAdmin && job.assignedEmployeeId != authorizedEmployeeId) {
+    // Role: ONLY an active technician may start a job. Admins are refused
+    // outright — the corrected RPC's most important rule.
+    if (isAdmin) {
+      throw StateError('Only the assigned technician can start this job.');
+    }
+    // Ownership: only the job's own assigned employee (an unassigned job
+    // never matches).
+    if (job.assignedEmployeeId != authorizedEmployeeId) {
       throw StateError('This job is not assigned to you.');
     }
     // Duplicate-start protection: already in_progress → succeed unchanged
@@ -354,32 +370,37 @@ void main() {
     },
   );
 
-  test('admin may start a job through the same queue + RPC path', () async {
-    final _ServerLikeJobsRemote remote = await configureSync(
-      online: true,
-      jobs: <String, Job>{
-        'job-any': _job(
-          id: 'job-any',
-          number: 103,
-          assignedEmployeeId: 'emp-somebody-else',
-        ),
-      },
-      authorizedEmployeeId: 'emp-admin',
-      isAdmin: true,
-    );
-    await sl<ConnectivityService>().start();
+  test(
+    'backend rejects an admin Start Job attempt (admins never execute jobs)',
+    () async {
+      final _ServerLikeJobsRemote remote = await configureSync(
+        online: true,
+        jobs: <String, Job>{
+          'job-any': _job(
+            id: 'job-any',
+            number: 103,
+            assignedEmployeeId: 'emp-somebody-else',
+          ),
+        },
+        authorizedEmployeeId: 'emp-admin',
+        isAdmin: true,
+      );
+      await sl<ConnectivityService>().start();
 
-    await sl<JobsRepository>().startJob('job-any');
-    await sl<SyncProcessor>().processPendingOperations();
-    await _untilQueueDrained();
+      await sl<JobsRepository>().startJob('job-any');
+      await sl<SyncProcessor>().processPendingOperations();
+      await _untilQueueDrained();
 
-    expect(await sl<SyncQueue>().pendingCount(), 0);
-    expect(await sl<SyncQueue>().failedCount(), 0);
-    expect(remote.events, hasLength(1));
-    expect(remote.events.single['employee_id'], 'emp-admin');
-    expect(remote.jobById('job-any').status.value, JobStatus.inProgress);
-    expect(remote.jobById('job-any').startedAt, _serverNow);
-  });
+      // The RPC was reached and refused: the operation stays retryable-failed
+      // in the existing queue, and the job is completely untouched.
+      expect(remote.startCalls, 1);
+      expect(remote.events, isEmpty);
+      expect(await sl<SyncQueue>().pendingCount(), 0);
+      expect(await sl<SyncQueue>().failedCount(), 1);
+      expect(remote.jobById('job-any').status.value, JobStatus.assigned);
+      expect(remote.jobById('job-any').startedAt, isNull);
+    },
+  );
 }
 
 /// Network probe the test can flip offline ↔ online, so the real

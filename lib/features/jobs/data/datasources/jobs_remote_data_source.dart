@@ -37,6 +37,27 @@ abstract interface class JobsRemoteDataSource {
   /// `public.customers` directly — that table remains admin-only in RLS.
   Future<JobCustomerInfo?> getJobCustomerInfo(String jobId);
 
+  /// Calls the `create_job(...)` SECURITY DEFINER RPC — the ONLY write path
+  /// for creating and assigning a job (admin action).
+  ///
+  /// The server verifies that the caller is an active admin, that the
+  /// category is one of the two supported values, that the customer exists
+  /// and that the assignee is an ACTIVE technician. It generates the
+  /// `job_number`, sets `status = 'assigned'`, stamps `assigned_at` /
+  /// `created_at` / `updated_at` server-side, appends the `job_created` and
+  /// `job_assigned` events, and returns the inserted row. The client sends
+  /// NO timestamp.
+  ///
+  /// Throws for refused creations (non-admin caller, unsupported category,
+  /// unknown customer, invalid assignee); the caller decides how to surface
+  /// that.
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  });
+
   /// Calls the `start_job(job_id)` SECURITY DEFINER RPC — the ONLY write
   /// path for starting a job.
   ///
@@ -123,6 +144,33 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
     }
 
     return JobCustomerInfoModel.fromRpcRow(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Job> createJob({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) async {
+    // The RPC returns the inserted job row (SETOF jobs, exactly one row on
+    // success). The client sends only the form facts — every timestamp, the
+    // job number and the events are created server-side.
+    final List<dynamic> rows = await supabase.rpc(
+      'create_job',
+      params: <String, dynamic>{
+        'p_customer_id': customerId,
+        'p_job_type': jobType,
+        'p_description': description,
+        'p_assigned_employee_id': assignedEmployeeId,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('create_job returned no row.');
+    }
+
+    return JobModel.fromMap(rows.first as Map<String, dynamic>);
   }
 
   @override

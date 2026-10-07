@@ -36,7 +36,7 @@ Job _job({
     customerId: customerId,
     customerName: customerName,
     assignedEmployeeId: assignedEmployeeId,
-    jobType: 'maintenance',
+    jobType: 'kitchen_renovation',
     description: 'Fix the sink.',
     status: const JobStatus(JobStatus.assigned),
     createdAt: DateTime.utc(2026, 9, 1),
@@ -128,7 +128,7 @@ void main() {
       // Job Information section.
       expect(find.text('Job Information'), findsOneWidget);
       expect(find.text('#101'), findsWidgets);
-      expect(find.text('Maintenance'), findsWidgets);
+      expect(find.text('Kitchen Renovation'), findsWidgets);
       expect(find.text('Fix the sink.'), findsOneWidget);
       // Customer section — exactly this job's customer.
       expect(find.text('Alice Customer'), findsOneWidget);

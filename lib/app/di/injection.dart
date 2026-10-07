@@ -2,6 +2,7 @@ import 'package:field_service/app/di/modules/app_module.dart';
 import 'package:field_service/app/di/modules/authentication_module.dart';
 import 'package:field_service/app/di/modules/core_module.dart';
 import 'package:field_service/app/di/modules/customers_module.dart';
+import 'package:field_service/app/di/modules/employees_module.dart';
 import 'package:field_service/app/di/modules/jobs_module.dart';
 import 'package:field_service/app/di/modules/offline_module.dart';
 import 'package:flutter/foundation.dart';
@@ -29,6 +30,7 @@ Future<void> configureDependencies() async {
   registerCoreModule(sl);
   registerOfflineModule(sl);
   registerAuthenticationModule(sl);
+  registerEmployeesModule(sl);
   registerJobsModule(sl);
   registerCustomersModule(sl);
 }
