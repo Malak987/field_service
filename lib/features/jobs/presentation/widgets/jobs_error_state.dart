@@ -39,10 +39,7 @@ class JobsErrorState extends StatelessWidget {
               style: context.textStyles.bodyMedium,
             ),
             const SizedBox(height: AppSpacing.xl),
-            FilledButton(
-              onPressed: onRetry,
-              child: Text(l10n.tryAgainButton),
-            ),
+            FilledButton(onPressed: onRetry, child: Text(l10n.tryAgainButton)),
           ],
         ),
       ),

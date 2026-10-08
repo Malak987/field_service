@@ -148,7 +148,9 @@ void main() {
       jobs: <Job>[
         _job(id: 'job-1', number: 101, assignedEmployeeId: 'emp-tech-1'),
       ],
-      startJobError: StateError('No active employee is linked to this account.'),
+      startJobError: StateError(
+        'No active employee is linked to this account.',
+      ),
     );
     await app.pump(tester);
     await openFirstJobDetails(tester);

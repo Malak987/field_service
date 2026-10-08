@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:field_service/core/utils/logger.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/domain/usecases/get_customers.dart';
+import 'package:field_service/features/customers/domain/usecases/refresh_customers.dart';
 import 'package:field_service/features/employees/domain/entities/employee.dart';
 import 'package:field_service/features/employees/domain/usecases/get_active_technicians.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -35,7 +36,11 @@ enum CreateJobOutcome {
 /// its instance (same convention as [JobsCubit]). All data access goes
 /// through use cases:
 /// * customers — the EXISTING offline-first Customers feature (Drift stream,
-///   never a second customer store),
+///   never a second customer store). The stream is local-only BY DESIGN, so
+///   opening this page also nudges the EXISTING [RefreshCustomers] pull:
+///   online it merges the backend's customers into the mirror the dropdown
+///   streams from (the Customers page does the same); offline it is a no-op
+///   and the mirror stays the answer,
 /// * technicians — the Employees read (ACTIVE technicians only),
 /// * submission — the `create_job` RPC via [CreateJob]; the server stamps
 ///   `assigned_at` and the job number, the client never invents either.
@@ -44,14 +49,17 @@ class CreateJobCubit extends Cubit<CreateJobState> {
     required GetCustomers getCustomers,
     required GetActiveTechnicians getActiveTechnicians,
     required CreateJob createJob,
+    required RefreshCustomers refreshCustomers,
   }) : _getCustomers = getCustomers,
        _getActiveTechnicians = getActiveTechnicians,
        _createJob = createJob,
+       _refreshCustomers = refreshCustomers,
        super(const CreateJobState());
 
   final GetCustomers _getCustomers;
   final GetActiveTechnicians _getActiveTechnicians;
   final CreateJob _createJob;
+  final RefreshCustomers _refreshCustomers;
 
   StreamSubscription<List<Customer>>? _customersSubscription;
 
@@ -62,15 +70,29 @@ class CreateJobCubit extends Cubit<CreateJobState> {
       return;
     }
 
+    // The customer dropdown streams the LOCAL mirror — the single source of
+    // truth (offline-first rule). On a device whose mirror is still empty
+    // (fresh install / data cleared / never opened the Customers page) the
+    // dropdown would otherwise have nothing to offer: nudge the EXISTING
+    // remote pull, which merges backend rows into exactly that mirror — the
+    // stream then delivers them here. The pull checks connectivity itself
+    // (offline = safe no-op) and any failure only logs: the mirror, not the
+    // network, decides what the form shows.
+    unawaited(
+      _refreshCustomers().catchError((Object error, StackTrace stackTrace) {
+        AppLogger.warning(
+          'Customer options for Create Job could not be refreshed from the '
+          'backend; the local mirror stays the answer.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }),
+    );
+
     _customersSubscription ??= _getCustomers().listen(
       (List<Customer> customers) {
         if (!isClosed) {
-          emit(
-            state.copyWith(
-              customers: customers,
-              isLoadingOptions: false,
-            ),
-          );
+          emit(state.copyWith(customers: customers, isLoadingOptions: false));
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -101,9 +123,7 @@ class CreateJobCubit extends Cubit<CreateJobState> {
       }
 
       if (!isClosed) {
-        emit(
-          state.copyWith(technicians: technicians, isLoadingOptions: false),
-        );
+        emit(state.copyWith(technicians: technicians, isLoadingOptions: false));
       }
     } catch (error, stackTrace) {
       AppLogger.warning(

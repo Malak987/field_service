@@ -2,10 +2,7 @@ import 'package:field_service/features/authentication/domain/entities/app_user.d
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 
 abstract interface class AuthenticationRepository {
-  Future<AppUser> signIn({
-    required String email,
-    required String password,
-  });
+  Future<AppUser> signIn({required String email, required String password});
 
   /// Registers a new user account.
   ///
@@ -22,14 +19,10 @@ abstract interface class AuthenticationRepository {
   });
 
   /// Sends a password recovery link to [email].
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  });
+  Future<void> sendPasswordResetEmail({required String email});
 
   /// Updates the authenticated user's password during a recovery session.
-  Future<void> updatePassword({
-    required String newPassword,
-  });
+  Future<void> updatePassword({required String newPassword});
 
   Future<AppUser?> getCurrentUser();
 

@@ -22,11 +22,11 @@ class AppFileStorage implements FileStorage {
   Future<Directory> _root() async {
     Directory? root = _rootCache;
     if (root == null) {
-      final Directory base = _baseDirectory ??
-          Directory(p.join(
-            (await getApplicationDocumentsDirectory()).path,
-            'files',
-          ));
+      final Directory base =
+          _baseDirectory ??
+          Directory(
+            p.join((await getApplicationDocumentsDirectory()).path, 'files'),
+          );
       if (!await base.exists()) {
         await base.create(recursive: true);
       }

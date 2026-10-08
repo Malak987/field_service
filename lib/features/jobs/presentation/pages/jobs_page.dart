@@ -3,9 +3,11 @@ import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_empty_state.dart';
@@ -23,7 +25,13 @@ import 'package:go_router/go_router.dart';
 /// is enforced by Supabase; this page only adapts the label and the extra
 /// "assigned technician" line for admins.
 class JobsPage extends StatelessWidget {
-  const JobsPage({super.key});
+  const JobsPage({super.key, this.categoryFilter});
+
+  /// Optional `?category=` query value (a [JobCategory] string) — the admin
+  /// bottom-navigation category tabs land here. Filtering happens purely in
+  /// the presentation layer over the ALREADY loaded jobs; the cubit, the
+  /// repository and the backend query are untouched.
+  final String? categoryFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -32,15 +40,31 @@ class JobsPage extends StatelessWidget {
 
     return BlocProvider<JobsCubit>(
       create: (_) => sl<JobsCubit>()..loadJobs(),
-      child: _JobsPageView(isAdmin: isAdmin),
+      child: _JobsPageView(isAdmin: isAdmin, categoryFilter: categoryFilter),
     );
   }
 }
 
 class _JobsPageView extends StatelessWidget {
-  const _JobsPageView({required this.isAdmin});
+  const _JobsPageView({required this.isAdmin, this.categoryFilter});
 
   final bool isAdmin;
+
+  final String? categoryFilter;
+
+  /// Which bottom-nav tab is highlighted on this page.
+  int get _navIndex {
+    if (!isAdmin) {
+      return 1; // Technician bar: Home / My Jobs / Account.
+    }
+    return switch (categoryFilter) {
+      JobCategory.kitchenRenovation => 1,
+      JobCategory.homeRenovation => 2,
+      // The unfiltered "View Jobs" entry has no tab of its own — the Home
+      // tab stays highlighted so the bar always has a valid selection.
+      _ => 0,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +106,10 @@ class _JobsPageView extends StatelessWidget {
               label: Text(l10n.createJobButton),
             )
           : null,
+      bottomNavigationBar: AppBottomNav(
+        isAdmin: isAdmin,
+        selectedIndex: _navIndex,
+      ),
       body: BlocBuilder<JobsCubit, JobsState>(
         builder: (BuildContext context, JobsState state) {
           final JobsCubit cubit = context.read<JobsCubit>();
@@ -95,7 +123,12 @@ class _JobsPageView extends StatelessWidget {
               return JobsErrorState(onRetry: cubit.loadJobs);
 
             case JobsStatus.success:
-              final List<Job> jobs = state.jobs;
+              final String? categoryFilter = this.categoryFilter;
+              final List<Job> jobs = categoryFilter == null
+                  ? state.jobs
+                  : state.jobs
+                        .where((Job job) => job.jobType == categoryFilter)
+                        .toList();
               if (jobs.isEmpty) {
                 return const JobsEmptyState();
               }
@@ -113,6 +146,7 @@ class _JobsPageView extends StatelessWidget {
                     return JobsListItem(
                       job: job,
                       showAssignedTechnician: isAdmin,
+                      showNextAction: !isAdmin,
                       onTap: () {
                         context.goNamed(
                           'jobDetails',

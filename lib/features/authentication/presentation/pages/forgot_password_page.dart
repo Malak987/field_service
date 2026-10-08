@@ -74,14 +74,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           const SizedBox(height: AppSpacing.xxl),
           AuthFormContainer(
             child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-              buildWhen: (
-                AuthenticationState previous,
-                AuthenticationState current,
-              ) =>
-                  (previous.status ==
-                      AuthenticationStatus.passwordResetEmailSent) !=
-                  (current.status ==
-                      AuthenticationStatus.passwordResetEmailSent),
+              buildWhen:
+                  (AuthenticationState previous, AuthenticationState current) =>
+                      (previous.status ==
+                          AuthenticationStatus.passwordResetEmailSent) !=
+                      (current.status ==
+                          AuthenticationStatus.passwordResetEmailSent),
               builder: (BuildContext context, AuthenticationState state) {
                 if (state.status ==
                     AuthenticationStatus.passwordResetEmailSent) {
@@ -107,40 +105,42 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen: (
-                          AuthenticationState previous,
-                          AuthenticationState current,
-                        ) =>
-                            previous.status != current.status ||
-                            previous.errorCode != current.errorCode ||
-                            previous.message != current.message,
-                        builder: (
-                          BuildContext context,
-                          AuthenticationState errorState,
-                        ) {
-                          if (!errorState.hasError) {
-                            return const SizedBox.shrink();
-                          }
+                        buildWhen:
+                            (
+                              AuthenticationState previous,
+                              AuthenticationState current,
+                            ) =>
+                                previous.status != current.status ||
+                                previous.errorCode != current.errorCode ||
+                                previous.message != current.message,
+                        builder:
+                            (
+                              BuildContext context,
+                              AuthenticationState errorState,
+                            ) {
+                              if (!errorState.hasError) {
+                                return const SizedBox.shrink();
+                              }
 
-                          final String localizedError =
-                              AuthenticationErrorMapper.toLocalizedMessage(
-                                context.l10n,
-                                code: errorState.errorCode,
-                                error: errorState.message,
+                              final String localizedError =
+                                  AuthenticationErrorMapper.toLocalizedMessage(
+                                    context.l10n,
+                                    code: errorState.errorCode,
+                                    error: errorState.message,
+                                  );
+
+                              return Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  bottom: AppSpacing.lg,
+                                ),
+                                child: AuthErrorMessage(
+                                  message: localizedError,
+                                  onDismiss: () => context
+                                      .read<AuthenticationCubit>()
+                                      .clearFeedback(),
+                                ),
                               );
-
-                          return Padding(
-                            padding: const EdgeInsetsDirectional.only(
-                              bottom: AppSpacing.lg,
-                            ),
-                            child: AuthErrorMessage(
-                              message: localizedError,
-                              onDismiss: () => context
-                                  .read<AuthenticationCubit>()
-                                  .clearFeedback(),
-                            ),
-                          );
-                        },
+                            },
                       ),
                       AuthTextField(
                         controller: _emailController,
@@ -152,7 +152,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         autofillHints: const <String>[AutofillHints.email],
                         onFieldSubmitted: (_) => _submit(),
                         validator: (String? value) =>
-                            PasswordValidator.validateEmail(value, context.l10n),
+                            PasswordValidator.validateEmail(
+                              value,
+                              context.l10n,
+                            ),
                       ),
                       const SizedBox(height: AppSpacing.xl),
                       AuthLoadingButton(

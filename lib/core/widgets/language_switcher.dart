@@ -48,10 +48,7 @@ class LanguageSwitcher extends StatelessWidget {
                 start: AppSpacing.sm,
                 end: AppSpacing.xs,
               ),
-              child: Icon(
-                Icons.language_outlined,
-                size: AppDimensions.iconSm,
-              ),
+              child: Icon(Icons.language_outlined, size: AppDimensions.iconSm),
             ),
             _LanguageOptionChip(
               label: l10n.languageEnglish,

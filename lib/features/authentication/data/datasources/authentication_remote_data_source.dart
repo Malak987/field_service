@@ -13,13 +13,9 @@ abstract interface class AuthenticationRemoteDataSource {
     required String password,
   });
 
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  });
+  Future<void> sendPasswordResetEmail({required String email});
 
-  Future<UserResponse> updatePassword({
-    required String newPassword,
-  });
+  Future<UserResponse> updatePassword({required String newPassword});
 
   User? get currentUser;
 
@@ -62,16 +58,12 @@ class AuthenticationRemoteDataSourceImpl
       email: email.trim(),
       password: password,
       emailRedirectTo: AuthDeepLinkConfig.emailConfirmationRedirectTo,
-      data: <String, dynamic>{
-        'full_name': fullName.trim(),
-      },
+      data: <String, dynamic>{'full_name': fullName.trim()},
     );
   }
 
   @override
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) {
+  Future<void> sendPasswordResetEmail({required String email}) {
     // `redirectTo` is where Supabase sends the user when they tap the recovery
     // link. On mobile/desktop it opens the app through the
     // `fieldservice://reset-password` deep link; on web it returns to the
@@ -83,12 +75,8 @@ class AuthenticationRemoteDataSourceImpl
   }
 
   @override
-  Future<UserResponse> updatePassword({
-    required String newPassword,
-  }) {
-    return supabase.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
+  Future<UserResponse> updatePassword({required String newPassword}) {
+    return supabase.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   @override

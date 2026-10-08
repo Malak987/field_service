@@ -8,10 +8,7 @@ import 'package:flutter/material.dart';
 /// Card-styled container that wraps authentication forms with consistent
 /// padding, border, and responsive spacing.
 class AuthFormContainer extends StatelessWidget {
-  const AuthFormContainer({
-    required this.child,
-    super.key,
-  });
+  const AuthFormContainer({required this.child, super.key});
 
   final Widget child;
 

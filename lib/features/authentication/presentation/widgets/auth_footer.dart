@@ -29,14 +29,8 @@ class AuthFooter extends StatelessWidget {
         spacing: AppSpacing.xs,
         runSpacing: AppSpacing.xxs,
         children: <Widget>[
-          Text(
-            promptText,
-            style: context.textStyles.bodyMedium,
-          ),
-          TextButton(
-            onPressed: onActionPressed,
-            child: Text(actionText),
-          ),
+          Text(promptText, style: context.textStyles.bodyMedium),
+          TextButton(onPressed: onActionPressed, child: Text(actionText)),
         ],
       ),
     );

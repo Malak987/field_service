@@ -11,10 +11,13 @@ import 'package:field_service/features/jobs/data/repositories/jobs_repository_im
 /// class only performs the remote action.
 ///
 /// Guarantees:
-/// * **Idempotent.** The only action today is `start_job`, and the RPC
-///   itself is replay-safe: an already-`in_progress` job is returned
-///   unchanged (no second `job_started` event, `started_at` never reset).
-///   A retry after a lost ack therefore cannot duplicate anything.
+/// * **Idempotent.** Both actions are replay-safe by RPC design:
+///   `start_job` returns an already-`in_progress` job unchanged (no second
+///   `job_started` event, `started_at` never reset), and
+///   `save_work_description` skips the update + event when the stored text
+///   already equals the replayed text (no duplicate
+///   `work_description_added` event). A retry after a lost ack therefore
+///   cannot duplicate anything.
 /// * **Server-authoritative.** The handler sends only the job id; status,
 ///   `started_at`, `updated_at` and the event are all created by the
 ///   database (inside one transaction), never by client-provided values.
@@ -42,6 +45,24 @@ class JobSyncHandler implements SyncOperationHandler {
       // The RPC either applies the start atomically or (on a replay)
       // observes the already-started job — both count as synced.
       await _remote.startJob(operation.entityId);
+      return const RemotePushResult.ok();
+    }
+
+    if (operation.type == SyncOperationType.update &&
+        action == JobsRepositoryImpl.saveWorkDescriptionAction) {
+      final Object? text =
+          operation.payload[JobsRepositoryImpl.workDescriptionKey];
+      if (text is! String || text.trim().isEmpty) {
+        return RemotePushResult.failure(
+          'Job work description operation carries no text.',
+        );
+      }
+      // The RPC stores the text + event atomically, or (on a replay of the
+      // same text) observes it already stored — both count as synced.
+      await _remote.saveWorkDescription(
+        jobId: operation.entityId,
+        workDescription: text,
+      );
       return const RemotePushResult.ok();
     }
 

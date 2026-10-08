@@ -89,16 +89,16 @@ class SyncManager implements SyncProcessor {
 
     await _connectivity.start();
 
-    _connectivitySubscription = _connectivity.onStatusChanged.listen(
-      (ConnectivityStatus status) {
-        _lastHealth = _lastHealth.copyWithNetworkStatus(status);
-        _emitHealth();
+    _connectivitySubscription = _connectivity.onStatusChanged.listen((
+      ConnectivityStatus status,
+    ) {
+      _lastHealth = _lastHealth.copyWithNetworkStatus(status);
+      _emitHealth();
 
-        if (status == ConnectivityStatus.online) {
-          unawaited(processPendingOperations());
-        }
-      },
-    );
+      if (status == ConnectivityStatus.online) {
+        unawaited(processPendingOperations());
+      }
+    });
 
     // Reflect the already-resolved connectivity state (if any) in the health.
     _lastHealth = _lastHealth.copyWithNetworkStatus(_connectivity.current);
@@ -203,8 +203,9 @@ class SyncManager implements SyncProcessor {
   // --- Internals ---------------------------------------------------------------------
 
   Future<RemotePushResult> _push(SyncOperation operation) async {
-    final SyncOperationHandler? handler =
-        _handlers.handlerFor(operation.entityType);
+    final SyncOperationHandler? handler = _handlers.handlerFor(
+      operation.entityType,
+    );
 
     if (handler == null) {
       // Not a silent drop and not a fake success: the failure is persisted
@@ -219,9 +220,7 @@ class SyncManager implements SyncProcessor {
     try {
       return await handler.push(operation);
     } catch (error) {
-      return RemotePushResult.failure(
-        _errorMapper.toSafeMessage(error),
-      );
+      return RemotePushResult.failure(_errorMapper.toSafeMessage(error));
     }
   }
 

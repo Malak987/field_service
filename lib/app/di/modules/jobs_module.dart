@@ -1,8 +1,10 @@
+import 'package:field_service/core/network/network_info.dart';
 import 'package:field_service/core/storage/file_storage.dart';
 import 'package:field_service/core/storage/local_file_storage.dart';
 import 'package:field_service/core/sync/sync_handler.dart';
 import 'package:field_service/core/sync/sync_operation.dart';
 import 'package:field_service/features/customers/domain/usecases/get_customers.dart';
+import 'package:field_service/features/customers/domain/usecases/refresh_customers.dart';
 import 'package:field_service/features/employees/domain/usecases/get_active_technicians.dart';
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
@@ -10,7 +12,10 @@ import 'package:field_service/features/jobs/data/repositories/jobs_repository_im
 import 'package:field_service/features/jobs/data/sync/job_file_sync_handler.dart';
 import 'package:field_service/features/jobs/data/sync/job_sync_handler.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
+import 'package:field_service/features/jobs/domain/usecases/add_after_photo.dart';
 import 'package:field_service/features/jobs/domain/usecases/add_before_photo.dart';
+import 'package:field_service/features/jobs/domain/usecases/capture_customer_signature.dart';
+import 'package:field_service/features/jobs/domain/usecases/complete_job.dart';
 import 'package:field_service/features/jobs/domain/usecases/create_job.dart';
 import 'package:field_service/features/jobs/domain/usecases/get_failed_job_file_ids.dart';
 import 'package:field_service/features/jobs/domain/usecases/get_job_by_id.dart';
@@ -19,9 +24,12 @@ import 'package:field_service/features/jobs/domain/usecases/get_before_photos.da
 import 'package:field_service/features/jobs/domain/usecases/get_jobs.dart';
 import 'package:field_service/features/jobs/domain/usecases/read_job_file_bytes.dart';
 import 'package:field_service/features/jobs/domain/usecases/retry_failed_syncs.dart';
+import 'package:field_service/features/jobs/domain/usecases/save_work_description.dart';
 import 'package:field_service/features/jobs/domain/usecases/start_job.dart';
 import 'package:field_service/features/jobs/domain/usecases/update_job_status.dart';
+import 'package:field_service/features/jobs/domain/usecases/watch_after_photos.dart';
 import 'package:field_service/features/jobs/domain/usecases/watch_before_photos.dart';
+import 'package:field_service/features/jobs/domain/usecases/watch_signature.dart';
 import 'package:field_service/features/jobs/presentation/cubit/create_job_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/services/photo_picker.dart';
@@ -43,15 +51,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// RPC) — no second queue, no second storage abstraction.
 void registerJobsModule(GetIt sl) {
   sl.registerLazySingleton<JobsRemoteDataSource>(
-    () => JobsRemoteDataSourceImpl(
-      sl<SupabaseClient>(),
-    ),
+    () => JobsRemoteDataSourceImpl(sl<SupabaseClient>()),
   );
 
   sl.registerLazySingleton<JobFilesRemoteDataSource>(
-    () => JobFilesRemoteDataSourceImpl(
-      sl<SupabaseClient>(),
-    ),
+    () => JobFilesRemoteDataSourceImpl(sl<SupabaseClient>()),
   );
 
   sl.registerLazySingleton<JobsRepository>(
@@ -62,16 +66,16 @@ void registerJobsModule(GetIt sl) {
       localFileStorage: sl<LocalFileStorage>(),
       fileStorage: sl<FileStorage>(),
       filesRemoteDataSource: sl<JobFilesRemoteDataSource>(),
+      // Complete Job is authoritative and online-only: the repository
+      // refuses it without connectivity instead of queueing a false local
+      // completion.
+      networkInfo: sl<NetworkInfo>(),
     ),
   );
 
-  sl.registerLazySingleton<GetJobs>(
-    () => GetJobs(sl<JobsRepository>()),
-  );
+  sl.registerLazySingleton<GetJobs>(() => GetJobs(sl<JobsRepository>()));
 
-  sl.registerLazySingleton<GetJobById>(
-    () => GetJobById(sl<JobsRepository>()),
-  );
+  sl.registerLazySingleton<GetJobById>(() => GetJobById(sl<JobsRepository>()));
 
   sl.registerLazySingleton<GetJobCustomerInfo>(
     () => GetJobCustomerInfo(sl<JobsRepository>()),
@@ -81,17 +85,17 @@ void registerJobsModule(GetIt sl) {
     () => UpdateJobStatus(sl<JobsRepository>()),
   );
 
-  sl.registerLazySingleton<StartJob>(
-    () => StartJob(sl<JobsRepository>()),
+  sl.registerLazySingleton<StartJob>(() => StartJob(sl<JobsRepository>()));
+
+  sl.registerLazySingleton<SaveWorkDescription>(
+    () => SaveWorkDescription(sl<JobsRepository>()),
   );
 
   // Create & Assign Job (admin workflow): one server action via the
   // `create_job` RPC. The form's selector options come from the EXISTING
   // Customers feature (offline-first) and the Employees read — nothing here
   // is duplicated.
-  sl.registerLazySingleton<CreateJob>(
-    () => CreateJob(sl<JobsRepository>()),
-  );
+  sl.registerLazySingleton<CreateJob>(() => CreateJob(sl<JobsRepository>()));
 
   // --- Before Photos use cases ------------------------------------------------
   sl.registerLazySingleton<AddBeforePhoto>(
@@ -104,6 +108,35 @@ void registerJobsModule(GetIt sl) {
 
   sl.registerLazySingleton<WatchBeforePhotos>(
     () => WatchBeforePhotos(sl<JobsRepository>()),
+  );
+
+  // --- After Photos use cases -------------------------------------------------
+  // Same offline-first write path as Before Photos (file_type = 'after');
+  // the generic LocalFileStorage/SyncQueue/JobFileSyncHandler need no change.
+  sl.registerLazySingleton<AddAfterPhoto>(
+    () => AddAfterPhoto(sl<JobsRepository>()),
+  );
+
+  sl.registerLazySingleton<WatchAfterPhotos>(
+    () => WatchAfterPhotos(sl<JobsRepository>()),
+  );
+
+  // --- Customer Signature use cases -------------------------------------------
+  // Third file kind on the same generic job-file path (file_type =
+  // 'signature'); LocalFileStorage/SyncQueue/JobFileSyncHandler unchanged.
+  sl.registerLazySingleton<CaptureCustomerSignature>(
+    () => CaptureCustomerSignature(sl<JobsRepository>()),
+  );
+
+  sl.registerLazySingleton<WatchSignature>(
+    () => WatchSignature(sl<JobsRepository>()),
+  );
+
+  // --- Complete Job use case ----------------------------------------------------
+  // The final workflow step: authoritative online call to the `complete_job`
+  // RPC — no offline queue, no second infrastructure.
+  sl.registerLazySingleton<CompleteJob>(
+    () => CompleteJob(sl<JobsRepository>()),
   );
 
   sl.registerLazySingleton<ReadJobFileBytes>(
@@ -119,9 +152,7 @@ void registerJobsModule(GetIt sl) {
   );
 
   // Camera/gallery access (wraps the existing image_picker dependency).
-  sl.registerLazySingleton<PhotoPicker>(
-    () => ImagePickerPhotoPicker(),
-  );
+  sl.registerLazySingleton<PhotoPicker>(() => ImagePickerPhotoPicker());
 
   sl.registerFactory<JobsCubit>(
     () => JobsCubit(
@@ -130,8 +161,14 @@ void registerJobsModule(GetIt sl) {
       getJobCustomerInfo: sl<GetJobCustomerInfo>(),
       updateJobStatus: sl<UpdateJobStatus>(),
       startJob: sl<StartJob>(),
+      saveWorkDescription: sl<SaveWorkDescription>(),
       addBeforePhoto: sl<AddBeforePhoto>(),
       watchBeforePhotos: sl<WatchBeforePhotos>(),
+      addAfterPhoto: sl<AddAfterPhoto>(),
+      watchAfterPhotos: sl<WatchAfterPhotos>(),
+      captureCustomerSignature: sl<CaptureCustomerSignature>(),
+      watchSignature: sl<WatchSignature>(),
+      completeJob: sl<CompleteJob>(),
       readJobFileBytes: sl<ReadJobFileBytes>(),
       retryFailedSyncs: sl<RetryFailedSyncs>(),
       getFailedJobFileIds: sl<GetFailedJobFileIds>(),
@@ -143,6 +180,7 @@ void registerJobsModule(GetIt sl) {
       getCustomers: sl<GetCustomers>(),
       getActiveTechnicians: sl<GetActiveTechnicians>(),
       createJob: sl<CreateJob>(),
+      refreshCustomers: sl<RefreshCustomers>(),
     ),
   );
 

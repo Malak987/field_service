@@ -6,13 +6,7 @@ class SignIn {
 
   final AuthenticationRepository repository;
 
-  Future<AppUser> call({
-    required String email,
-    required String password,
-  }) {
-    return repository.signIn(
-      email: email,
-      password: password,
-    );
+  Future<AppUser> call({required String email, required String password}) {
+    return repository.signIn(email: email, password: password);
   }
 }

@@ -72,23 +72,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           const SizedBox(height: AppSpacing.xxl),
           AuthFormContainer(
             child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-              buildWhen: (
-                AuthenticationState previous,
-                AuthenticationState current,
-              ) =>
-                  (previous.status ==
-                      AuthenticationStatus.passwordResetSuccess) !=
-                  (current.status ==
-                      AuthenticationStatus.passwordResetSuccess),
+              buildWhen:
+                  (AuthenticationState previous, AuthenticationState current) =>
+                      (previous.status ==
+                          AuthenticationStatus.passwordResetSuccess) !=
+                      (current.status ==
+                          AuthenticationStatus.passwordResetSuccess),
               builder: (BuildContext context, AuthenticationState state) {
-                if (state.status ==
-                    AuthenticationStatus.passwordResetSuccess) {
+                if (state.status == AuthenticationStatus.passwordResetSuccess) {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
-                      AuthSuccessMessage(
-                        message: l10n.successPasswordUpdated,
-                      ),
+                      AuthSuccessMessage(message: l10n.successPasswordUpdated),
                       const SizedBox(height: AppSpacing.xl),
                       AuthPrimaryButton(
                         label: l10n.backToLoginButton,
@@ -105,40 +100,42 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen: (
-                          AuthenticationState previous,
-                          AuthenticationState current,
-                        ) =>
-                            previous.status != current.status ||
-                            previous.errorCode != current.errorCode ||
-                            previous.message != current.message,
-                        builder: (
-                          BuildContext context,
-                          AuthenticationState errorState,
-                        ) {
-                          if (!errorState.hasError) {
-                            return const SizedBox.shrink();
-                          }
+                        buildWhen:
+                            (
+                              AuthenticationState previous,
+                              AuthenticationState current,
+                            ) =>
+                                previous.status != current.status ||
+                                previous.errorCode != current.errorCode ||
+                                previous.message != current.message,
+                        builder:
+                            (
+                              BuildContext context,
+                              AuthenticationState errorState,
+                            ) {
+                              if (!errorState.hasError) {
+                                return const SizedBox.shrink();
+                              }
 
-                          final String localizedError =
-                              AuthenticationErrorMapper.toLocalizedMessage(
-                                context.l10n,
-                                code: errorState.errorCode,
-                                error: errorState.message,
+                              final String localizedError =
+                                  AuthenticationErrorMapper.toLocalizedMessage(
+                                    context.l10n,
+                                    code: errorState.errorCode,
+                                    error: errorState.message,
+                                  );
+
+                              return Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  bottom: AppSpacing.lg,
+                                ),
+                                child: AuthErrorMessage(
+                                  message: localizedError,
+                                  onDismiss: () => context
+                                      .read<AuthenticationCubit>()
+                                      .clearFeedback(),
+                                ),
                               );
-
-                          return Padding(
-                            padding: const EdgeInsetsDirectional.only(
-                              bottom: AppSpacing.lg,
-                            ),
-                            child: AuthErrorMessage(
-                              message: localizedError,
-                              onDismiss: () => context
-                                  .read<AuthenticationCubit>()
-                                  .clearFeedback(),
-                            ),
-                          );
-                        },
+                            },
                       ),
                       AuthPasswordField(
                         controller: _newPasswordController,
@@ -155,9 +152,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                             ),
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      PasswordRequirements(
-                        controller: _newPasswordController,
-                      ),
+                      PasswordRequirements(controller: _newPasswordController),
                       const SizedBox(height: AppSpacing.lg),
                       AuthPasswordField(
                         controller: _confirmPasswordController,

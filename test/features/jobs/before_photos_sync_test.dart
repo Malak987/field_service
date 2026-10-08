@@ -89,11 +89,11 @@ class _ServerLikeFilesRemote implements JobFilesRemoteDataSource {
   }
 
   @override
-  Future<List<JobFile>> getJobBeforePhotos(String jobId) async {
+  Future<List<JobFile>> getJobFilesByType(String jobId, String fileType) async {
     return files.values
         .where(
           (Map<String, Object?> f) =>
-              f['job_id'] == jobId && f['file_type'] == 'before',
+              f['job_id'] == jobId && f['file_type'] == fileType,
         )
         .map(
           (Map<String, Object?> f) => JobFile(
@@ -109,6 +109,11 @@ class _ServerLikeFilesRemote implements JobFilesRemoteDataSource {
           ),
         )
         .toList();
+  }
+
+  @override
+  Future<List<JobFile>> getJobBeforePhotos(String jobId) {
+    return getJobFilesByType(jobId, 'before');
   }
 
   @override
@@ -214,23 +219,28 @@ class _UnusedJobsRemote implements JobsRemoteDataSource {
   }) async => throw UnimplementedError();
 
   @override
+  Future<Job> saveWorkDescription({
+    required String jobId,
+    required String workDescription,
+  }) async => throw UnimplementedError();
+
+  @override
   Future<Job> startJob(String jobId) async => throw UnimplementedError();
+
+  @override
+  Future<Job> completeJob(String jobId) async => throw UnimplementedError();
 }
 
 /// The server-side facts a job carries for these tests.
 class _RemoteJob {
-  const _RemoteJob({
-    required this.assignedEmployeeId,
-    required this.status,
-  });
+  const _RemoteJob({required this.assignedEmployeeId, required this.status});
 
   final String? assignedEmployeeId;
   final String status;
 }
 
 class _SwitchableNetworkInfo implements NetworkInfo {
-  final StreamController<bool> _controller =
-      StreamController<bool>.broadcast();
+  final StreamController<bool> _controller = StreamController<bool>.broadcast();
   bool _online = false;
 
   @override
@@ -330,262 +340,280 @@ void main() {
 
   // 11 / 10 / 12 / 8 — offline capture: durable queue entry, stable local
   // copy, immediately available, nothing pushed.
-  test('offline capture queues one durable upload and keeps a stable copy', () async {
-    final _ServerLikeFilesRemote remote = await configureSync(
-      online: false,
-      jobs: const <String, _RemoteJob>{
-        'job-mine': _RemoteJob(
-          assignedEmployeeId: 'emp-me',
-          status: JobStatus.inProgress,
-        ),
-      },
-    );
+  test(
+    'offline capture queues one durable upload and keeps a stable copy',
+    () async {
+      final _ServerLikeFilesRemote remote = await configureSync(
+        online: false,
+        jobs: const <String, _RemoteJob>{
+          'job-mine': _RemoteJob(
+            assignedEmployeeId: 'emp-me',
+            status: JobStatus.inProgress,
+          ),
+        },
+      );
 
-    final File source = capturedPhoto('shot.png');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
-      jobId: 'job-mine',
-      pickedFilePath: source.path,
-    );
+      final File source = capturedPhoto('shot.png');
+      final String fileId = await sl<JobsRepository>().addBeforePhoto(
+        jobId: 'job-mine',
+        pickedFilePath: source.path,
+      );
 
-    // The local row exists with an AUTOMATIC capture timestamp, pending.
-    final LocalJobFile? row = await sl<LocalFileStorage>().getFile(fileId);
-    expect(row, isNotNull);
-    expect(row!.jobId, 'job-mine');
-    expect(row.fileType, 'before');
-    expect(row.syncStatus, 'pending');
-    expect(row.remotePath, isNull);
-    expect(row.localPath, startsWith('before/'));
-    expect(row.capturedAt, isNotNull);
+      // The local row exists with an AUTOMATIC capture timestamp, pending.
+      final LocalJobFile? row = await sl<LocalFileStorage>().getFile(fileId);
+      expect(row, isNotNull);
+      expect(row!.jobId, 'job-mine');
+      expect(row.fileType, 'before');
+      expect(row.syncStatus, 'pending');
+      expect(row.remotePath, isNull);
+      expect(row.localPath, startsWith('before/'));
+      expect(row.capturedAt, isNotNull);
 
-    // The bytes were copied into app-owned storage; the temporary camera
-    // file may vanish without losing the photo.
-    expect(await sl<FileStorage>().exists(row.localPath), isTrue);
-    await source.delete();
-    expect(await sl<FileStorage>().exists(row.localPath), isTrue);
+      // The bytes were copied into app-owned storage; the temporary camera
+      // file may vanish without losing the photo.
+      expect(await sl<FileStorage>().exists(row.localPath), isTrue);
+      await source.delete();
+      expect(await sl<FileStorage>().exists(row.localPath), isTrue);
 
-    // Exactly one durable queue entry for this file.
-    expect(await sl<SyncQueue>().pendingCount(), 1);
-    final SyncOperation? op = await sl<SyncQueue>().nextPending();
-    expect(op, isNotNull);
-    expect(op!.entityType, SyncEntityType.jobFile);
-    expect(op.entityId, fileId);
-    expect(op.type, SyncOperationType.upload);
+      // Exactly one durable queue entry for this file.
+      expect(await sl<SyncQueue>().pendingCount(), 1);
+      final SyncOperation? op = await sl<SyncQueue>().nextPending();
+      expect(op, isNotNull);
+      expect(op!.entityType, SyncEntityType.jobFile);
+      expect(op.entityId, fileId);
+      expect(op.type, SyncOperationType.upload);
 
-    // Offline, the photo is still visible immediately (local-first).
-    final List<JobFile> visible = await sl<JobsRepository>().getBeforePhotos(
-      'job-mine',
-    );
-    expect(visible, hasLength(1));
-    expect(visible.single.id, fileId);
-    expect(visible.single.capturedAt, row.capturedAt);
+      // Offline, the photo is still visible immediately (local-first).
+      final List<JobFile> visible = await sl<JobsRepository>().getBeforePhotos(
+        'job-mine',
+      );
+      expect(visible, hasLength(1));
+      expect(visible.single.id, fileId);
+      expect(visible.single.capturedAt, row.capturedAt);
 
-    // Nothing reached the backend while offline.
-    expect(remote.uploadCalls, 0);
-    expect(remote.registerCalls, 0);
-    expect(remote.events, isEmpty);
-  });
+      // Nothing reached the backend while offline.
+      expect(remote.uploadCalls, 0);
+      expect(remote.registerCalls, 0);
+      expect(remote.events, isEmpty);
+    },
+  );
 
   // 13 / 14 / 15 / 9 — reconnection uploads, registers, appends the event;
   // the ORIGINAL capture timestamp survives the whole path.
-  test('reconnect uploads the photo, registers it and appends one event', () async {
-    final _ServerLikeFilesRemote remote = await configureSync(
-      online: false,
-      jobs: const <String, _RemoteJob>{
-        'job-mine': _RemoteJob(
-          assignedEmployeeId: 'emp-me',
-          status: JobStatus.inProgress,
-        ),
-      },
-    );
+  test(
+    'reconnect uploads the photo, registers it and appends one event',
+    () async {
+      final _ServerLikeFilesRemote remote = await configureSync(
+        online: false,
+        jobs: const <String, _RemoteJob>{
+          'job-mine': _RemoteJob(
+            assignedEmployeeId: 'emp-me',
+            status: JobStatus.inProgress,
+          ),
+        },
+      );
 
-    final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
-    await sl.unregister<NetworkInfo>();
-    sl.registerSingleton<NetworkInfo>(network);
-    await sl<SyncManager>().start();
+      final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
+      await sl.unregister<NetworkInfo>();
+      sl.registerSingleton<NetworkInfo>(network);
+      await sl<SyncManager>().start();
 
-    final File source = capturedPhoto('shot.png');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
-      jobId: 'job-mine',
-      pickedFilePath: source.path,
-    );
-    final LocalJobFile row =
-        (await sl<LocalFileStorage>().getFile(fileId))!;
-    final DateTime originalCapturedAt = row.capturedAt;
-    expect(remote.uploadCalls, 0);
+      final File source = capturedPhoto('shot.png');
+      final String fileId = await sl<JobsRepository>().addBeforePhoto(
+        jobId: 'job-mine',
+        pickedFilePath: source.path,
+      );
+      final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
+      final DateTime originalCapturedAt = row.capturedAt;
+      expect(remote.uploadCalls, 0);
 
-    // Let some time pass so "upload time" would differ from capture time.
-    await Future<void>.delayed(const Duration(milliseconds: 40));
+      // Let some time pass so "upload time" would differ from capture time.
+      await Future<void>.delayed(const Duration(milliseconds: 40));
 
-    // Internet returns: the engine drains the queue on its own.
-    network.setOnline(true);
-    await untilQueueDrained();
+      // Internet returns: the engine drains the queue on its own.
+      network.setOnline(true);
+      await untilQueueDrained();
 
-    expect(await sl<SyncQueue>().pendingCount(), 0);
-    expect(await sl<SyncQueue>().failedCount(), 0);
+      expect(await sl<SyncQueue>().pendingCount(), 0);
+      expect(await sl<SyncQueue>().failedCount(), 0);
 
-    // Storage: exactly one object at the deterministic, id-based path.
-    expect(remote.uploadCalls, 1);
-    final String expectedPath = 'jobs/job-mine/before/$fileId.png';
-    expect(remote.objects.keys, <String>[expectedPath]);
-    expect(remote.objects[expectedPath], kTestPhotoBytes);
+      // Storage: exactly one object at the deterministic, id-based path.
+      expect(remote.uploadCalls, 1);
+      final String expectedPath = 'jobs/job-mine/before/$fileId.png';
+      expect(remote.objects.keys, <String>[expectedPath]);
+      expect(remote.objects[expectedPath], kTestPhotoBytes);
 
-    // job_files record: correct job, type, path — and the ORIGINAL capture
-    // time (not the later upload time).
-    expect(remote.registerCalls, 1);
-    final Map<String, Object?> stored = remote.files[fileId]!;
-    expect(stored['job_id'], 'job-mine');
-    expect(stored['file_type'], 'before');
-    expect(stored['storage_path'], expectedPath);
-    expect(stored['employee_id'], 'emp-me');
-    expect(stored['captured_at'], originalCapturedAt);
+      // job_files record: correct job, type, path — and the ORIGINAL capture
+      // time (not the later upload time).
+      expect(remote.registerCalls, 1);
+      final Map<String, Object?> stored = remote.files[fileId]!;
+      expect(stored['job_id'], 'job-mine');
+      expect(stored['file_type'], 'before');
+      expect(stored['storage_path'], expectedPath);
+      expect(stored['employee_id'], 'emp-me');
+      expect(stored['captured_at'], originalCapturedAt);
 
-    // Exactly one event, stamped with the capture time.
-    expect(remote.events, hasLength(1));
-    expect(remote.events.single['event_type'], 'before_photo_captured');
-    expect(remote.events.single['job_id'], 'job-mine');
-    expect(remote.events.single['employee_id'], 'emp-me');
-    expect(remote.events.single['occurred_at'], originalCapturedAt);
+      // Exactly one event, stamped with the capture time.
+      expect(remote.events, hasLength(1));
+      expect(remote.events.single['event_type'], 'before_photo_captured');
+      expect(remote.events.single['job_id'], 'job-mine');
+      expect(remote.events.single['employee_id'], 'emp-me');
+      expect(remote.events.single['occurred_at'], originalCapturedAt);
 
-    // Local row reconciled: synced + remote path recorded.
-    final LocalJobFile after = (await sl<LocalFileStorage>().getFile(fileId))!;
-    expect(after.syncStatus, 'synced');
-    expect(after.remotePath, expectedPath);
-    expect(after.capturedAt, originalCapturedAt);
+      // Local row reconciled: synced + remote path recorded.
+      final LocalJobFile after = (await sl<LocalFileStorage>().getFile(
+        fileId,
+      ))!;
+      expect(after.syncStatus, 'synced');
+      expect(after.remotePath, expectedPath);
+      expect(after.capturedAt, originalCapturedAt);
 
-    await network.close();
-  });
+      await network.close();
+    },
+  );
 
   // 16 — retries/lost-ack replays never duplicate the object, row or event.
-  test('replayed pushes stay idempotent: one object, one row, one event', () async {
-    final _ServerLikeFilesRemote remote = await configureSync(
-      online: false,
-      jobs: const <String, _RemoteJob>{
-        'job-mine': _RemoteJob(
-          assignedEmployeeId: 'emp-me',
-          status: JobStatus.inProgress,
-        ),
-      },
-    );
+  test(
+    'replayed pushes stay idempotent: one object, one row, one event',
+    () async {
+      final _ServerLikeFilesRemote remote = await configureSync(
+        online: false,
+        jobs: const <String, _RemoteJob>{
+          'job-mine': _RemoteJob(
+            assignedEmployeeId: 'emp-me',
+            status: JobStatus.inProgress,
+          ),
+        },
+      );
 
-    final File source = capturedPhoto('shot.jpg');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
-      jobId: 'job-mine',
-      pickedFilePath: source.path,
-    );
-    final SyncOperation op = (await sl<SyncQueue>().nextPending())!;
+      final File source = capturedPhoto('shot.jpg');
+      final String fileId = await sl<JobsRepository>().addBeforePhoto(
+        jobId: 'job-mine',
+        pickedFilePath: source.path,
+      );
+      final SyncOperation op = (await sl<SyncQueue>().nextPending())!;
 
-    // Simulate the same operation being pushed three times (lost ack /
-    // retry storm): the stable file id keeps everything singular.
-    final SyncOperationHandler handler =
-        sl<SyncHandlerRegistry>().handlerFor(SyncEntityType.jobFile)!;
-    for (int i = 0; i < 3; i++) {
-      final RemotePushResult result = await handler.push(op);
-      expect(result.success, isTrue, reason: 'push #$i should succeed');
-    }
+      // Simulate the same operation being pushed three times (lost ack /
+      // retry storm): the stable file id keeps everything singular.
+      final SyncOperationHandler handler = sl<SyncHandlerRegistry>().handlerFor(
+        SyncEntityType.jobFile,
+      )!;
+      for (int i = 0; i < 3; i++) {
+        final RemotePushResult result = await handler.push(op);
+        expect(result.success, isTrue, reason: 'push #$i should succeed');
+      }
 
-    expect(remote.objects, hasLength(1));
-    expect(remote.files, hasLength(1));
-    expect(remote.events, hasLength(1));
-    expect(remote.events.single['event_type'], 'before_photo_captured');
-    // The local row is synced after the first confirmed push.
-    final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
-    expect(row.syncStatus, 'synced');
-  });
+      expect(remote.objects, hasLength(1));
+      expect(remote.files, hasLength(1));
+      expect(remote.events, hasLength(1));
+      expect(remote.events.single['event_type'], 'before_photo_captured');
+      // The local row is synced after the first confirmed push.
+      final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
+      expect(row.syncStatus, 'synced');
+    },
+  );
 
   // 17 — Storage failure: operation stays retryable, nothing is lost; the
   // Retry path (existing SyncProcessor) completes it afterwards.
-  test('upload failure keeps the photo pending until a retry succeeds', () async {
-    final _ServerLikeFilesRemote remote = await configureSync(
-      online: false,
-      jobs: const <String, _RemoteJob>{
-        'job-mine': _RemoteJob(
-          assignedEmployeeId: 'emp-me',
-          status: JobStatus.inProgress,
-        ),
-      },
-    );
+  test(
+    'upload failure keeps the photo pending until a retry succeeds',
+    () async {
+      final _ServerLikeFilesRemote remote = await configureSync(
+        online: false,
+        jobs: const <String, _RemoteJob>{
+          'job-mine': _RemoteJob(
+            assignedEmployeeId: 'emp-me',
+            status: JobStatus.inProgress,
+          ),
+        },
+      );
 
-    final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
-    await sl.unregister<NetworkInfo>();
-    sl.registerSingleton<NetworkInfo>(network);
-    await sl<SyncManager>().start();
+      final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
+      await sl.unregister<NetworkInfo>();
+      sl.registerSingleton<NetworkInfo>(network);
+      await sl<SyncManager>().start();
 
-    remote.failUploads = true;
-    network.setOnline(true);
+      remote.failUploads = true;
+      network.setOnline(true);
 
-    final File source = capturedPhoto('shot.png');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
-      jobId: 'job-mine',
-      pickedFilePath: source.path,
-    );
+      final File source = capturedPhoto('shot.png');
+      final String fileId = await sl<JobsRepository>().addBeforePhoto(
+        jobId: 'job-mine',
+        pickedFilePath: source.path,
+      );
 
-    await waitUntil(() async => await sl<SyncQueue>().failedCount() == 1);
-    expect(remote.registerCalls, 0);
-    expect(remote.events, isEmpty);
+      await waitUntil(() async => await sl<SyncQueue>().failedCount() == 1);
+      expect(remote.registerCalls, 0);
+      expect(remote.events, isEmpty);
 
-    // Local copy untouched: the photo is still pending and still readable.
-    final LocalJobFile failedRow =
-        (await sl<LocalFileStorage>().getFile(fileId))!;
-    expect(failedRow.syncStatus, 'pending');
-    expect(await sl<FileStorage>().exists(failedRow.localPath), isTrue);
+      // Local copy untouched: the photo is still pending and still readable.
+      final LocalJobFile failedRow = (await sl<LocalFileStorage>().getFile(
+        fileId,
+      ))!;
+      expect(failedRow.syncStatus, 'pending');
+      expect(await sl<FileStorage>().exists(failedRow.localPath), isTrue);
 
-    // Storage recovers; the existing retry mechanism drains the queue.
-    remote.failUploads = false;
-    await sl<SyncProcessor>().retryFailedOperations();
-    await untilQueueDrained();
+      // Storage recovers; the existing retry mechanism drains the queue.
+      remote.failUploads = false;
+      await sl<SyncProcessor>().retryFailedOperations();
+      await untilQueueDrained();
 
-    expect(await sl<SyncQueue>().failedCount(), 0);
-    // The failed attempt threw before counting; the retry is the one counted.
-    expect(remote.uploadCalls, 1);
-    expect(remote.files, hasLength(1));
-    expect(remote.events, hasLength(1)); // still exactly ONE event
+      expect(await sl<SyncQueue>().failedCount(), 0);
+      // The failed attempt threw before counting; the retry is the one counted.
+      expect(remote.uploadCalls, 1);
+      expect(remote.files, hasLength(1));
+      expect(remote.events, hasLength(1)); // still exactly ONE event
 
-    final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
-    expect(row.syncStatus, 'synced');
+      final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
+      expect(row.syncStatus, 'synced');
 
-    await network.close();
-  });
+      await network.close();
+    },
+  );
 
   // 18 — authorization is enforced server-side at sync time: another
   // technician's job accepts neither the object nor the registration.
-  test('uploads to another technician\'s job are refused by the server', () async {
-    final _ServerLikeFilesRemote remote = await configureSync(
-      online: false,
-      jobs: const <String, _RemoteJob>{
-        'job-other': _RemoteJob(
-          assignedEmployeeId: 'emp-somebody-else',
-          status: JobStatus.inProgress,
-        ),
-      },
-    );
+  test(
+    'uploads to another technician\'s job are refused by the server',
+    () async {
+      final _ServerLikeFilesRemote remote = await configureSync(
+        online: false,
+        jobs: const <String, _RemoteJob>{
+          'job-other': _RemoteJob(
+            assignedEmployeeId: 'emp-somebody-else',
+            status: JobStatus.inProgress,
+          ),
+        },
+      );
 
-    final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
-    await sl.unregister<NetworkInfo>();
-    sl.registerSingleton<NetworkInfo>(network);
-    await sl<SyncManager>().start();
-    network.setOnline(true);
+      final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
+      await sl.unregister<NetworkInfo>();
+      sl.registerSingleton<NetworkInfo>(network);
+      await sl<SyncManager>().start();
+      network.setOnline(true);
 
-    final File source = capturedPhoto('shot.png');
-    final String fileId = await sl<JobsRepository>().addBeforePhoto(
-      jobId: 'job-other',
-      pickedFilePath: source.path,
-    );
+      final File source = capturedPhoto('shot.png');
+      final String fileId = await sl<JobsRepository>().addBeforePhoto(
+        jobId: 'job-other',
+        pickedFilePath: source.path,
+      );
 
-    await waitUntil(() async => await sl<SyncQueue>().failedCount() == 1);
+      await waitUntil(() async => await sl<SyncQueue>().failedCount() == 1);
 
-    // Storage policy refused the object; the RPC was never reached.
-    expect(remote.uploadCalls, 1);
-    expect(remote.objects, isEmpty);
-    expect(remote.registerCalls, 0);
-    expect(remote.files, isEmpty);
-    expect(remote.events, isEmpty);
+      // Storage policy refused the object; the RPC was never reached.
+      expect(remote.uploadCalls, 1);
+      expect(remote.objects, isEmpty);
+      expect(remote.registerCalls, 0);
+      expect(remote.files, isEmpty);
+      expect(remote.events, isEmpty);
 
-    // The local copy survives as `pending` — never fake-synced.
-    final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
-    expect(row.syncStatus, 'pending');
+      // The local copy survives as `pending` — never fake-synced.
+      final LocalJobFile row = (await sl<LocalFileStorage>().getFile(fileId))!;
+      expect(row.syncStatus, 'pending');
 
-    await network.close();
-  });
+      await network.close();
+    },
+  );
 
   // 5 (server side) — a job that is not in_progress refuses before photos,
   // even if a capture was queued for it.
@@ -643,8 +671,9 @@ void main() {
       pickedFilePath: source.path,
     );
 
-    final SyncOperationHandler handler =
-        sl<SyncHandlerRegistry>().handlerFor(SyncEntityType.jobFile)!;
+    final SyncOperationHandler handler = sl<SyncHandlerRegistry>().handlerFor(
+      SyncEntityType.jobFile,
+    )!;
 
     // The refusal propagates out of the handler — exactly what the shared
     // `SyncManager` turns into a `failed` (retryable) queue row; the upload

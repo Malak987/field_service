@@ -209,7 +209,9 @@ void main() {
 
       // 4) The offline database itself was NOT wiped — the admin mirror is
       //    still there for the next admin session (jobs/queue untouched too).
-      final rows = await app.database!.select(app.database!.customersTable).get();
+      final rows = await app.database!
+          .select(app.database!.customersTable)
+          .get();
       expect(rows.length, 2);
     },
   );

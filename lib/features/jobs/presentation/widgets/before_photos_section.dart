@@ -72,9 +72,7 @@ class BeforePhotosSection extends StatelessWidget {
                 key: const Key('add_before_photo_button'),
                 // The theme's buttons are full-width (infinite minimumSize);
                 // inside this header row the button must size to its content.
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 48),
-                ),
+                style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
                 onPressed: isAdding ? null : onAdd,
                 icon: isAdding
                     ? const SizedBox(
@@ -96,10 +94,7 @@ class BeforePhotosSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.md),
           Row(
             children: <Widget>[
-              const Icon(
-                Icons.cloud_off_rounded,
-                size: AppDimensions.iconMd,
-              ),
+              const Icon(Icons.cloud_off_rounded, size: AppDimensions.iconMd),
               const SizedBox(width: AppSpacing.sm),
               Expanded(child: Text(l10n.uploadFailedLabel)),
               TextButton(
@@ -112,18 +107,17 @@ class BeforePhotosSection extends StatelessWidget {
         ],
         const SizedBox(height: AppSpacing.lg),
         if (photos.isEmpty)
-          Text(
-            l10n.noBeforePhotosYet,
-            style: context.textStyles.bodyMedium,
-          )
+          Text(l10n.noBeforePhotosYet, style: context.textStyles.bodyMedium)
         else
           GridView.count(
             key: const Key('before_photos_grid'),
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 3,
-            mainAxisSpacing: AppSpacing.sm,
-            crossAxisSpacing: AppSpacing.sm,
+            // Two columns → clearly larger thumbnails; the tap preview on
+            // each tile keeps full detail one gesture away.
+            crossAxisCount: 2,
+            mainAxisSpacing: AppSpacing.md,
+            crossAxisSpacing: AppSpacing.md,
             childAspectRatio: 1,
             children: <Widget>[
               for (final JobFile photo in photos)

@@ -74,18 +74,67 @@ class LocalFileStorage {
     DateTime? capturedAt,
     String? mimeType,
   }) async {
+    final String sourceName =
+        fileName ?? p.basenameWithoutExtension(source.path);
+    final String extension = p.extension(source.path);
+    final List<int> bytes = await source.readAsBytes();
+    return _registerBytes(
+      bytes: bytes,
+      jobId: jobId,
+      fileType: fileType,
+      fileName: sourceName,
+      extension: extension,
+      capturedAt: capturedAt,
+      mimeType: mimeType,
+    );
+  }
+
+  /// Stores in-memory [bytes] (e.g. a signature rendered on screen) with the
+  /// same guarantees as [storeFile]: stable id, immediate copy into
+  /// app-owned storage, local metadata row, durable queue entry.
+  ///
+  /// [extension] controls the stored file name's extension (`.png` for
+  /// rendered signature images).
+  Future<String> storeBytes({
+    required List<int> bytes,
+    required String jobId,
+    required JobFileType fileType,
+    required String fileName,
+    String extension = '.png',
+    DateTime? capturedAt,
+    String? mimeType,
+  }) {
+    return _registerBytes(
+      bytes: bytes,
+      jobId: jobId,
+      fileType: fileType,
+      fileName: fileName,
+      extension: extension,
+      capturedAt: capturedAt,
+      mimeType: mimeType,
+    );
+  }
+
+  /// Shared register-and-queue core of [storeFile]/[storeBytes]:
+  /// stable identity → immediate copy into app-owned storage → local
+  /// `job_files` row → durable sync-queue entry. Never touches the network.
+  Future<String> _registerBytes({
+    required List<int> bytes,
+    required String jobId,
+    required JobFileType fileType,
+    required String fileName,
+    required String extension,
+    DateTime? capturedAt,
+    String? mimeType,
+  }) async {
     final DateTime now = _now();
 
     // 1) Stable identity + stable, collision-free storage path.
     final String fileId = _uuid.v4();
-    final String sourceName =
-        fileName ?? p.basenameWithoutExtension(source.path);
-    final String extension = p.extension(source.path);
     final String relativePath = '${fileType.name}/$fileId$extension';
 
     // 2) Copy the bytes into app-owned storage NOW. From this point the OS
     //    is free to clean up its temporary directories.
-    final List<int> bytes = await source.readAsBytes();
     await _fileStorage.write(relativePath: relativePath, bytes: bytes);
 
     // 3) Register the metadata locally (source of truth for the UI).
@@ -98,7 +147,7 @@ class LocalFileStorage {
             localPath: relativePath,
             remotePath: const Value(null),
             fileType: fileType.name,
-            fileName: sourceName,
+            fileName: fileName,
             mimeType: Value(mimeType),
             sizeBytes: Value(bytes.length),
             capturedAt: capturedAt ?? now,
@@ -121,7 +170,7 @@ class LocalFileStorage {
           'jobId': jobId,
           'localPath': relativePath,
           'fileType': fileType.name,
-          'fileName': sourceName,
+          'fileName': fileName,
           'sizeBytes': bytes.length,
           'mimeType': ?mimeType,
         },
@@ -134,11 +183,9 @@ class LocalFileStorage {
 
   /// Metadata of one stored file, or `null` when unknown.
   Future<LocalJobFile?> getFile(String fileId) async {
-    return (
-      _database
-          .select(_database.jobFilesTable)
-          ..where((t) => t.id.equals(fileId))
-    ).getSingleOrNull();
+    return (_database.select(
+      _database.jobFilesTable,
+    )..where((t) => t.id.equals(fileId))).getSingleOrNull();
   }
 
   /// All files of a job, oldest first. A job may have any number of files of
@@ -200,7 +247,8 @@ class LocalFileStorage {
 
     await _fileStorage.delete(row.localPath);
 
-    await (_database.delete(_database.jobFilesTable)
-      ..where((t) => t.id.equals(fileId))).go();
+    await (_database.delete(
+      _database.jobFilesTable,
+    )..where((t) => t.id.equals(fileId))).go();
   }
 }

@@ -8,11 +8,7 @@ import 'package:flutter/material.dart';
 
 /// Accessible inline error alert banner displayed inside authentication forms.
 class AuthErrorMessage extends StatelessWidget {
-  const AuthErrorMessage({
-    required this.message,
-    this.onDismiss,
-    super.key,
-  });
+  const AuthErrorMessage({required this.message, this.onDismiss, super.key});
 
   final String message;
   final VoidCallback? onDismiss;

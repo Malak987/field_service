@@ -72,10 +72,7 @@ class HomeNavigationTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      label,
-                      style: context.textStyles.titleMedium,
-                    ),
+                    Text(label, style: context.textStyles.titleMedium),
                     if (subtitle != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.xxs),
                       Text(

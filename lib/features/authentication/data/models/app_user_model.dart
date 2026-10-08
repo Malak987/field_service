@@ -18,8 +18,9 @@ class AppUserModel extends AppUser {
     required String email,
   }) {
     final String rawRole = (map['role'] as String? ?? '').trim().toLowerCase();
-    final String resolvedEmail =
-        email.isNotEmpty ? email : (map['email'] as String? ?? '');
+    final String resolvedEmail = email.isNotEmpty
+        ? email
+        : (map['email'] as String? ?? '');
 
     return AppUserModel(
       id: authUserId,

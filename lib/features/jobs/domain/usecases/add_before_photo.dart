@@ -21,10 +21,7 @@ class AddBeforePhoto {
   /// temporary) file is never relied upon afterwards.
   ///
   /// Returns the stable file id of the registered photo.
-  Future<String> call({
-    required String jobId,
-    required String pickedFilePath,
-  }) {
+  Future<String> call({required String jobId, required String pickedFilePath}) {
     return _repository.addBeforePhoto(
       jobId: jobId,
       pickedFilePath: pickedFilePath,

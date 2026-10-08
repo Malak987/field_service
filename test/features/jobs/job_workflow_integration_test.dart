@@ -125,10 +125,7 @@ void main() {
       expect(find.text('Job Information'), findsOneWidget);
       expect(find.byType(JobStartButton), findsOneWidget);
       expect(find.text('Before Photos'), findsNothing);
-      expect(
-        find.byKey(const Key('add_before_photo_button')),
-        findsNothing,
-      );
+      expect(find.byKey(const Key('add_before_photo_button')), findsNothing);
 
       // Start Job.
       await tester.tap(find.byKey(const Key('start_job_button')));
@@ -191,9 +188,7 @@ void main() {
     // that value (a client-invented time would differ).
     expect(
       find.text(
-        context.l10n.jobStartedAt(
-          formatJobDate(serverStartedAt, context),
-        ),
+        context.l10n.jobStartedAt(formatJobDate(serverStartedAt, context)),
       ),
       findsOneWidget,
     );

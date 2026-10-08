@@ -8,10 +8,7 @@ import 'package:flutter/material.dart';
 
 /// Accessible inline success alert banner displayed inside authentication forms.
 class AuthSuccessMessage extends StatelessWidget {
-  const AuthSuccessMessage({
-    required this.message,
-    super.key,
-  });
+  const AuthSuccessMessage({required this.message, super.key});
 
   final String message;
 

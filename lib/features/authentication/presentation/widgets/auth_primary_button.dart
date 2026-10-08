@@ -30,12 +30,7 @@ class AuthPrimaryButton extends StatelessWidget {
                 children: <Widget>[
                   Icon(icon, size: AppDimensions.iconMd),
                   const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child: Text(
-                      label,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
                 ],
               ),
       ),

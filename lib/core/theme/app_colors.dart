@@ -10,9 +10,20 @@ import 'package:flutter/material.dart';
 /// intentionally small; brand refinements happen in `app_theme.dart` without
 /// touching call sites.
 abstract final class AppColors {
-  /// Brand colour. Everything else is derived from it via
+  /// Brand colour — burgundy. Everything else is derived from it via
   /// `ColorScheme.fromSeed`.
-  static const Color primary = Color(0xFF1B4B8F);
+  static const Color primary = Color(0xFF7B1E28);
+
+  /// Lightened brand tone for dark mode: dark burgundy would not contrast
+  /// against the dark surface; this tint keeps the brand recognisable while
+  /// staying readable.
+  static const Color primaryDarkVariant = Color(0xFFC98A92);
+
+  /// Gold accent — secondary highlights, indicators and warm emphasis.
+  static const Color goldAccent = Color(0xFFC89F6A);
+
+  /// Lightened gold for dark mode (same reasoning as [primaryDarkVariant]).
+  static const Color goldAccentDarkVariant = Color(0xFFD6B489);
 
   // --- Semantic colours ----------------------------------------------------
   // Used by job status indicators, sync state and form validation later on.
@@ -31,17 +42,17 @@ abstract final class AppColors {
 
   // --- Neutral surfaces and separators -------------------------------------
 
-  /// Page background in light mode (slightly off-white to let cards stand out).
-  static const Color surfaceLight = Color(0xFFF6F7F9);
+  /// Page background in light mode (warm cream so white cards stand out).
+  static const Color surfaceLight = Color(0xFFF6F1E7);
 
   /// Page background in dark mode.
-  static const Color surfaceDark = Color(0xFF14161A);
+  static const Color surfaceDark = Color(0xFF171717);
 
-  /// Hairline borders and dividers in light mode.
-  static const Color borderLight = Color(0xFFE1E4E9);
+  /// Hairline borders and dividers in light mode (warm neutral).
+  static const Color borderLight = Color(0xFFE6DECF);
 
   /// Hairline borders and dividers in dark mode.
-  static const Color borderDark = Color(0xFF2A2F38);
+  static const Color borderDark = Color(0xFF2E2E2E);
 
   // --- Elevated card surfaces ----------------------------------------------
 
@@ -51,13 +62,13 @@ abstract final class AppColors {
 
   /// Card / form-container background in dark mode (raised above
   /// [surfaceDark]).
-  static const Color cardDark = Color(0xFF1D2129);
+  static const Color cardDark = Color(0xFF1F1F1F);
 
   /// Secondary text (hints, captions, requirement lines) in light mode.
-  static const Color textSecondaryLight = Color(0xFF6B7280);
+  static const Color textSecondaryLight = Color(0xFF6F6659);
 
   /// Secondary text in dark mode.
-  static const Color textSecondaryDark = Color(0xFF9CA3AF);
+  static const Color textSecondaryDark = Color(0xFFA8A8A8);
 
   // --- Tinted status surfaces -------------------------------------------------
   // Background washes behind success/warning/error/primary chips, banners and
@@ -83,8 +94,17 @@ abstract final class AppColors {
   static const Color errorSurfaceDark = Color(0x33D32F2F);
 
   /// Primary/info wash (selected states, informational chips) in light mode.
-  static const Color primarySurfaceLight = Color(0x141B4B8F);
+  static const Color primarySurfaceLight = Color(0x147B1E28);
 
   /// Primary/info wash in dark mode.
-  static const Color primarySurfaceDark = Color(0x331B4B8F);
+  static const Color primarySurfaceDark = Color(0x33C98A92);
+
+  /// Deep gold for text/icons on light gold washes (contrast-safe accent).
+  static const Color goldDeep = Color(0xFF8A6A3B);
+
+  /// Gold wash (accent chips, timeline markers) in light mode.
+  static const Color goldSurfaceLight = Color(0x1AC89F6A);
+
+  /// Gold wash in dark mode.
+  static const Color goldSurfaceDark = Color(0x33D6B489);
 }

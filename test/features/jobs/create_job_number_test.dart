@@ -44,8 +44,9 @@ void main() {
 
   /// Builds the real [JobsRemoteDataSourceImpl] against a captured HTTP
   /// transport, so the test asserts on the EXACT request the client sends.
-  ({JobsRemoteDataSourceImpl remote, List<http.Request> requests})
-  buildRemote(int serverGeneratedNumber) {
+  ({JobsRemoteDataSourceImpl remote, List<http.Request> requests}) buildRemote(
+    int serverGeneratedNumber,
+  ) {
     final List<http.Request> requests = <http.Request>[];
     final MockClient client = MockClient((http.Request request) async {
       requests.add(request);

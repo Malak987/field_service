@@ -84,16 +84,12 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   }
 
   @override
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) {
+  Future<void> sendPasswordResetEmail({required String email}) {
     return _remoteDataSource.sendPasswordResetEmail(email: email);
   }
 
   @override
-  Future<void> updatePassword({
-    required String newPassword,
-  }) async {
+  Future<void> updatePassword({required String newPassword}) async {
     final User? user = _remoteDataSource.currentUser;
     if (user == null) {
       throw const AuthException(

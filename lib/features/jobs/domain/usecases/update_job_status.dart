@@ -6,10 +6,7 @@ class UpdateJobStatus {
 
   final JobsRepository _repository;
 
-  Future<void> call({
-    required String jobId,
-    required String status,
-  }) {
+  Future<void> call({required String jobId, required String status}) {
     return _repository.updateJobStatus(jobId: jobId, status: status);
   }
 }

@@ -42,6 +42,6 @@ class JobEventsTable extends Table {
   @override
   List<String> get customConstraints => <String>[
     'CONSTRAINT fk_job_events_job FOREIGN KEY (job_id) '
-    'REFERENCES jobs (id) ON DELETE CASCADE',
+        'REFERENCES jobs (id) ON DELETE CASCADE',
   ];
 }

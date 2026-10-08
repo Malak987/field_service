@@ -131,6 +131,25 @@ abstract class AppLocalizations {
   String get pageNotFoundTitle;
   String get viewJobsButton;
 
+  // --- Home Dashboard, Navigation & Account ---------------------------------
+  String welcomeNameLabel(String name);
+  String get roleAdminLabel;
+  String get roleTechnicianLabel;
+  String get accountTitle;
+  String get homeTabLabel;
+  String get kitchenTabLabel;
+  String get homeRenovationTabLabel;
+  String get overviewTitle;
+  String get totalJobsLabel;
+  String get quickActionsTitle;
+  String get categoriesTitle;
+  String jobsCountLabel(int count);
+  String get continueJobButton;
+  String get currentJobTitle;
+  String get noAssignedJobsTitle;
+  String get noAssignedJobsSubtitle;
+  String nextActionLabel(String action);
+
   // --- Jobs ----------------------------------------------------------------
   String get jobsTitle;
   String get myJobsTitle;
@@ -169,6 +188,47 @@ abstract class AppLocalizations {
   String get photoAccessDeniedError;
   String get invalidImageError;
   String get addBeforePhotoFailedError;
+  // --- After Photos -------------------------------------------------------
+  String get afterPhotosTitle;
+  String get addAfterPhotoButton;
+  String get noAfterPhotosYet;
+  String get addAfterPhotoFailedError;
+  // --- Customer Signature -------------------------------------------------
+  String get customerSignatureTitle;
+  String get signatureHint;
+  String get clearButton;
+  String get saveSignatureButton;
+  String get signatureRequiredError;
+  String get signatureSavedMessage;
+  String get signatureSaveFailedMessage;
+  String get noSignatureYet;
+  String get signatureHelper;
+  String get replaceSignatureButton;
+  String stepLabel(int step);
+  String get customerRequestLabel;
+  String get workDescriptionSubtitle;
+  String jobCompletedAt(String time);
+  // --- Work Description -----------------------------------------------------
+  String get workDescriptionTitle;
+  String get workDescriptionHint;
+  String get workDescriptionNoneYet;
+  String get workDescriptionEmptyError;
+  String workDescriptionTooLongError(int max);
+  String get workDescriptionSavedMessage;
+  String get workDescriptionSaveFailedMessage;
+  String get workDescriptionSavingLabel;
+
+  // --- Complete Job ---------------------------------------------------------
+  String get completeJobButton;
+  String get completionRequirementsTitle;
+  String get jobCompletedMessage;
+  String get missingBeforePhotoError;
+  String get missingWorkDescriptionError;
+  String get missingAfterPhotoError;
+  String get missingSignatureError;
+  String get internetRequiredToCompleteJob;
+  String get unableToCompleteJobError;
+  String get waitingForFileSync;
   String get jobsEmptyTitle;
   String get jobsEmptySubtitle;
   String get jobsErrorTitle;
@@ -511,6 +571,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewJobsButton => 'View Jobs';
 
   @override
+  String welcomeNameLabel(String name) => 'Welcome, $name';
+
+  @override
+  String get roleAdminLabel => 'Administrator';
+
+  @override
+  String get roleTechnicianLabel => 'Technician';
+
+  @override
+  String get accountTitle => 'Account';
+
+  @override
+  String get homeTabLabel => 'Home';
+
+  @override
+  String get kitchenTabLabel => 'Kitchen';
+
+  @override
+  String get homeRenovationTabLabel => 'Home Renovation';
+
+  @override
+  String get overviewTitle => 'Overview';
+
+  @override
+  String get totalJobsLabel => 'Total';
+
+  @override
+  String get quickActionsTitle => 'Quick Actions';
+
+  @override
+  String get categoriesTitle => 'Categories';
+
+  @override
+  String jobsCountLabel(int count) => count == 1 ? '1 job' : '$count jobs';
+
+  @override
+  String get continueJobButton => 'Continue Job';
+
+  @override
+  String get currentJobTitle => 'Current Job';
+
+  @override
+  String get noAssignedJobsTitle => 'No assigned jobs';
+
+  @override
+  String get noAssignedJobsSubtitle =>
+      'New jobs assigned to you will appear here.';
+
+  @override
+  String nextActionLabel(String action) => 'Next: $action';
+
+  @override
   String get jobsTitle => 'Jobs';
 
   @override
@@ -609,16 +721,133 @@ class AppLocalizationsEn extends AppLocalizations {
   String get retryButton => 'Retry';
 
   @override
-  String get cameraUnavailableError => 'The camera is not available on this device.';
+  String get cameraUnavailableError =>
+      'The camera is not available on this device.';
 
   @override
-  String get photoAccessDeniedError => 'Access to the camera or photo library was denied.';
+  String get photoAccessDeniedError =>
+      'Access to the camera or photo library was denied.';
 
   @override
   String get invalidImageError => 'The selected image could not be read.';
 
   @override
   String get addBeforePhotoFailedError => 'Unable to add the before photo.';
+
+  // --- After Photos -------------------------------------------------------
+  @override
+  String get afterPhotosTitle => 'After Photos';
+
+  @override
+  String get addAfterPhotoButton => 'Add After Photo';
+
+  @override
+  String get noAfterPhotosYet => 'No after photos yet';
+
+  @override
+  String get addAfterPhotoFailedError => 'Unable to add the after photo.';
+
+  // --- Customer Signature ---------------------------------------------------
+  @override
+  String get customerSignatureTitle => 'Customer Signature';
+
+  @override
+  String get signatureHint => 'Customer signs here';
+
+  @override
+  String get clearButton => 'Clear';
+
+  @override
+  String get saveSignatureButton => 'Save Signature';
+
+  @override
+  String get signatureRequiredError => 'Signature required';
+
+  @override
+  String get signatureSavedMessage => 'Signature saved';
+
+  @override
+  String get signatureSaveFailedMessage => 'Failed to save signature';
+
+  @override
+  String get noSignatureYet => 'No signature yet';
+
+  @override
+  String get signatureHelper =>
+      'The customer signs with a finger inside the box.';
+
+  @override
+  String get replaceSignatureButton => 'Replace Signature';
+
+  @override
+  String stepLabel(int step) => 'Step $step';
+
+  @override
+  String get customerRequestLabel => 'Customer Request';
+
+  @override
+  String get workDescriptionSubtitle => 'Your report of the work performed';
+
+  @override
+  String jobCompletedAt(String time) => 'Completed on $time';
+
+  // --- Work Description -------------------------------------------------------
+  @override
+  String get workDescriptionTitle => 'Work Description';
+
+  @override
+  String get workDescriptionHint => 'Describe the work performed';
+
+  @override
+  String get workDescriptionNoneYet => 'No work description yet.';
+
+  @override
+  String get workDescriptionEmptyError => 'Work description cannot be empty.';
+
+  @override
+  String workDescriptionTooLongError(int max) =>
+      'Work description is too long (maximum $max characters).';
+
+  @override
+  String get workDescriptionSavedMessage => 'Work description saved.';
+
+  @override
+  String get workDescriptionSaveFailedMessage =>
+      'Failed to save work description.';
+
+  @override
+  String get workDescriptionSavingLabel => 'Saving…';
+
+  @override
+  String get completeJobButton => 'Complete Job';
+
+  @override
+  String get completionRequirementsTitle => 'Completion Requirements';
+
+  @override
+  String get jobCompletedMessage => 'Job completed';
+
+  @override
+  String get missingBeforePhotoError => 'Missing Before Photo';
+
+  @override
+  String get missingWorkDescriptionError => 'Missing Work Description';
+
+  @override
+  String get missingAfterPhotoError => 'Missing After Photo';
+
+  @override
+  String get missingSignatureError => 'Missing Customer Signature';
+
+  @override
+  String get internetRequiredToCompleteJob =>
+      'Internet connection is required to complete the job.';
+
+  @override
+  String get unableToCompleteJobError => 'Unable to complete the job.';
+
+  @override
+  String get waitingForFileSync => 'Waiting for files to finish uploading…';
 
   @override
   String get jobsEmptyTitle => 'No jobs yet';
@@ -913,8 +1142,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get passwordReqNumber => 'Mindestens eine Ziffer (0–9)';
 
   @override
-  String get passwordReqSpecialChar =>
-      'Mindestens ein Sonderzeichen (!@#...)';
+  String get passwordReqSpecialChar => 'Mindestens ein Sonderzeichen (!@#...)';
 
   @override
   String get validationFullNameRequired =>
@@ -1046,6 +1274,59 @@ class AppLocalizationsDe extends AppLocalizations {
   String get viewJobsButton => 'Aufträge anzeigen';
 
   @override
+  String welcomeNameLabel(String name) => 'Willkommen, $name';
+
+  @override
+  String get roleAdminLabel => 'Administrator';
+
+  @override
+  String get roleTechnicianLabel => 'Techniker';
+
+  @override
+  String get accountTitle => 'Konto';
+
+  @override
+  String get homeTabLabel => 'Start';
+
+  @override
+  String get kitchenTabLabel => 'Küche';
+
+  @override
+  String get homeRenovationTabLabel => 'Haussanierung';
+
+  @override
+  String get overviewTitle => 'Übersicht';
+
+  @override
+  String get totalJobsLabel => 'Gesamt';
+
+  @override
+  String get quickActionsTitle => 'Schnellzugriff';
+
+  @override
+  String get categoriesTitle => 'Kategorien';
+
+  @override
+  String jobsCountLabel(int count) =>
+      count == 1 ? '1 Auftrag' : '$count Aufträge';
+
+  @override
+  String get continueJobButton => 'Auftrag fortsetzen';
+
+  @override
+  String get currentJobTitle => 'Aktueller Auftrag';
+
+  @override
+  String get noAssignedJobsTitle => 'Keine zugewiesenen Aufträge';
+
+  @override
+  String get noAssignedJobsSubtitle =>
+      'Neue Aufträge, die Ihnen zugewiesen werden, erscheinen hier.';
+
+  @override
+  String nextActionLabel(String action) => 'Als Nächstes: $action';
+
+  @override
   String get jobsTitle => 'Aufträge';
 
   @override
@@ -1144,16 +1425,142 @@ class AppLocalizationsDe extends AppLocalizations {
   String get retryButton => 'Erneut versuchen';
 
   @override
-  String get cameraUnavailableError => 'Die Kamera ist auf diesem Gerät nicht verfügbar.';
+  String get cameraUnavailableError =>
+      'Die Kamera ist auf diesem Gerät nicht verfügbar.';
 
   @override
-  String get photoAccessDeniedError => 'Der Zugriff auf Kamera oder Fotobibliothek wurde verweigert.';
+  String get photoAccessDeniedError =>
+      'Der Zugriff auf Kamera oder Fotobibliothek wurde verweigert.';
 
   @override
-  String get invalidImageError => 'Das ausgewählte Bild konnte nicht gelesen werden.';
+  String get invalidImageError =>
+      'Das ausgewählte Bild konnte nicht gelesen werden.';
 
   @override
-  String get addBeforePhotoFailedError => 'Das Vorher-Foto konnte nicht hinzugefügt werden.';
+  String get addBeforePhotoFailedError =>
+      'Das Vorher-Foto konnte nicht hinzugefügt werden.';
+
+  // --- After Photos -------------------------------------------------------
+  @override
+  String get afterPhotosTitle => 'Nachher-Fotos';
+
+  @override
+  String get addAfterPhotoButton => 'Nachher-Foto hinzufügen';
+
+  @override
+  String get noAfterPhotosYet => 'Noch keine Nachher-Fotos';
+
+  @override
+  String get addAfterPhotoFailedError =>
+      'Das Nachher-Foto konnte nicht hinzugefügt werden.';
+
+  // --- Customer Signature ---------------------------------------------------
+  @override
+  String get customerSignatureTitle => 'Kundensignatur';
+
+  @override
+  String get signatureHint => 'Der Kunde unterschreibt hier';
+
+  @override
+  String get clearButton => 'Löschen';
+
+  @override
+  String get saveSignatureButton => 'Unterschrift speichern';
+
+  @override
+  String get signatureRequiredError => 'Unterschrift erforderlich';
+
+  @override
+  String get signatureSavedMessage => 'Unterschrift gespeichert';
+
+  @override
+  String get signatureSaveFailedMessage =>
+      'Unterschrift konnte nicht gespeichert werden.';
+
+  @override
+  String get noSignatureYet => 'Noch keine Unterschrift vorhanden';
+
+  @override
+  String get signatureHelper =>
+      'Der Kunde unterschreibt mit dem Finger im Feld.';
+
+  @override
+  String get replaceSignatureButton => 'Unterschrift ersetzen';
+
+  @override
+  String stepLabel(int step) => 'Schritt $step';
+
+  @override
+  String get customerRequestLabel => 'Kundenanfrage';
+
+  @override
+  String get workDescriptionSubtitle =>
+      'Ihr Bericht über die ausgeführten Arbeiten';
+
+  @override
+  String jobCompletedAt(String time) => 'Abgeschlossen am $time';
+
+  // --- Work Description -------------------------------------------------------
+  @override
+  String get workDescriptionTitle => 'Arbeitsbeschreibung';
+
+  @override
+  String get workDescriptionHint => 'Beschreiben Sie die ausgeführten Arbeiten';
+
+  @override
+  String get workDescriptionNoneYet =>
+      'Noch keine Arbeitsbeschreibung vorhanden.';
+
+  @override
+  String get workDescriptionEmptyError =>
+      'Die Arbeitsbeschreibung darf nicht leer sein.';
+
+  @override
+  String workDescriptionTooLongError(int max) =>
+      'Die Arbeitsbeschreibung ist zu lang (maximal $max Zeichen).';
+
+  @override
+  String get workDescriptionSavedMessage => 'Arbeitsbeschreibung gespeichert.';
+
+  @override
+  String get workDescriptionSaveFailedMessage =>
+      'Die Arbeitsbeschreibung konnte nicht gespeichert werden.';
+
+  @override
+  String get workDescriptionSavingLabel => 'Speichern…';
+
+  @override
+  String get completeJobButton => 'Auftrag abschließen';
+
+  @override
+  String get completionRequirementsTitle => 'Abschlussvoraussetzungen';
+
+  @override
+  String get jobCompletedMessage => 'Auftrag abgeschlossen';
+
+  @override
+  String get missingBeforePhotoError => 'Vorher-Foto fehlt';
+
+  @override
+  String get missingWorkDescriptionError => 'Arbeitsbeschreibung fehlt';
+
+  @override
+  String get missingAfterPhotoError => 'Nachher-Foto fehlt';
+
+  @override
+  String get missingSignatureError => 'Kundenunterschrift fehlt';
+
+  @override
+  String get internetRequiredToCompleteJob =>
+      'Zum Abschließen des Auftrags ist eine Internetverbindung erforderlich.';
+
+  @override
+  String get unableToCompleteJobError =>
+      'Der Auftrag konnte nicht abgeschlossen werden.';
+
+  @override
+  String get waitingForFileSync =>
+      'Warten, bis alle Dateien hochgeladen wurden…';
 
   @override
   String get jobsEmptyTitle => 'Noch keine Aufträge';
@@ -1204,8 +1611,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Auftrag konnte nicht erstellt werden. Bitte versuche es erneut.';
 
   @override
-  String get noActiveTechniciansMessage =>
-      'Keine aktiven Techniker verfügbar.';
+  String get noActiveTechniciansMessage => 'Keine aktiven Techniker verfügbar.';
 
   // --- Customers -------------------------------------------------------------
   @override

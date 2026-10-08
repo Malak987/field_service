@@ -17,7 +17,5 @@ void registerCoreModule(GetIt sl) {
   sl.registerLazySingleton<NetworkInfo>(ConnectivityNetworkInfo.new);
 
   // The shared, already-initialized Supabase client (auth + PostgREST).
-  sl.registerLazySingleton<SupabaseClient>(
-    () => SupabaseClientProvider.client,
-  );
+  sl.registerLazySingleton<SupabaseClient>(() => SupabaseClientProvider.client);
 }

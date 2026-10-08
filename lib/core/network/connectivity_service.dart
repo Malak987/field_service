@@ -59,7 +59,9 @@ class ConnectivityService {
 
     _subscription = _networkInfo.onConnectionChanged.listen(
       (bool hasInternet) {
-        _update(hasInternet ? ConnectivityStatus.online : ConnectivityStatus.offline);
+        _update(
+          hasInternet ? ConnectivityStatus.online : ConnectivityStatus.offline,
+        );
       },
       onError: (Object error) {
         // A broken probe must not wedge the app: treat as offline and keep

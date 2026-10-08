@@ -67,9 +67,8 @@ class _LoginPageState extends State<LoginPage> {
     final AppLocalizations l10n = context.l10n;
 
     return BlocListener<AuthenticationCubit, AuthenticationState>(
-      listenWhen:
-          (AuthenticationState previous, AuthenticationState current) =>
-              previous.status != current.status,
+      listenWhen: (AuthenticationState previous, AuthenticationState current) =>
+          previous.status != current.status,
       listener: (BuildContext context, AuthenticationState state) {
         final GoRouter? router = GoRouter.maybeOf(context);
         if (router == null) {
@@ -95,10 +94,7 @@ class _LoginPageState extends State<LoginPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            AuthHeader(
-              title: l10n.loginTitle,
-              subtitle: l10n.loginSubtitle,
-            ),
+            AuthHeader(title: l10n.loginTitle, subtitle: l10n.loginSubtitle),
             const SizedBox(height: AppSpacing.xxl),
             AuthFormContainer(
               child: Form(
@@ -108,18 +104,16 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen: (
-                          AuthenticationState previous,
-                          AuthenticationState current,
-                        ) =>
-                            previous.status != current.status ||
-                            previous.errorCode != current.errorCode ||
-                            previous.message != current.message,
-                        builder:
+                        buildWhen:
                             (
-                              BuildContext context,
-                              AuthenticationState state,
-                            ) {
+                              AuthenticationState previous,
+                              AuthenticationState current,
+                            ) =>
+                                previous.status != current.status ||
+                                previous.errorCode != current.errorCode ||
+                                previous.message != current.message,
+                        builder:
+                            (BuildContext context, AuthenticationState state) {
                               if (!state.hasError) {
                                 return const SizedBox.shrink();
                               }
@@ -153,7 +147,10 @@ class _LoginPageState extends State<LoginPage> {
                         textInputAction: TextInputAction.next,
                         autofillHints: const <String>[AutofillHints.email],
                         validator: (String? value) =>
-                            PasswordValidator.validateEmail(value, context.l10n),
+                            PasswordValidator.validateEmail(
+                              value,
+                              context.l10n,
+                            ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       AuthPasswordField(

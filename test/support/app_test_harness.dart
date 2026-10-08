@@ -21,9 +21,11 @@ import 'package:field_service/features/jobs/domain/entities/job_customer_info.da
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
+
 import 'dart:typed_data';
 
 import 'test_photos.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -63,6 +65,10 @@ class AppTestHarness {
   /// Jobs the fake "server" created through the `create_job` RPC.
   List<Job> get createdJobs => _fakeJobs?.createdJobs ?? const <Job>[];
 
+  /// The work descriptions the fake "server" accepted, by job id (in order).
+  Map<String, List<String>> get savedWorkDescriptions =>
+      _fakeJobs?.savedWorkDescriptions ?? const <String, List<String>>{};
+
   Future<void> configure({
     AppUser? user,
     String initialLocation = AppRoutes.root,
@@ -75,12 +81,18 @@ class AppTestHarness {
     bool jobsOffline = false,
     Object? startJobError,
     Object? createJobError,
+    Object? saveWorkDescriptionError,
     Set<String> alreadyStartedJobIds = const <String>{},
     bool withJobsSync = false,
     bool jobsOnline = false,
     Set<String> photoDeniedJobIds = const <String>{},
     Map<String, List<JobFile>> initialBeforePhotos =
         const <String, List<JobFile>>{},
+    Map<String, List<JobFile>> initialAfterPhotos =
+        const <String, List<JobFile>>{},
+    Map<String, List<JobFile>> initialSignatures =
+        const <String, List<JobFile>>{},
+    bool completionOffline = false,
   }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await configureDependencies();
@@ -95,9 +107,14 @@ class AppTestHarness {
         offline: jobsOffline,
         startJobError: startJobError,
         createJobError: createJobError,
+        saveWorkDescriptionError: saveWorkDescriptionError,
         alreadyStartedJobIds: alreadyStartedJobIds,
         photoDeniedJobIds: photoDeniedJobIds,
         initialBeforePhotos: initialBeforePhotos,
+        initialAfterPhotos: initialAfterPhotos,
+        initialSignatures: initialSignatures,
+        isAdminUser: user != null && !user.isTechnician,
+        completionOffline: completionOffline,
       );
       await sl.unregister<JobsRepository>();
       sl.registerSingleton<JobsRepository>(_fakeJobs!);
@@ -151,6 +168,49 @@ class AppTestHarness {
   /// Capture timestamps the fake server recorded (automatic, never manual).
   List<DateTime> get photoCapturedAt =>
       _fakeJobs?.photoCapturedAt ?? const <DateTime>[];
+
+  // --- After Photos (fake-server facts, UI-test assertions) -------------------
+
+  /// The after photos the fake server has registered, by job id.
+  Map<String, List<JobFile>> get serverAfterPhotos =>
+      _fakeJobs?.afterPhotos ?? const <String, List<JobFile>>{};
+
+  /// Job ids the fake server accepted an after photo for.
+  List<String> get afterPhotoAddedJobIds =>
+      _fakeJobs?.afterPhotoAddedJobIds ?? const <String>[];
+
+  /// After-photo capture timestamps the fake server recorded (automatic).
+  List<DateTime> get afterPhotoCapturedAt =>
+      _fakeJobs?.afterPhotoCapturedAt ?? const <DateTime>[];
+
+  // --- Customer Signature (fake-server facts, UI-test assertions) -------------
+
+  /// The signature files the fake server has registered, by job id.
+  Map<String, List<JobFile>> get serverSignatures =>
+      _fakeJobs?.signatures ?? const <String, List<JobFile>>{};
+
+  /// Job ids the fake server accepted a signature capture for.
+  List<String> get signatureCapturedJobIds =>
+      _fakeJobs?.signatureCapturedJobIds ?? const <String>[];
+
+  /// Signature capture timestamps the fake server recorded (automatic).
+  List<DateTime> get signatureCapturedAt =>
+      _fakeJobs?.signatureCapturedAt ?? const <DateTime>[];
+
+  // --- Complete Job (fake-server facts, UI-test assertions) -------------------
+
+  /// Job ids the fake server accepted a completion for, in order.
+  List<String> get completedJobIds =>
+      _fakeJobs?.completedJobIds ?? const <String>[];
+
+  /// The `job_completed` events the fake server appended (exactly one per
+  /// accepted completion — never per retry).
+  List<Map<String, Object?>> get jobCompletedEvents =>
+      _fakeJobs?.jobCompletedEvents ?? const <Map<String, Object?>>[];
+
+  /// The PNG bytes the fake server accepted, by job id (wire assertions).
+  Map<String, List<Uint8List>> get signatureImages =>
+      _fakeJobs?.signatureImages ?? const <String, List<Uint8List>>{};
 
   /// How often the Retry action reached the fake sync engine.
   int get photoRetryCalls => _fakeJobs?.retryCalls ?? 0;
@@ -235,6 +295,10 @@ class _UnusedCustomersRemoteDataSource implements CustomersRemoteDataSource {
 /// start — proves the UI never invents a client timestamp.
 final DateTime serverStartedAt = DateTime.utc(2026, 10, 6, 9, 30);
 
+/// The authoritative `completed_at` the fake "server" stamps when it accepts
+/// a completion — proves the UI never invents a client timestamp.
+final DateTime serverCompletedAt = DateTime.utc(2026, 10, 7, 16, 15);
+
 /// Test double for the Jobs feature.
 ///
 /// It mirrors the server-side facts the UI relies on:
@@ -260,23 +324,50 @@ class _FakeJobsRepository implements JobsRepository {
     required this.offline,
     this.startJobError,
     this.createJobError,
+    this.saveWorkDescriptionError,
     this.alreadyStartedJobIds = const <String>{},
     Set<String> photoDeniedJobIds = const <String>{},
     Map<String, List<JobFile>> initialBeforePhotos =
         const <String, List<JobFile>>{},
+    Map<String, List<JobFile>> initialAfterPhotos =
+        const <String, List<JobFile>>{},
+    Map<String, List<JobFile>> initialSignatures =
+        const <String, List<JobFile>>{},
+    this.isAdminUser = false,
+    this.completionOffline = false,
   }) : jobs = List<Job>.of(jobs),
        photoDeniedJobIds = Set<String>.of(photoDeniedJobIds),
        photos = <String, List<JobFile>>{
          for (final MapEntry<String, List<JobFile>> e
              in initialBeforePhotos.entries)
            e.key: List<JobFile>.of(e.value),
+       },
+       afterPhotos = <String, List<JobFile>>{
+         for (final MapEntry<String, List<JobFile>> e
+             in initialAfterPhotos.entries)
+           e.key: List<JobFile>.of(e.value),
+       },
+       signatures = <String, List<JobFile>>{
+         for (final MapEntry<String, List<JobFile>> e
+             in initialSignatures.entries)
+           e.key: List<JobFile>.of(e.value),
        };
 
   final List<Job> jobs;
   final Map<String, JobCustomerInfo?> jobCustomers;
   final bool offline;
+
+  /// The configured user is an admin — mirrors the RPC's rule that admins
+  /// never execute technician workflow actions (refused even directly).
+  final bool isAdminUser;
+
+  /// Complete Job specifically has no connectivity (the REAL repository
+  /// checks `NetworkInfo` before the RPC) — independent of [offline] so the
+  /// checklist streams can still feed the UI.
+  final bool completionOffline;
   final Object? startJobError;
   final Object? createJobError;
+  final Object? saveWorkDescriptionError;
   final Set<String> alreadyStartedJobIds;
 
   /// Job ids the fake server accepted a start for (test assertions).
@@ -287,6 +378,20 @@ class _FakeJobsRepository implements JobsRepository {
 
   /// Jobs the fake server created (mirrors the `create_job` RPC result).
   final List<Job> createdJobs = <Job>[];
+
+  /// Work descriptions the fake server accepted, by job id (mirrors the
+  /// `save_work_description` RPC effect).
+  final Map<String, List<String>> savedWorkDescriptions =
+      <String, List<String>>{};
+
+  /// Job ids the fake server accepted a completion for (mirrors the
+  /// `complete_job` RPC effect; one entry per accepted completion).
+  final List<String> completedJobIds = <String>[];
+
+  /// The `job_completed` events the fake server appended (asserts the
+  /// exactly-one-event rule across retries).
+  final List<Map<String, Object?>> jobCompletedEvents =
+      <Map<String, Object?>>[];
 
   // --- Before Photos (mirrors the `register_job_file` RPC semantics) ----------
 
@@ -304,6 +409,32 @@ class _FakeJobsRepository implements JobsRepository {
   /// Automatic capture timestamps recorded by the fake server.
   final List<DateTime> photoCapturedAt = <DateTime>[];
 
+  // --- After Photos (same `register_job_file` RPC semantics, type 'after') ---
+
+  /// Registered after photos by job id (the fake server's `job_files`).
+  final Map<String, List<JobFile>> afterPhotos;
+
+  /// Job ids the fake server accepted an after photo for.
+  final List<String> afterPhotoAddedJobIds = <String>[];
+
+  /// Automatic after-photo capture timestamps recorded by the fake server.
+  final List<DateTime> afterPhotoCapturedAt = <DateTime>[];
+
+  // --- Customer Signature (same RPC semantics, type 'signature') -------------
+
+  /// Registered signature files by job id (the fake server's `job_files`).
+  final Map<String, List<JobFile>> signatures;
+
+  /// Job ids the fake server accepted a signature capture for.
+  final List<String> signatureCapturedJobIds = <String>[];
+
+  /// Automatic signature capture timestamps recorded by the fake server.
+  final List<DateTime> signatureCapturedAt = <DateTime>[];
+
+  /// The PNG bytes the fake server accepted, by job id.
+  final Map<String, List<Uint8List>> signatureImages =
+      <String, List<Uint8List>>{};
+
   /// Photo ids whose queued upload sits in the `failed` sync state.
   Set<String> failedPhotoIds = <String>{};
 
@@ -313,18 +444,47 @@ class _FakeJobsRepository implements JobsRepository {
   int _photoCounter = 0;
   final Map<String, StreamController<List<JobFile>>> _photoWatchers =
       <String, StreamController<List<JobFile>>>{};
+  final Map<String, StreamController<List<JobFile>>> _afterPhotoWatchers =
+      <String, StreamController<List<JobFile>>>{};
+  final Map<String, StreamController<List<JobFile>>> _signatureWatchers =
+      <String, StreamController<List<JobFile>>>{};
 
   void dispose() {
     for (final StreamController<List<JobFile>> c in _photoWatchers.values) {
       c.close();
     }
     _photoWatchers.clear();
+    for (final StreamController<List<JobFile>> c
+        in _afterPhotoWatchers.values) {
+      c.close();
+    }
+    _afterPhotoWatchers.clear();
+    for (final StreamController<List<JobFile>> c in _signatureWatchers.values) {
+      c.close();
+    }
+    _signatureWatchers.clear();
   }
 
   void _emitPhotos(String jobId) {
     final StreamController<List<JobFile>>? controller = _photoWatchers[jobId];
     if (controller != null && !controller.isClosed) {
       controller.add(List<JobFile>.of(photos[jobId] ?? const <JobFile>[]));
+    }
+  }
+
+  void _emitAfterPhotos(String jobId) {
+    final StreamController<List<JobFile>>? controller =
+        _afterPhotoWatchers[jobId];
+    if (controller != null && !controller.isClosed) {
+      controller.add(List<JobFile>.of(afterPhotos[jobId] ?? const <JobFile>[]));
+    }
+  }
+
+  void _emitSignatures(String jobId) {
+    final StreamController<List<JobFile>>? controller =
+        _signatureWatchers[jobId];
+    if (controller != null && !controller.isClosed) {
+      controller.add(List<JobFile>.of(signatures[jobId] ?? const <JobFile>[]));
     }
   }
 
@@ -411,10 +571,12 @@ class _FakeJobsRepository implements JobsRepository {
       throw StateError('Unsupported job category: $jobType');
     }
 
-    final int nextNumber = jobs.fold<int>(
-      0,
-      (int max, Job job) => job.jobNumber > max ? job.jobNumber : max,
-    ) + 1;
+    final int nextNumber =
+        jobs.fold<int>(
+          0,
+          (int max, Job job) => job.jobNumber > max ? job.jobNumber : max,
+        ) +
+        1;
 
     final Job created = Job(
       id: 'fake-created-$nextNumber',
@@ -442,6 +604,38 @@ class _FakeJobsRepository implements JobsRepository {
   }
 
   @override
+  Future<void> saveWorkDescription({
+    required String jobId,
+    required String workDescription,
+  }) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    if (saveWorkDescriptionError != null) {
+      throw saveWorkDescriptionError!; // ignore: only_throw_errors
+    }
+    // Mirrors the `save_work_description` RPC (UI-test facts): the text is
+    // trimmed, must not be empty, and only exists for visible jobs. The
+    // server-side timestamp lives in the event — the client sends none.
+    final String clean = workDescription.trim();
+    if (clean.isEmpty) {
+      throw StateError('Work description cannot be empty.');
+    }
+    for (int i = 0; i < jobs.length; i++) {
+      if (jobs[i].id == jobId) {
+        jobs[i] = jobs[i].copyWith(
+          workDescription: clean,
+          updatedAt: serverStartedAt,
+        );
+        savedWorkDescriptions.putIfAbsent(jobId, () => <String>[]).add(clean);
+        return;
+      }
+    }
+    // RLS mirror: a job outside the caller's visibility is unknown.
+    throw StateError('Job not found: $jobId');
+  }
+
+  @override
   Future<void> updateJobStatus({
     required String jobId,
     required String status,
@@ -462,8 +656,7 @@ class _FakeJobsRepository implements JobsRepository {
       // RLS mirror: a job outside the caller's visibility is unknown.
       throw StateError('Job not found: $jobId');
     }
-    if (job.assignedEmployeeId == null ||
-        photoDeniedJobIds.contains(jobId)) {
+    if (job.assignedEmployeeId == null || photoDeniedJobIds.contains(jobId)) {
       // Mirrors the RPC's server-side ownership refusal (ERRCODE 42501):
       // unassigned jobs and other technicians' jobs are rejected.
       throw StateError('This job is not assigned to you.');
@@ -515,14 +708,90 @@ class _FakeJobsRepository implements JobsRepository {
         StateError('Simulated network outage.'),
       );
     }
-    final StreamController<List<JobFile>> controller =
-        _photoWatchers.putIfAbsent(
-      jobId,
-      () => StreamController<List<JobFile>>.broadcast(),
-    );
+    final StreamController<List<JobFile>> controller = _photoWatchers
+        .putIfAbsent(jobId, () => StreamController<List<JobFile>>.broadcast());
     scheduleMicrotask(() {
       if (!controller.isClosed) {
         controller.add(List<JobFile>.of(photos[jobId] ?? const <JobFile>[]));
+      }
+    });
+    return controller.stream;
+  }
+
+  // --- After Photos ------------------------------------------------------------
+
+  @override
+  Future<String> addAfterPhoto({
+    required String jobId,
+    required String pickedFilePath,
+  }) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    final Job? job = jobs.where((Job j) => j.id == jobId).firstOrNull;
+    if (job == null) {
+      // RLS mirror: a job outside the caller's visibility is unknown.
+      throw StateError('Job not found: $jobId');
+    }
+    if (job.assignedEmployeeId == null || photoDeniedJobIds.contains(jobId)) {
+      // Mirrors the RPC's server-side ownership refusal (ERRCODE 42501):
+      // unassigned jobs and other technicians' jobs are rejected.
+      throw StateError('This job is not assigned to you.');
+    }
+    if (job.status.value != JobStatus.inProgress) {
+      // Mirrors the RPC's business rule: after photos only while started.
+      throw StateError(
+        'Photos can only be added to a job that is in progress.',
+      );
+    }
+
+    final DateTime capturedAt = DateTime.now();
+    final JobFile file = JobFile(
+      id: 'fake-after-photo-$jobId-${_photoCounter++}',
+      jobId: jobId,
+      fileType: 'after',
+      fileName: 'after_$_photoCounter.jpg',
+      mimeType: 'image/jpeg',
+      sizeBytes: kTestPhotoBytes.length,
+      capturedAt: capturedAt,
+      remotePath: 'jobs/$jobId/after/fake-$_photoCounter.jpg',
+      syncState: JobFileSyncState.synced,
+    );
+
+    afterPhotos[jobId] = <JobFile>[...?afterPhotos[jobId], file];
+    afterPhotoAddedJobIds.add(jobId);
+    afterPhotoCapturedAt.add(capturedAt);
+    _emitAfterPhotos(jobId);
+    return file.id;
+  }
+
+  @override
+  Future<List<JobFile>> getAfterPhotos(String jobId) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    final bool visible = jobs.any((Job j) => j.id == jobId);
+    if (!visible) {
+      // RLS mirror: zero rows for jobs the caller cannot see.
+      return const <JobFile>[];
+    }
+    return List<JobFile>.of(afterPhotos[jobId] ?? const <JobFile>[]);
+  }
+
+  @override
+  Stream<List<JobFile>> watchAfterPhotos(String jobId) {
+    if (offline) {
+      return Stream<List<JobFile>>.error(
+        StateError('Simulated network outage.'),
+      );
+    }
+    final StreamController<List<JobFile>> controller = _afterPhotoWatchers
+        .putIfAbsent(jobId, () => StreamController<List<JobFile>>.broadcast());
+    scheduleMicrotask(() {
+      if (!controller.isClosed) {
+        controller.add(
+          List<JobFile>.of(afterPhotos[jobId] ?? const <JobFile>[]),
+        );
       }
     });
     return controller.stream;
@@ -546,5 +815,200 @@ class _FakeJobsRepository implements JobsRepository {
     for (final String jobId in photos.keys.toList()) {
       _emitPhotos(jobId);
     }
+    for (final String jobId in afterPhotos.keys.toList()) {
+      _emitAfterPhotos(jobId);
+    }
+    for (final String jobId in signatures.keys.toList()) {
+      _emitSignatures(jobId);
+    }
+  }
+
+  // --- Customer Signature ------------------------------------------------------
+
+  @override
+  Future<String> captureCustomerSignature({
+    required String jobId,
+    required Uint8List signatureImage,
+  }) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    if (signatureImage.isEmpty) {
+      // Mirrors the server-side validation: an empty signature is refused.
+      throw ArgumentError.value(
+        signatureImage,
+        'signatureImage',
+        'The signature image is empty',
+      );
+    }
+    final Job? job = jobs.where((Job j) => j.id == jobId).firstOrNull;
+    if (job == null) {
+      // RLS mirror: a job outside the caller's visibility is unknown.
+      throw StateError('Job not found: $jobId');
+    }
+    if (job.assignedEmployeeId == null || photoDeniedJobIds.contains(jobId)) {
+      // Mirrors the RPC's server-side ownership refusal (ERRCODE 42501):
+      // unassigned jobs and other technicians' jobs are rejected.
+      throw StateError('This job is not assigned to you.');
+    }
+    if (job.status.value != JobStatus.inProgress) {
+      // Mirrors the RPC's business rule: signatures only while started.
+      throw StateError(
+        'Job files can only be added to a job that is in progress.',
+      );
+    }
+
+    final DateTime capturedAt = DateTime.now();
+    final JobFile file = JobFile(
+      id: 'fake-signature-$jobId-${_photoCounter++}',
+      jobId: jobId,
+      fileType: 'signature',
+      fileName: 'signature.png',
+      mimeType: 'image/png',
+      sizeBytes: signatureImage.length,
+      capturedAt: capturedAt,
+      remotePath: 'jobs/$jobId/signature/fake-$_photoCounter.png',
+      syncState: JobFileSyncState.synced,
+    );
+
+    signatures[jobId] = <JobFile>[...?signatures[jobId], file];
+    signatureCapturedJobIds.add(jobId);
+    signatureCapturedAt.add(capturedAt);
+    signatureImages.putIfAbsent(jobId, () => <Uint8List>[]).add(signatureImage);
+    _emitSignatures(jobId);
+    return file.id;
+  }
+
+  @override
+  Future<List<JobFile>> getSignatureFiles(String jobId) async {
+    if (offline) {
+      throw StateError('Simulated network outage.');
+    }
+    final bool visible = jobs.any((Job j) => j.id == jobId);
+    if (!visible) {
+      // RLS mirror: zero rows for jobs the caller cannot see.
+      return const <JobFile>[];
+    }
+    return List<JobFile>.of(signatures[jobId] ?? const <JobFile>[]);
+  }
+
+  @override
+  Stream<List<JobFile>> watchSignatureFiles(String jobId) {
+    if (offline) {
+      return Stream<List<JobFile>>.error(
+        StateError('Simulated network outage.'),
+      );
+    }
+    final StreamController<List<JobFile>> controller = _signatureWatchers
+        .putIfAbsent(jobId, () => StreamController<List<JobFile>>.broadcast());
+    scheduleMicrotask(() {
+      if (!controller.isClosed) {
+        controller.add(
+          List<JobFile>.of(signatures[jobId] ?? const <JobFile>[]),
+        );
+      }
+    });
+    return controller.stream;
+  }
+
+  // --- Complete Job (mirrors the `complete_job` RPC semantics) ----------------
+
+  @override
+  Future<Job> completeJob(String jobId) async {
+    if (offline || completionOffline) {
+      // The REAL repository refuses offline before reaching the network
+      // (JobCompletionOfflineException); the fake mirrors that contract —
+      // completion is authoritative and never faked locally.
+      throw const JobCompletionOfflineException();
+    }
+    final Job? job = jobs.where((Job j) => j.id == jobId).firstOrNull;
+    if (job == null) {
+      // RLS mirror: a job outside the caller's visibility is unknown.
+      throw StateError('Job not found: $jobId');
+    }
+    if (isAdminUser) {
+      // Mirrors the RPC: admins NEVER complete jobs — read-only monitoring.
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.unauthorized,
+        serverMessage: 'Only the assigned technician can complete a job.',
+      );
+    }
+    if (job.assignedEmployeeId == null || photoDeniedJobIds.contains(jobId)) {
+      // Mirrors the RPC's ownership refusal: unassigned jobs and other
+      // technicians' jobs are rejected.
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.notAssigned,
+        serverMessage: 'This job is not assigned to you.',
+      );
+    }
+    if (job.status.value == JobStatus.completed) {
+      // Idempotent replay: already completed — return the row UNCHANGED.
+      // No second mutation, no duplicate event, completed_at untouched.
+      return job;
+    }
+    if (job.status.value != JobStatus.inProgress) {
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.invalidStatus,
+        serverMessage: 'Job cannot be completed from this status.',
+      );
+    }
+    // Completion conditions — the "server" queries them itself; no flag
+    // from the client is trusted. If any is missing, NOTHING changes.
+    //
+    // A file only exists SERVER-side once its upload was confirmed — i.e.
+    // its local mirror has reached `synced` (exactly what the real
+    // `job_files` table reflects). A locally captured but still
+    // pending/in-flight/failed file is invisible here, just like on the
+    // real backend.
+    bool serverHas(List<JobFile> files) {
+      return files.any(
+        (JobFile file) => file.syncState == JobFileSyncState.synced,
+      );
+    }
+
+    if (!serverHas(photos[jobId] ?? const <JobFile>[])) {
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.missingBeforePhoto,
+        serverMessage: 'A before photo is required to complete this job.',
+      );
+    }
+    if ((job.workDescription ?? '').trim().isEmpty) {
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.missingWorkDescription,
+        serverMessage: 'A work description is required to complete this job.',
+      );
+    }
+    if (!serverHas(afterPhotos[jobId] ?? const <JobFile>[])) {
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.missingAfterPhoto,
+        serverMessage: 'An after photo is required to complete this job.',
+      );
+    }
+    if (!serverHas(signatures[jobId] ?? const <JobFile>[])) {
+      throw const JobCompletionRejectedException(
+        reason: CompletionRejectReason.missingSignature,
+        serverMessage: 'A customer signature is required to complete this job.',
+      );
+    }
+
+    // Atomic completion: status + SERVER timestamp (never a client value)
+    // + exactly ONE `job_completed` event.
+    final Job completed = job.copyWith(
+      status: const JobStatus(JobStatus.completed),
+      completedAt: serverCompletedAt,
+      updatedAt: serverCompletedAt,
+    );
+    for (int i = 0; i < jobs.length; i++) {
+      if (jobs[i].id == jobId) {
+        jobs[i] = completed;
+      }
+    }
+    completedJobIds.add(jobId);
+    jobCompletedEvents.add(<String, Object?>{
+      'job_id': jobId,
+      'event_type': 'job_completed',
+      'occurred_at': serverCompletedAt,
+    });
+    return completed;
   }
 }

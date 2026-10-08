@@ -105,8 +105,8 @@ void main() {
             ),
           );
 
-      final List<Employee> technicians =
-          await dataSource.getActiveTechnicians();
+      final List<Employee> technicians = await dataSource
+          .getActiveTechnicians();
 
       // The selector receives exactly the stored names, in order.
       expect(technicians.map((Employee e) => e.displayName), <String>[
@@ -117,10 +117,7 @@ void main() {
       // Server-side scoping: active technicians only, ordered by name.
       expect(captured.url.path, '/rest/v1/employees');
       expect(captured.url.queryParameters['select'], contains('name'));
-      expect(
-        captured.url.queryParameters['select'],
-        contains('employee_code'),
-      );
+      expect(captured.url.queryParameters['select'], contains('employee_code'));
       expect(captured.url.queryParameters['is_active'], 'eq.true');
       expect(captured.url.queryParameters['role'], 'eq.technician');
       expect(captured.url.queryParameters['order'], 'name.asc.nullslast');

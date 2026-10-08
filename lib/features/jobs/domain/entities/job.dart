@@ -15,6 +15,7 @@ import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 /// | [assignedEmployeeName]  | join → `employees.name`|
 /// | [jobType]               | `job_type` (text)      |
 /// | [description]           | `description` (text)   |
+/// | [workDescription]       | `work_description`     |
 /// | [status]                | `status` (text)        |
 /// | [assignedAt]            | `assigned_at`          |
 /// | [startedAt]             | `started_at`           |
@@ -36,6 +37,7 @@ class Job extends Equatable {
     this.assignedEmployeeName,
     required this.jobType,
     this.description,
+    this.workDescription,
     required this.status,
     this.assignedAt,
     this.startedAt,
@@ -66,8 +68,15 @@ class Job extends Equatable {
   /// `jobs.job_type` (free text).
   final String jobType;
 
-  /// `jobs.description` (free text), nullable.
+  /// `jobs.description` (free text), nullable. The ADMIN's customer request
+  /// entered at job creation — never to be confused with [workDescription].
   final String? description;
+
+  /// `jobs.work_description` (free text), nullable. The TECHNICIAN's record
+  /// of the work actually performed, written only while the job is
+  /// `in_progress` (server-enforced). Written through the
+  /// `save_work_description` RPC; admins may view it, never write it.
+  final String? workDescription;
 
   /// `jobs.status` wrapped in a flexible [JobStatus].
   final JobStatus status;
@@ -99,6 +108,8 @@ class Job extends Equatable {
     String? assignedEmployeeName,
     String? jobType,
     String? description,
+    String? workDescription,
+    bool clearWorkDescription = false,
     JobStatus? status,
     DateTime? assignedAt,
     DateTime? startedAt,
@@ -116,6 +127,9 @@ class Job extends Equatable {
       assignedEmployeeName: assignedEmployeeName ?? this.assignedEmployeeName,
       jobType: jobType ?? this.jobType,
       description: description ?? this.description,
+      workDescription: clearWorkDescription
+          ? null
+          : (workDescription ?? this.workDescription),
       status: status ?? this.status,
       assignedAt: assignedAt ?? this.assignedAt,
       startedAt: startedAt ?? this.startedAt,
@@ -136,6 +150,7 @@ class Job extends Equatable {
     assignedEmployeeName,
     jobType,
     description,
+    workDescription,
     status,
     assignedAt,
     startedAt,

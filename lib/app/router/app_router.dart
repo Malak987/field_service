@@ -2,6 +2,7 @@ import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/app/router/pages/route_error_page.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
+import 'package:field_service/features/authentication/presentation/pages/account_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/auth_gate_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/forgot_password_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
@@ -81,6 +82,16 @@ class AppRouter {
           const ResetPasswordPage(),
     ),
 
+    // Account (identity, language, sign-out) — both roles. The global
+    // redirect below refuses it for unauthenticated visitors, exactly like
+    // the jobs/customers areas.
+    GoRoute(
+      path: AppRoutes.account,
+      name: 'account',
+      builder: (BuildContext context, GoRouterState state) =>
+          const AccountPage(),
+    ),
+
     // Home URLs are aliases of the gate, not unguarded copies of the homes.
     // The employee role is resolved by AuthGatePage, never by the URL.
     // --- Role shells ----------------------------------------------------------
@@ -99,7 +110,8 @@ class AppRouter {
     GoRoute(
       path: AppRoutes.jobs,
       name: 'jobs',
-      builder: (BuildContext context, GoRouterState state) => const JobsPage(),
+      builder: (BuildContext context, GoRouterState state) =>
+          JobsPage(categoryFilter: state.uri.queryParameters['category']),
       routes: <RouteBase>[
         // `create` is declared before `:id` so the static segment always
         // wins over the placeholder.
@@ -166,6 +178,7 @@ class AppRouter {
     final bool isProtected =
         path == AppRoutes.admin ||
         path == AppRoutes.technician ||
+        path == AppRoutes.account ||
         path == AppRoutes.jobs ||
         path.startsWith('${AppRoutes.jobs}/') ||
         path == AppRoutes.customers ||

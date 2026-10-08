@@ -2,6 +2,7 @@ import 'package:field_service/features/jobs/data/models/job_customer_info_model.
 import 'package:field_service/features/jobs/data/models/job_model.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
+import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Remote data source contract for the `public.jobs` table.
@@ -23,10 +24,7 @@ abstract interface class JobsRemoteDataSource {
   Future<Job> getJobById(String id);
 
   /// Updates `status` (and `updated_at`) of the job with [jobId].
-  Future<void> updateJobStatus({
-    required String jobId,
-    required String status,
-  });
+  Future<void> updateJobStatus({required String jobId, required String status});
 
   /// Calls the `get_job_customer(job_id)` SECURITY DEFINER RPC and maps the
   /// (at most one) returned row.
@@ -71,6 +69,43 @@ abstract interface class JobsRemoteDataSource {
   /// Throws for refused starts (not the assigned employee, unassigned job,
   /// invalid state); the caller decides how to surface that.
   Future<Job> startJob(String jobId);
+
+  /// Calls the `save_work_description(job_id, work_description)` SECURITY
+  /// DEFINER RPC — the ONLY write path for the technician's work
+  /// description.
+  ///
+  /// The server resolves the caller from `auth.uid()` (never from a
+  /// client-supplied employee id), requires an active ASSIGNED technician,
+  /// requires the job to be `in_progress`, validates and TRIMs the text,
+  /// stores it with `updated_at = now()` and appends exactly one
+  /// `work_description_added` event per effective change (a replayed save
+  /// of the same text succeeds without a second event). Returns the updated
+  /// job row.
+  ///
+  /// Throws for refused saves (admin caller, another technician's job, job
+  /// not in progress, invalid text); the caller decides how to surface that.
+  Future<Job> saveWorkDescription({
+    required String jobId,
+    required String workDescription,
+  });
+
+  /// Calls the `complete_job(job_id)` SECURITY DEFINER RPC — the ONLY
+  /// completion path and the FINAL workflow step.
+  ///
+  /// The client sends ONLY the job id. The server resolves the caller from
+  /// `auth.uid()` (active technician only — admins are refused), requires
+  /// the job to be assigned to that technician and `in_progress`, and
+  /// re-validates EVERY completion condition itself (before photo, work
+  /// description, after photo, customer signature). On success it applies
+  /// `status = 'completed'`, the server-generated `completed_at` and
+  /// exactly one `job_completed` event atomically and returns the updated
+  /// job row; a replayed call observes the completed job and returns it
+  /// unchanged (no duplicate event).
+  ///
+  /// Throws [JobCompletionRejectedException] when the server refuses the
+  /// completion (reason mapped from the RPC's error code), so the caller
+  /// can explain WHY.
+  Future<Job> completeJob(String jobId);
 }
 
 class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
@@ -86,8 +121,9 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
   /// which PostgREST resolves to the relation names `customers` / `employees`.
   static const String _selectClause =
       'id, job_number, customer_id, assigned_employee_id, job_type, '
-      'description, status, assigned_at, started_at, completed_at, '
-      'created_at, updated_at, expires_at, customers(name), employees(name)';
+      'description, work_description, status, assigned_at, started_at, '
+      'completed_at, created_at, updated_at, expires_at, '
+      'customers(name), employees(name)';
 
   @override
   Future<List<Job>> getJobs() async {
@@ -190,4 +226,84 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
 
     return JobModel.fromMap(rows.first as Map<String, dynamic>);
   }
+
+  @override
+  Future<Job> saveWorkDescription({
+    required String jobId,
+    required String workDescription,
+  }) async {
+    // The RPC returns the updated job row (SETOF jobs, exactly one row).
+    // The client sends ONLY the job id and the text — the employee identity
+    // is resolved server-side from auth.uid() and the authoritative save
+    // time is the database's `now()`, never a client value.
+    final List<dynamic> rows = await supabase.rpc(
+      'save_work_description',
+      params: <String, dynamic>{
+        'p_job_id': jobId,
+        'p_work_description': workDescription,
+      },
+    );
+
+    if (rows.isEmpty) {
+      throw StateError('save_work_description returned no row for job: $jobId');
+    }
+
+    return JobModel.fromMap(rows.first as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Job> completeJob(String jobId) async {
+    // The RPC returns the updated job row (SETOF jobs, exactly one row).
+    // The client sends ONLY the job id — the server resolves the caller,
+    // re-validates every completion condition and generates `completed_at`
+    // and the `job_completed` event itself. No identity, no timestamp, no
+    // `has_*` flag ever travels with the request.
+    try {
+      final List<dynamic> rows = await supabase.rpc(
+        'complete_job',
+        params: <String, dynamic>{'p_job_id': jobId},
+      );
+
+      if (rows.isEmpty) {
+        throw StateError('complete_job returned no row for job: $jobId');
+      }
+
+      return JobModel.fromMap(rows.first as Map<String, dynamic>);
+    } on PostgrestException catch (error) {
+      // Map the RPC's stable error codes onto the typed domain refusal so
+      // the UI can explain WHY the completion was rejected.
+      throw JobCompletionRejectedException(
+        reason: _completionRejectReason(error.code),
+        serverMessage: error.message,
+      );
+    }
+  }
+
+  /// Maps `complete_job` error codes (see `complete_job_setup.sql`) onto
+  /// [CompletionRejectReason]. Unknown codes stay [unknown] — a refusal is
+  /// never silently treated as success.
+  static CompletionRejectReason _completionRejectReason(String? code) {
+    return switch (code) {
+      _sqlMissingBeforePhoto => CompletionRejectReason.missingBeforePhoto,
+      _sqlMissingWorkDescription =>
+        CompletionRejectReason.missingWorkDescription,
+      _sqlMissingAfterPhoto => CompletionRejectReason.missingAfterPhoto,
+      _sqlMissingSignature => CompletionRejectReason.missingSignature,
+      _sqlNotAssigned => CompletionRejectReason.notAssigned,
+      _sqlInvalidStatus => CompletionRejectReason.invalidStatus,
+      _sqlUnauthorizedRole => CompletionRejectReason.unauthorized,
+      // No auth session / no active employee — also "not authorized".
+      '28000' => CompletionRejectReason.unauthorized,
+      _ => CompletionRejectReason.unknown,
+    };
+  }
+
+  // The RPC's refusal codes — one place, mirrored from the SQL migration.
+  static const String _sqlMissingBeforePhoto = 'F0001';
+  static const String _sqlMissingWorkDescription = 'F0002';
+  static const String _sqlMissingAfterPhoto = 'F0003';
+  static const String _sqlMissingSignature = 'F0004';
+  static const String _sqlNotAssigned = 'F0005';
+  static const String _sqlInvalidStatus = 'F0006';
+  static const String _sqlUnauthorizedRole = 'F0007';
 }

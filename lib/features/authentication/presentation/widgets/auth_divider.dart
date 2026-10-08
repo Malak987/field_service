@@ -4,10 +4,7 @@ import 'package:flutter/material.dart';
 
 /// Horizontal separator with an optional centered label.
 class AuthDivider extends StatelessWidget {
-  const AuthDivider({
-    this.label,
-    super.key,
-  });
+  const AuthDivider({this.label, super.key});
 
   final String? label;
 
@@ -29,10 +26,7 @@ class AuthDivider extends StatelessWidget {
             padding: const EdgeInsetsDirectional.symmetric(
               horizontal: AppSpacing.md,
             ),
-            child: Text(
-              label!,
-              style: context.textStyles.bodySmall,
-            ),
+            child: Text(label!, style: context.textStyles.bodySmall),
           ),
           const Expanded(child: Divider()),
         ],

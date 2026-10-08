@@ -9,6 +9,12 @@ import 'package:field_service/features/authentication/presentation/pages/login_p
 import 'package:field_service/features/customers/data/datasources/customers_local_data_source.dart';
 import 'package:field_service/features/customers/data/models/customer_model.dart';
 import 'package:field_service/features/customers/domain/entities/customer_sync_status.dart';
+import 'package:field_service/features/customers/domain/entities/customer.dart';
+import 'package:field_service/features/customers/domain/usecases/get_customers.dart';
+import 'package:field_service/features/customers/domain/usecases/refresh_customers.dart';
+import 'package:field_service/features/employees/domain/usecases/get_active_technicians.dart';
+import 'package:field_service/features/jobs/domain/usecases/create_job.dart';
+import 'package:field_service/features/jobs/presentation/cubit/create_job_cubit.dart';
 import 'package:field_service/features/employees/domain/entities/employee.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -64,6 +70,44 @@ Job _job({
     updatedAt: DateTime.utc(2026, 9, 1),
     expiresAt: DateTime.utc(2026, 12, 1),
   );
+}
+
+/// Cubit-level fakes for the fresh-device regression below: the point is
+/// ONLY whether `loadOptions` nudges the EXISTING customer refresh — no
+/// widget tree, connectivity or timers are involved.
+class _SpyRefreshCustomers implements RefreshCustomers {
+  int calls = 0;
+
+  @override
+  Future<void> call() async {
+    calls++;
+  }
+}
+
+class _CustomerStream implements GetCustomers {
+  _CustomerStream(this.customers);
+
+  final List<Customer> customers;
+
+  @override
+  Stream<List<Customer>> call() => Stream<List<Customer>>.value(customers);
+}
+
+class _StubTechnicians implements GetActiveTechnicians {
+  @override
+  Future<List<Employee>> call() async => const <Employee>[];
+}
+
+class _UnusedCreateJob implements CreateJob {
+  @override
+  Future<Job> call({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) {
+    throw UnimplementedError('This test never submits a job.');
+  }
 }
 
 void main() {
@@ -158,6 +202,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(CreateJobPage), findsNothing);
     expect(find.byType(TechnicianHomePage), findsOneWidget);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Fresh-device regression: the customer selector must not stay empty
+  // ---------------------------------------------------------------------------
+
+  // The customer dropdown streams the LOCAL mirror (offline-first rule). On
+  // a device whose mirror is still empty — fresh install or cleared app
+  // data — nothing filled it, because Create Job only LISTENED to the
+  // mirror and never nudged the remote pull (only the Customers page did).
+  // The fix: `loadOptions` triggers the EXISTING [RefreshCustomers]; the
+  // pull merges backend rows into the mirror and the already-subscribed
+  // stream delivers them to the dropdown. Offline the pull is a safe no-op
+  // and the mirror stays the answer — that gate lives in the repository.
+  test(
+    'CreateJobCubit.loadOptions nudges the existing customer refresh',
+    () async {
+      final _SpyRefreshCustomers refresh = _SpyRefreshCustomers();
+      final CreateJobCubit cubit = CreateJobCubit(
+        getCustomers: _CustomerStream(const <Customer>[]),
+        getActiveTechnicians: _StubTechnicians(),
+        createJob: _UnusedCreateJob(),
+        refreshCustomers: refresh,
+      );
+
+      await cubit.loadOptions();
+      // The refresh is fired immediately (unawaited); let it land.
+      await Future<void>.delayed(Duration.zero);
+
+      expect(refresh.calls, 1);
+      await cubit.close();
+    },
+  );
+
+  test('customers arriving on the local stream reach the form state', () async {
+    final Customer remote = Customer(
+      id: 'remote-cust-1',
+      name: 'Remote Customer',
+      address: '1 Backend Street',
+      createdAt: DateTime.utc(2026, 1, 1),
+      updatedAt: DateTime.utc(2026, 1, 1),
+      syncStatus: CustomerSyncStatus.synced,
+    );
+    final CreateJobCubit cubit = CreateJobCubit(
+      getCustomers: _CustomerStream(<Customer>[remote]),
+      getActiveTechnicians: _StubTechnicians(),
+      createJob: _UnusedCreateJob(),
+      refreshCustomers: _SpyRefreshCustomers(),
+    );
+
+    await cubit.loadOptions();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cubit.state.customers, <Customer>[remote]);
+    await cubit.close();
   });
 
   // ---------------------------------------------------------------------------
@@ -481,9 +580,7 @@ void main() {
   // Checklist 5+fallback: the selector displays `employees.name` exactly as
   // stored; an unexpectedly nameless row falls back to its employee code —
   // never an invented placeholder like "Technician 1".
-  testWidgets('technician selector shows real employee names', (
-    tester,
-  ) async {
+  testWidgets('technician selector shows real employee names', (tester) async {
     await tallSurface(tester);
     await app.configure(
       user: adminUser,
@@ -529,8 +626,9 @@ void main() {
     final RegExp placeholder = RegExp(r'Technician\s+\d|Technician\s+\$\{');
     final List<String> offenders = <String>[];
 
-    for (final FileSystemEntity entity
-        in Directory('lib').listSync(recursive: true)) {
+    for (final FileSystemEntity entity in Directory(
+      'lib',
+    ).listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) {
         continue;
       }
@@ -543,7 +641,8 @@ void main() {
     expect(
       offenders,
       isEmpty,
-      reason: 'technician names must come from public.employees.name, '
+      reason:
+          'technician names must come from public.employees.name, '
           'never from hardcoded placeholders',
     );
   });
@@ -606,29 +705,28 @@ void main() {
   // Role switching (checklist 29/30)
   // ---------------------------------------------------------------------------
 
-  testWidgets(
-    'role switch swaps the Create Job capability with the session',
-    (tester) async {
-      await app.configure(user: adminUser);
-      await app.pump(tester);
-      await openJobs(tester);
-      expect(find.byKey(const Key('create_job_fab')), findsOneWidget);
+  testWidgets('role switch swaps the Create Job capability with the session', (
+    tester,
+  ) async {
+    await app.configure(user: adminUser);
+    await app.pump(tester);
+    await openJobs(tester);
+    expect(find.byKey(const Key('create_job_fab')), findsOneWidget);
 
-      // Admin → technician: Create Job disappears, Customers stays gone.
-      await signOut(tester);
-      await signInAs(tester, technicianUser);
-      expect(find.byType(TechnicianHomePage), findsOneWidget);
-      expect(find.byKey(const Key('nav_customers')), findsNothing);
-      await openJobs(tester);
-      expect(find.byKey(const Key('create_job_fab')), findsNothing);
+    // Admin → technician: Create Job disappears, Customers stays gone.
+    await signOut(tester);
+    await signInAs(tester, technicianUser);
+    expect(find.byType(TechnicianHomePage), findsOneWidget);
+    expect(find.byKey(const Key('nav_customers')), findsNothing);
+    await openJobs(tester);
+    expect(find.byKey(const Key('create_job_fab')), findsNothing);
 
-      // Technician → admin: Create Job and Customers come back.
-      await signOut(tester);
-      await signInAs(tester, adminUser);
-      expect(find.byType(AdminHomePage), findsOneWidget);
-      expect(find.byKey(const Key('nav_customers')), findsOneWidget);
-      await openJobs(tester);
-      expect(find.byKey(const Key('create_job_fab')), findsOneWidget);
-    },
-  );
+    // Technician → admin: Create Job and Customers come back.
+    await signOut(tester);
+    await signInAs(tester, adminUser);
+    expect(find.byType(AdminHomePage), findsOneWidget);
+    expect(find.byKey(const Key('nav_customers')), findsOneWidget);
+    await openJobs(tester);
+    expect(find.byKey(const Key('create_job_fab')), findsOneWidget);
+  });
 }

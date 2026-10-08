@@ -90,8 +90,7 @@ class CreateJobState extends Equatable {
       isSubmitting: isSubmitting ?? this.isSubmitting,
       createdJob: createdJob ?? this.createdJob,
       error: clearError ? null : (error ?? this.error),
-      showValidationErrors:
-          showValidationErrors ?? this.showValidationErrors,
+      showValidationErrors: showValidationErrors ?? this.showValidationErrors,
     );
   }
 

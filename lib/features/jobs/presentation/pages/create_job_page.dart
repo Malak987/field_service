@@ -51,8 +51,9 @@ class _CreateJobForm extends StatelessWidget {
           if (state.createdJob != null) {
             // Capture l10n + messenger before the async gap of pop().
             final AppLocalizations l10n = context.l10n;
-            final ScaffoldMessengerState messenger =
-                ScaffoldMessenger.of(context);
+            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(
+              context,
+            );
             messenger.showSnackBar(
               SnackBar(content: Text(l10n.createJobSuccessMessage)),
             );
@@ -90,8 +91,8 @@ class _CreateJobForm extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: l10n.selectCustomerLabel,
                       border: const OutlineInputBorder(),
-                      errorText: state.showValidationErrors &&
-                              !state.hasCustomer
+                      errorText:
+                          state.showValidationErrors && !state.hasCustomer
                           ? l10n.validationRequiredField
                           : null,
                     ),
@@ -114,8 +115,8 @@ class _CreateJobForm extends StatelessWidget {
                     decoration: InputDecoration(
                       labelText: l10n.jobTypeLabel,
                       border: const OutlineInputBorder(),
-                      errorText: state.showValidationErrors &&
-                              !state.hasCategory
+                      errorText:
+                          state.showValidationErrors && !state.hasCategory
                           ? l10n.validationRequiredField
                           : null,
                     ),
@@ -163,8 +164,8 @@ class _CreateJobForm extends StatelessWidget {
                       decoration: InputDecoration(
                         labelText: l10n.selectTechnicianLabel,
                         border: const OutlineInputBorder(),
-                        errorText: state.showValidationErrors &&
-                                !state.hasTechnician
+                        errorText:
+                            state.showValidationErrors && !state.hasTechnician
                             ? l10n.validationRequiredField
                             : null,
                       ),

@@ -44,10 +44,7 @@ abstract final class AppSpacing {
 
   /// Compact page padding on narrow mobile screens (`16px` horizontal, `24px` vertical).
   static const EdgeInsetsDirectional pagePaddingCompact =
-      EdgeInsetsDirectional.symmetric(
-        horizontal: lg,
-        vertical: xxl,
-      );
+      EdgeInsetsDirectional.symmetric(horizontal: lg, vertical: xxl);
 
   /// Inner padding of the authentication form container (`24px` all around).
   static const EdgeInsetsDirectional formContainerPadding =
@@ -59,22 +56,13 @@ abstract final class AppSpacing {
 
   /// Standard text input content padding (`16px` start/end, `14px` top/bottom).
   static const EdgeInsetsDirectional inputContentPadding =
-      EdgeInsetsDirectional.symmetric(
-        horizontal: lg,
-        vertical: 14,
-      );
+      EdgeInsetsDirectional.symmetric(horizontal: lg, vertical: 14);
 
   /// Standard alert banner padding (`16px` horizontal, `12px` vertical).
   static const EdgeInsetsDirectional bannerPadding =
-      EdgeInsetsDirectional.symmetric(
-        horizontal: lg,
-        vertical: md,
-      );
+      EdgeInsetsDirectional.symmetric(horizontal: lg, vertical: md);
 
   /// Button internal horizontal padding.
   static const EdgeInsetsDirectional buttonPadding =
-      EdgeInsetsDirectional.symmetric(
-        horizontal: xxl,
-        vertical: md,
-      );
+      EdgeInsetsDirectional.symmetric(horizontal: xxl, vertical: md);
 }

@@ -131,7 +131,9 @@ void main() {
       expect(find.text('Kitchen Renovation'), findsWidgets);
       expect(find.text('Fix the sink.'), findsOneWidget);
       // Customer section — exactly this job's customer.
-      expect(find.text('Alice Customer'), findsOneWidget);
+      // The customer name is intentionally shown twice: in the header
+      // and in the customer card.
+      expect(find.text('Alice Customer'), findsNWidgets(2));
       expect(find.text('+20 100 111 2222'), findsOneWidget);
       expect(find.text('10 Test Street'), findsOneWidget);
       expect(find.text('Sohag'), findsOneWidget);
@@ -140,29 +142,28 @@ void main() {
   );
 
   // Test 3 — another technician's job: no data, error surface only.
-  _testJobDetails(
-    'technician opening another technician\'s job gets no data',
-    (tester) async {
-      await app.configure(
-        user: technicianUser,
-        jobs: <Job>[myJob()],
-        jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
-      );
-      await app.pump(tester);
-      await tester.tap(find.text('View Jobs'));
-      await tester.pumpAndSettle();
+  _testJobDetails('technician opening another technician\'s job gets no data', (
+    tester,
+  ) async {
+    await app.configure(
+      user: technicianUser,
+      jobs: <Job>[myJob()],
+      jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
+    );
+    await app.pump(tester);
+    await tester.tap(find.text('View Jobs'));
+    await tester.pumpAndSettle();
 
-      app.router.go('/jobs/${otherJob().id}');
-      await tester.pumpAndSettle();
+    app.router.go('/jobs/${otherJob().id}');
+    await tester.pumpAndSettle();
 
-      expect(find.byType(JobDetailsPage), findsOneWidget);
-      expect(find.byType(JobsErrorState), findsOneWidget);
-      expect(find.text('#102'), findsNothing);
-      expect(find.text('Fix the sink.'), findsNothing);
-      expect(find.text('Alice Customer'), findsNothing);
-      expect(find.text('Job Information'), findsNothing);
-    },
-  );
+    expect(find.byType(JobDetailsPage), findsOneWidget);
+    expect(find.byType(JobsErrorState), findsOneWidget);
+    expect(find.text('#102'), findsNothing);
+    expect(find.text('Fix the sink.'), findsNothing);
+    expect(find.text('Alice Customer'), findsNothing);
+    expect(find.text('Job Information'), findsNothing);
+  });
 
   // Test 4 — customer data is reachable ONLY through the assigned job;
   // neither the cached admin mirror nor an arbitrary customer id helps.
@@ -185,7 +186,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('#101'));
       await tester.pumpAndSettle();
-      expect(find.text('Alice Customer'), findsOneWidget);
+      // The customer name is intentionally shown twice: in the header
+      // and in the customer card.
+      expect(find.text('Alice Customer'), findsNWidgets(2));
       expect(find.text('Bob Customer'), findsNothing);
 
       // Direct customer-by-id URLs stay refused (phase-1 guard intact).
@@ -221,7 +224,10 @@ void main() {
     await _tallSurface(tester);
     await app.configure(
       user: adminUser,
-      jobs: <Job>[myJob(customerName: 'Alice Customer'), otherJob()],
+      jobs: <Job>[
+        myJob(customerName: 'Alice Customer'),
+        otherJob(),
+      ],
       jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
     );
     await app.pump(tester);
@@ -235,80 +241,83 @@ void main() {
 
     expect(find.byType(JobDetailsPage), findsOneWidget);
     expect(find.text('Job Information'), findsOneWidget);
-    expect(find.text('Alice Customer'), findsOneWidget);
+    // The customer name is intentionally shown twice: in the header
+    // and in the customer card.
+    expect(find.text('Alice Customer'), findsNWidgets(2));
     expect(find.text('+20 100 111 2222'), findsOneWidget);
     expect(find.text('82511'), findsOneWidget);
   });
 
   // Test 7 — job details never expose the global customers surface.
-  _testJobDetails(
-    'technician job details expose no global customers list',
-    (tester) async {
-      await _tallSurface(tester);
-      await app.configure(
-        user: technicianUser,
-        withCustomers: true,
-        jobs: <Job>[myJob()],
-        jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
-      );
-      await seedAdminCustomerCache();
-      await app.pump(tester);
-      await tester.tap(find.text('View Jobs'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('#101'));
-      await tester.pumpAndSettle();
+  _testJobDetails('technician job details expose no global customers list', (
+    tester,
+  ) async {
+    await _tallSurface(tester);
+    await app.configure(
+      user: technicianUser,
+      withCustomers: true,
+      jobs: <Job>[myJob()],
+      jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
+    );
+    await seedAdminCustomerCache();
+    await app.pump(tester);
+    await tester.tap(find.text('View Jobs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('#101'));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(JobDetailsPage), findsOneWidget);
-      expect(find.text('Alice Customer'), findsOneWidget);
-      // No list, no search, no customer-management actions of any kind.
-      expect(find.byType(CustomersPage), findsNothing);
-      expect(find.byType(CustomerSearchField), findsNothing);
-      expect(find.byKey(const Key('add_customer_fab')), findsNothing);
-      expect(find.byKey(const Key('edit_customer_button')), findsNothing);
-      expect(find.byKey(const Key('delete_customer_button')), findsNothing);
-      expect(find.text('Bob Customer'), findsNothing);
-    },
-  );
+    expect(find.byType(JobDetailsPage), findsOneWidget);
+    // The customer name is intentionally shown twice: in the header
+    // and in the customer card.
+    expect(find.text('Alice Customer'), findsNWidgets(2));
+    // No list, no search, no customer-management actions of any kind.
+    expect(find.byType(CustomersPage), findsNothing);
+    expect(find.byType(CustomerSearchField), findsNothing);
+    expect(find.byKey(const Key('add_customer_fab')), findsNothing);
+    expect(find.byKey(const Key('edit_customer_button')), findsNothing);
+    expect(find.byKey(const Key('delete_customer_button')), findsNothing);
+    expect(find.text('Bob Customer'), findsNothing);
+  });
 
   // Test 8 — offline: job details degrade to the error state and leak
   // nothing from the cached admin customers mirror.
-  _testJobDetails(
-    'offline job details expose no unrelated cached customers',
-    (tester) async {
-      await app.configure(
-        user: technicianUser,
-        withCustomers: true,
-        jobs: <Job>[myJob()],
-        jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
-        jobsOffline: true,
-      );
-      await seedAdminCustomerCache();
-      await app.pump(tester);
+  _testJobDetails('offline job details expose no unrelated cached customers', (
+    tester,
+  ) async {
+    await app.configure(
+      user: technicianUser,
+      withCustomers: true,
+      jobs: <Job>[myJob()],
+      jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
+      jobsOffline: true,
+    );
+    await seedAdminCustomerCache();
+    await app.pump(tester);
 
-      // The list cannot load while offline...
-      await tester.tap(find.text('View Jobs'));
-      await tester.pumpAndSettle();
-      expect(find.byType(JobsErrorState), findsOneWidget);
-      expect(find.text('#101'), findsNothing);
+    // The list cannot load while offline...
+    await tester.tap(find.text('View Jobs'));
+    await tester.pumpAndSettle();
+    expect(find.byType(JobsErrorState), findsOneWidget);
+    expect(find.text('#101'), findsNothing);
 
-      // ...and a direct details URL shows the error surface with zero
-      // customer data, even though admin rows sit in the Drift cache.
-      app.router.go('/jobs/job-mine');
-      await tester.pumpAndSettle();
-      expect(find.byType(JobDetailsPage), findsOneWidget);
-      expect(find.byType(JobsErrorState), findsOneWidget);
-      expect(find.text('Alice Customer'), findsNothing);
-      expect(find.text('Bob Customer'), findsNothing);
-      expect(find.text('Job Information'), findsNothing);
-    },
-  );
+    // ...and a direct details URL shows the error surface with zero
+    // customer data, even though admin rows sit in the Drift cache.
+    app.router.go('/jobs/job-mine');
+    await tester.pumpAndSettle();
+    expect(find.byType(JobDetailsPage), findsOneWidget);
+    expect(find.byType(JobsErrorState), findsOneWidget);
+    expect(find.text('Alice Customer'), findsNothing);
+    expect(find.text('Bob Customer'), findsNothing);
+    expect(find.text('Job Information'), findsNothing);
+  });
 }
 
-/// Tall surface: Job Details now stacks header + Start Job + Job Information
-/// + Customer; on the default 800x600 canvas the customer card would sit
-/// below the fold and default (onstage) finders skip offstage content.
+/// Tall surface: Job Details stacks header + numbered workflow step cards
+/// + Job Information + Customer Request + Customer; on the default 800x600
+/// canvas the lower cards would sit below the fold and default (onstage)
+/// finders skip offstage content.
 Future<void> _tallSurface(WidgetTester tester) async {
-  await tester.binding.setSurfaceSize(const Size(1000, 1100));
+  await tester.binding.setSurfaceSize(const Size(1000, 1700));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 }
 

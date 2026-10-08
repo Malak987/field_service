@@ -176,10 +176,7 @@ abstract final class AuthenticationErrorMapper {
   }
 
   /// Resolves the localized user-facing message for [code] using [l10n].
-  static String localizeCode(
-    AuthErrorCode code,
-    AppLocalizations l10n,
-  ) {
+  static String localizeCode(AuthErrorCode code, AppLocalizations l10n) {
     switch (code) {
       case AuthErrorCode.invalidCredentials:
         return l10n.errorInvalidCredentials;

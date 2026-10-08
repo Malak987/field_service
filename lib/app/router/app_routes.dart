@@ -32,6 +32,10 @@ abstract final class AppRoutes {
   /// Technician area.
   static const String technician = '/technician';
 
+  /// Employee account screen (identity, language, sign-out) — available to
+  /// both roles; the router refuses it for unauthenticated visitors.
+  static const String account = '/account';
+
   /// Jobs list.
   static const String jobs = '/jobs';
 

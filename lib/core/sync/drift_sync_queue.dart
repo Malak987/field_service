@@ -55,15 +55,15 @@ class DriftSyncQueue implements SyncQueue {
   Future<SyncOperation?> nextPending() async {
     final $SyncQueueTableTable t = _table;
 
-    final List<SyncQueueEntry> candidates = await (
-      _db.select(t)
-        ..where((t) => t.status.equals(SyncOperationStatus.pending.name))
-        ..orderBy(<OrderingTerm Function($SyncQueueTableTable)>[
-          (t) => OrderingTerm.asc(t.createdAt),
-          (t) => OrderingTerm.asc(t.id),
-        ])
-        ..limit(_maxScan)
-    ).get();
+    final List<SyncQueueEntry> candidates =
+        await (_db.select(t)
+              ..where((t) => t.status.equals(SyncOperationStatus.pending.name))
+              ..orderBy(<OrderingTerm Function($SyncQueueTableTable)>[
+                (t) => OrderingTerm.asc(t.createdAt),
+                (t) => OrderingTerm.asc(t.id),
+              ])
+              ..limit(_maxScan))
+            .get();
 
     for (final SyncQueueEntry entry in candidates) {
       final SyncOperation? operation = _safeToOperation(entry);
@@ -73,9 +73,9 @@ class DriftSyncQueue implements SyncQueue {
 
       final String? dependsOn = entry.dependsOn;
       if (dependsOn != null) {
-        final SyncQueueEntry? parent = await (
-          _db.select(t)..where((t) => t.id.equals(dependsOn))
-        ).getSingleOrNull();
+        final SyncQueueEntry? parent = await (_db.select(
+          t,
+        )..where((t) => t.id.equals(dependsOn))).getSingleOrNull();
 
         if (parent == null ||
             parent.status != SyncOperationStatus.synced.name) {
@@ -107,12 +107,14 @@ class DriftSyncQueue implements SyncQueue {
   Future<List<SyncOperation>> recentFailures({int limit = 20}) async {
     final $SyncQueueTableTable t = _table;
 
-    final List<SyncQueueEntry> entries = await (
-      _db.select(t)
-        ..where((t) => t.status.equals(SyncOperationStatus.failed.name))
-        ..orderBy(<OrderingTerm Function($SyncQueueTableTable)>[(t) => OrderingTerm.desc(t.updatedAt)])
-        ..limit(limit)
-    ).get();
+    final List<SyncQueueEntry> entries =
+        await (_db.select(t)
+              ..where((t) => t.status.equals(SyncOperationStatus.failed.name))
+              ..orderBy(<OrderingTerm Function($SyncQueueTableTable)>[
+                (t) => OrderingTerm.desc(t.updatedAt),
+              ])
+              ..limit(limit))
+            .get();
 
     return entries
         .map(_safeToOperation)
@@ -127,19 +129,19 @@ class DriftSyncQueue implements SyncQueue {
 
     // Conditional write: only the caller that finds the row still `pending`
     // flips it, so exactly one concurrent run can win the claim.
-    final int affected = await (
-      _db.update(t)
-        ..where(
-          (t) => t.id.equals(operationId) &
-              t.status.equals(SyncOperationStatus.pending.name),
-        )
-    ).write(
-      SyncQueueTableCompanion(
-        status: Value(SyncOperationStatus.inProgress.name),
-        lastAttemptAt: Value(_now()),
-        updatedAt: Value(_now()),
-      ),
-    );
+    final int affected =
+        await (_db.update(t)..where(
+              (t) =>
+                  t.id.equals(operationId) &
+                  t.status.equals(SyncOperationStatus.pending.name),
+            ))
+            .write(
+              SyncQueueTableCompanion(
+                status: Value(SyncOperationStatus.inProgress.name),
+                lastAttemptAt: Value(_now()),
+                updatedAt: Value(_now()),
+              ),
+            );
 
     return affected > 0;
   }
@@ -148,33 +150,33 @@ class DriftSyncQueue implements SyncQueue {
   Future<void> releaseInFlight(String operationId) async {
     final $SyncQueueTableTable t = _table;
 
-    await (
-      _db.update(t)
-        ..where(
-          (t) => t.id.equals(operationId) &
+    await (_db.update(t)..where(
+          (t) =>
+              t.id.equals(operationId) &
               t.status.equals(SyncOperationStatus.inProgress.name),
-        )
-    ).write(
-      SyncQueueTableCompanion(
-        status: Value(SyncOperationStatus.pending.name),
-        updatedAt: Value(_now()),
-      ),
-    );
+        ))
+        .write(
+          SyncQueueTableCompanion(
+            status: Value(SyncOperationStatus.pending.name),
+            updatedAt: Value(_now()),
+          ),
+        );
   }
 
   @override
   Future<int> recoverInFlight() async {
     final $SyncQueueTableTable t = _table;
 
-    final int recovered = await (
-      _db.update(t)
-        ..where((t) => t.status.equals(SyncOperationStatus.inProgress.name))
-    ).write(
-      SyncQueueTableCompanion(
-        status: Value(SyncOperationStatus.pending.name),
-        updatedAt: Value(_now()),
-      ),
-    );
+    final int recovered =
+        await (_db.update(t)..where(
+              (t) => t.status.equals(SyncOperationStatus.inProgress.name),
+            ))
+            .write(
+              SyncQueueTableCompanion(
+                status: Value(SyncOperationStatus.pending.name),
+                updatedAt: Value(_now()),
+              ),
+            );
 
     return recovered;
   }
@@ -183,10 +185,9 @@ class DriftSyncQueue implements SyncQueue {
   Future<void> requeueFailed() async {
     final $SyncQueueTableTable t = _table;
 
-    await (
-      _db.update(t)
-        ..where((t) => t.status.equals(SyncOperationStatus.failed.name))
-    ).write(
+    await (_db.update(
+      t,
+    )..where((t) => t.status.equals(SyncOperationStatus.failed.name))).write(
       SyncQueueTableCompanion(
         status: Value(SyncOperationStatus.pending.name),
         updatedAt: Value(_now()),
@@ -213,9 +214,9 @@ class DriftSyncQueue implements SyncQueue {
   }) async {
     final $SyncQueueTableTable t = _table;
 
-    final SyncQueueEntry? entry = await (
-      _db.select(t)..where((t) => t.id.equals(operationId))
-    ).getSingleOrNull();
+    final SyncQueueEntry? entry = await (_db.select(
+      t,
+    )..where((t) => t.id.equals(operationId))).getSingleOrNull();
 
     // Defensive: the row should exist (we claimed it), but a missing row must
     // never throw out of the sync loop.
@@ -241,18 +242,17 @@ class DriftSyncQueue implements SyncQueue {
   Future<Set<String>> unfinishedEntityIds(SyncEntityType type) async {
     final $SyncQueueTableTable t = _table;
 
-    final List<SyncQueueEntry> entries = await (
-      _db.select(t)
-        ..where(
-          (t) =>
-              t.entityType.equals(type.name) &
-              t.status.isIn(<String>[
-                SyncOperationStatus.pending.name,
-                SyncOperationStatus.inProgress.name,
-                SyncOperationStatus.failed.name,
-              ]),
-        )
-    ).get();
+    final List<SyncQueueEntry> entries =
+        await (_db.select(t)..where(
+              (t) =>
+                  t.entityType.equals(type.name) &
+                  t.status.isIn(<String>[
+                    SyncOperationStatus.pending.name,
+                    SyncOperationStatus.inProgress.name,
+                    SyncOperationStatus.failed.name,
+                  ]),
+            ))
+            .get();
 
     return entries.map((SyncQueueEntry e) => e.entityId).toSet();
   }
@@ -261,11 +261,13 @@ class DriftSyncQueue implements SyncQueue {
 
   Future<int> _countByStatus(List<String> statuses) async {
     final List<String> placeholders = List.filled(statuses.length, '?');
-    final QueryRow row = await _db.customSelect(
-      'SELECT COUNT(*) AS c FROM sync_queue '
-      'WHERE status IN (${placeholders.join(', ')})',
-      variables: statuses.map(Variable.new).toList(),
-    ).getSingle();
+    final QueryRow row = await _db
+        .customSelect(
+          'SELECT COUNT(*) AS c FROM sync_queue '
+          'WHERE status IN (${placeholders.join(', ')})',
+          variables: statuses.map(Variable.new).toList(),
+        )
+        .getSingle();
 
     return row.read<int>('c');
   }

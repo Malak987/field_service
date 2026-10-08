@@ -30,9 +30,7 @@ void registerOfflineModule(GetIt sl) {
   );
 
   // --- Sync queue ----------------------------------------------------------
-  sl.registerLazySingleton<SyncQueue>(
-    () => DriftSyncQueue(sl<AppDatabase>()),
-  );
+  sl.registerLazySingleton<SyncQueue>(() => DriftSyncQueue(sl<AppDatabase>()));
 
   // --- Connectivity ----------------------------------------------------------
   // NetworkInfo (interface + reachability probe) is registered by the core

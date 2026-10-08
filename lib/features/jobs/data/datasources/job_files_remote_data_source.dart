@@ -33,11 +33,18 @@ abstract interface class JobFilesRemoteDataSource {
     return 'jobs/$jobId/$fileType/$fileId$extension';
   }
 
-  /// Before photos of [jobId] as registered on the backend.
+  /// Registered files of [jobId] filtered by [fileType] (`before`, `after`,
+  /// …) — the one remote read both photo sections are built on.
   ///
   /// Authorization is enforced by the `job_files` SELECT policy: a caller
   /// who is not the job's assigned active employee (or an active admin)
   /// simply gets zero rows.
+  Future<List<JobFile>> getJobFilesByType(String jobId, String fileType);
+
+  /// Before photos of [jobId] as registered on the backend.
+  ///
+  /// Thin convenience over [getJobFilesByType] kept for the Before Photos
+  /// surface; new call sites use [getJobFilesByType] directly.
   Future<List<JobFile>> getJobBeforePhotos(String jobId);
 
   /// Uploads the photo bytes to Storage at [storagePath] with upsert
@@ -82,15 +89,20 @@ class JobFilesRemoteDataSourceImpl implements JobFilesRemoteDataSource {
   static const int _downloadCacheLimit = 24;
 
   @override
-  Future<List<JobFile>> getJobBeforePhotos(String jobId) async {
+  Future<List<JobFile>> getJobFilesByType(String jobId, String fileType) async {
     final List<Map<String, dynamic>> rows = await supabase
         .from('job_files')
         .select()
         .eq('job_id', jobId)
-        .eq('file_type', 'before')
+        .eq('file_type', fileType)
         .order('captured_at');
 
     return rows.map(JobFileModel.fromRemote).toList();
+  }
+
+  @override
+  Future<List<JobFile>> getJobBeforePhotos(String jobId) {
+    return getJobFilesByType(jobId, 'before');
   }
 
   @override

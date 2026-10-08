@@ -7,6 +7,7 @@ import 'package:field_service/core/sync/sync_manager.dart';
 import 'package:field_service/core/sync/sync_operation.dart';
 import 'package:field_service/core/sync/sync_processor.dart';
 import 'package:field_service/core/sync/sync_queue.dart';
+
 import 'dart:typed_data';
 
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
@@ -103,6 +104,12 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
   }) async => throw UnimplementedError();
 
   @override
+  Future<Job> saveWorkDescription({
+    required String jobId,
+    required String workDescription,
+  }) async => throw UnimplementedError();
+
+  @override
   Future<Job> startJob(String jobId) async {
     startCalls++;
     final Job? job = _jobs[jobId];
@@ -144,6 +151,9 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
     });
     return started;
   }
+
+  @override
+  Future<Job> completeJob(String jobId) async => throw UnimplementedError();
 }
 
 void main() {
@@ -222,48 +232,51 @@ void main() {
     },
   );
 
-  test('queued offline start syncs automatically when connectivity returns', () async {
-    final _ServerLikeJobsRemote remote = await configureSync(
-      online: false,
-      jobs: <String, Job>{
-        'job-mine': _job(
-          id: 'job-mine',
-          number: 101,
-          assignedEmployeeId: 'emp-me',
-        ),
-      },
-    );
+  test(
+    'queued offline start syncs automatically when connectivity returns',
+    () async {
+      final _ServerLikeJobsRemote remote = await configureSync(
+        online: false,
+        jobs: <String, Job>{
+          'job-mine': _job(
+            id: 'job-mine',
+            number: 101,
+            assignedEmployeeId: 'emp-me',
+          ),
+        },
+      );
 
-    // Swap in a switchable network probe BEFORE the connectivity service is
-    // built, then start the real sync engine exactly like `main()` does.
-    final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
-    await sl.unregister<NetworkInfo>();
-    sl.registerSingleton<NetworkInfo>(network);
-    await sl<SyncManager>().start();
+      // Swap in a switchable network probe BEFORE the connectivity service is
+      // built, then start the real sync engine exactly like `main()` does.
+      final _SwitchableNetworkInfo network = _SwitchableNetworkInfo();
+      await sl.unregister<NetworkInfo>();
+      sl.registerSingleton<NetworkInfo>(network);
+      await sl<SyncManager>().start();
 
-    await sl<JobsRepository>().startJob('job-mine');
-    expect(remote.startCalls, 0);
-    expect(await sl<SyncQueue>().pendingCount(), 1);
+      await sl<JobsRepository>().startJob('job-mine');
+      expect(remote.startCalls, 0);
+      expect(await sl<SyncQueue>().pendingCount(), 1);
 
-    // Internet returns: the engine's own connectivity listener must drain
-    // the queue — no manual trigger.
-    network.setOnline(true);
-    await _untilQueueDrained();
+      // Internet returns: the engine's own connectivity listener must drain
+      // the queue — no manual trigger.
+      network.setOnline(true);
+      await _untilQueueDrained();
 
-    expect(await sl<SyncQueue>().pendingCount(), 0);
-    expect(await sl<SyncQueue>().failedCount(), 0);
-    expect(remote.startCalls, 1);
-    expect(remote.events, hasLength(1));
-    expect(remote.events.single['event_type'], 'job_started');
-    expect(remote.events.single['job_id'], 'job-mine');
-    expect(remote.events.single['employee_id'], 'emp-me');
-    expect(remote.events.single['occurred_at'], _serverNow);
-    // Authoritative server timestamp applied by the database, not the client.
-    expect(remote.jobById('job-mine').status.value, JobStatus.inProgress);
-    expect(remote.jobById('job-mine').startedAt, _serverNow);
+      expect(await sl<SyncQueue>().pendingCount(), 0);
+      expect(await sl<SyncQueue>().failedCount(), 0);
+      expect(remote.startCalls, 1);
+      expect(remote.events, hasLength(1));
+      expect(remote.events.single['event_type'], 'job_started');
+      expect(remote.events.single['job_id'], 'job-mine');
+      expect(remote.events.single['employee_id'], 'emp-me');
+      expect(remote.events.single['occurred_at'], _serverNow);
+      // Authoritative server timestamp applied by the database, not the client.
+      expect(remote.jobById('job-mine').status.value, JobStatus.inProgress);
+      expect(remote.jobById('job-mine').startedAt, _serverNow);
 
-    await network.close();
-  });
+      await network.close();
+    },
+  );
 
   test(
     'sync retries are idempotent: one event, started_at never reset',
@@ -408,6 +421,12 @@ void main() {
 /// Start Job tests never touch job files; the files surface must never be
 /// reached (and would need a Supabase client).
 class _UnusedFilesRemote implements JobFilesRemoteDataSource {
+  @override
+  Future<List<JobFile>> getJobFilesByType(
+    String jobId,
+    String fileType,
+  ) async => throw UnimplementedError();
+
   @override
   Future<List<JobFile>> getJobBeforePhotos(String jobId) async =>
       throw UnimplementedError();

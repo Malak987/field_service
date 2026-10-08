@@ -88,10 +88,7 @@ class PasswordRequirements extends StatelessWidget {
 }
 
 class _RequirementRow extends StatelessWidget {
-  const _RequirementRow({
-    required this.label,
-    required this.isMet,
-  });
+  const _RequirementRow({required this.label, required this.isMet});
 
   final String label;
   final bool isMet;

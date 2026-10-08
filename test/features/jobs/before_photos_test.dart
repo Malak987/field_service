@@ -222,9 +222,7 @@ void main() {
   });
 
   // 5 / 19 — completed: existing photos stay visible, capture is gone.
-  testWidgets('completed job shows photos read-only (no Add)', (
-    tester,
-  ) async {
+  testWidgets('completed job shows photos read-only (no Add)', (tester) async {
     await tallSurface(tester);
     await app.configure(
       user: technicianUser,
@@ -279,9 +277,7 @@ void main() {
   });
 
   // 7 — multiple before photos on one job (never limited to one).
-  testWidgets('multiple before photos can be added to one job', (
-    tester,
-  ) async {
+  testWidgets('multiple before photos can be added to one job', (tester) async {
     await tallSurface(tester);
     final List<File> shots = <File>[
       writeTempPhoto(tempDir, 'shot1.jpg'),
@@ -324,7 +320,10 @@ void main() {
 
     expect(app.photoCapturedAt, hasLength(1));
     final DateTime capturedAt = app.photoCapturedAt.single;
-    expect(capturedAt.isBefore(before.subtract(const Duration(minutes: 1))), isFalse);
+    expect(
+      capturedAt.isBefore(before.subtract(const Duration(minutes: 1))),
+      isFalse,
+    );
     expect(capturedAt.isAfter(after.add(const Duration(minutes: 1))), isFalse);
     // The registered file carries the same automatic timestamp.
     expect(app.serverBeforePhotos['job-mine']!.single.capturedAt, capturedAt);

@@ -47,16 +47,17 @@ class _AdminAuthentication implements AuthenticationRepository {
   Future<AppUser?> getCurrentUser() async => _admin;
 
   @override
-  Future<AppUser> signIn({required String email, required String password}) async =>
-      _admin;
+  Future<AppUser> signIn({
+    required String email,
+    required String password,
+  }) async => _admin;
 
   @override
   Future<AppUser?> signUp({
     required String fullName,
     required String email,
     required String password,
-  }) async =>
-      null;
+  }) async => null;
 
   @override
   Future<void> sendPasswordResetEmail({required String email}) async {}

@@ -47,10 +47,7 @@ void main() {
     const JobLabelMapper de = JobLabelMapper(AppLocalizationsDe());
 
     test('maps the two stable values to localized labels (EN)', () {
-      expect(
-        en.jobTypeLabel(JobCategory.homeRenovation),
-        'Home Renovation',
-      );
+      expect(en.jobTypeLabel(JobCategory.homeRenovation), 'Home Renovation');
       expect(
         en.jobTypeLabel(JobCategory.kitchenRenovation),
         'Kitchen Renovation',
@@ -58,10 +55,7 @@ void main() {
     });
 
     test('maps the two stable values to localized labels (DE)', () {
-      expect(
-        de.jobTypeLabel(JobCategory.homeRenovation),
-        'Hausrenovierung',
-      );
+      expect(de.jobTypeLabel(JobCategory.homeRenovation), 'Hausrenovierung');
       expect(
         de.jobTypeLabel(JobCategory.kitchenRenovation),
         'Küchenrenovierung',

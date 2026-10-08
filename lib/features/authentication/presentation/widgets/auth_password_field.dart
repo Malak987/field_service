@@ -61,10 +61,7 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
-        prefixIcon: const Icon(
-          Icons.lock_outline,
-          size: AppDimensions.iconMd,
-        ),
+        prefixIcon: const Icon(Icons.lock_outline, size: AppDimensions.iconMd),
         suffixIcon: IconButton(
           onPressed: widget.enabled ? _toggleVisibility : null,
           tooltip: _obscureText

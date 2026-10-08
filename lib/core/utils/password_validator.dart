@@ -79,10 +79,7 @@ abstract final class PasswordValidator {
   }
 
   /// Validates the password field on the Login screen (presence required).
-  static String? validateLoginPassword(
-    String? value,
-    AppLocalizations l10n,
-  ) {
+  static String? validateLoginPassword(String? value, AppLocalizations l10n) {
     if (value == null || value.isEmpty) {
       return l10n.validationPasswordRequired;
     }
@@ -136,10 +133,7 @@ abstract final class PasswordValidator {
   }
 
   /// Validates an email address field across Login, Register, and Forgot Password.
-  static String? validateEmail(
-    String? value,
-    AppLocalizations l10n,
-  ) {
+  static String? validateEmail(String? value, AppLocalizations l10n) {
     final String trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) {
       return l10n.validationEmailRequired;
@@ -151,10 +145,7 @@ abstract final class PasswordValidator {
   }
 
   /// Validates the employee full name field on the Register screen.
-  static String? validateFullName(
-    String? value,
-    AppLocalizations l10n,
-  ) {
+  static String? validateFullName(String? value, AppLocalizations l10n) {
     final String trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) {
       return l10n.validationFullNameRequired;

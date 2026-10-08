@@ -39,11 +39,7 @@ class AuthLoadingButton extends StatelessWidget {
 
   Widget _buildButton(BuildContext context, {required bool isLoading}) {
     if (!isLoading) {
-      return AuthPrimaryButton(
-        label: label,
-        icon: icon,
-        onPressed: onPressed,
-      );
+      return AuthPrimaryButton(label: label, icon: icon, onPressed: onPressed);
     }
 
     return SizedBox(

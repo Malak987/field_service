@@ -66,6 +66,6 @@ class SyncQueueTable extends Table {
     // Rows are never deleted in this phase, so this can never block
     // legitimate work; it only protects against corrupt references.
     'CONSTRAINT fk_sync_queue_depends_on FOREIGN KEY (depends_on) '
-    'REFERENCES sync_queue (id)',
+        'REFERENCES sync_queue (id)',
   ];
 }

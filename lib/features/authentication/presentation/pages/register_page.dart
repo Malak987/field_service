@@ -76,9 +76,8 @@ class _RegisterPageState extends State<RegisterPage> {
     final AppLocalizations l10n = context.l10n;
 
     return BlocListener<AuthenticationCubit, AuthenticationState>(
-      listenWhen:
-          (AuthenticationState previous, AuthenticationState current) =>
-              previous.status != current.status,
+      listenWhen: (AuthenticationState previous, AuthenticationState current) =>
+          previous.status != current.status,
       listener: (BuildContext context, AuthenticationState state) {
         if (state.status == AuthenticationStatus.authenticated &&
             state.user != null) {
@@ -100,14 +99,15 @@ class _RegisterPageState extends State<RegisterPage> {
             const SizedBox(height: AppSpacing.xxl),
             AuthFormContainer(
               child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                buildWhen: (
-                  AuthenticationState previous,
-                  AuthenticationState current,
-                ) =>
-                    (previous.status ==
-                        AuthenticationStatus.registrationSuccess) !=
-                    (current.status ==
-                        AuthenticationStatus.registrationSuccess),
+                buildWhen:
+                    (
+                      AuthenticationState previous,
+                      AuthenticationState current,
+                    ) =>
+                        (previous.status ==
+                            AuthenticationStatus.registrationSuccess) !=
+                        (current.status ==
+                            AuthenticationStatus.registrationSuccess),
                 builder: (BuildContext context, AuthenticationState state) {
                   if (state.status ==
                       AuthenticationStatus.registrationSuccess) {
@@ -134,40 +134,42 @@ class _RegisterPageState extends State<RegisterPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: <Widget>[
                           BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                            buildWhen: (
-                              AuthenticationState previous,
-                              AuthenticationState current,
-                            ) =>
-                                previous.status != current.status ||
-                                previous.errorCode != current.errorCode ||
-                                previous.message != current.message,
-                            builder: (
-                              BuildContext context,
-                              AuthenticationState errorState,
-                            ) {
-                              if (!errorState.hasError) {
-                                return const SizedBox.shrink();
-                              }
+                            buildWhen:
+                                (
+                                  AuthenticationState previous,
+                                  AuthenticationState current,
+                                ) =>
+                                    previous.status != current.status ||
+                                    previous.errorCode != current.errorCode ||
+                                    previous.message != current.message,
+                            builder:
+                                (
+                                  BuildContext context,
+                                  AuthenticationState errorState,
+                                ) {
+                                  if (!errorState.hasError) {
+                                    return const SizedBox.shrink();
+                                  }
 
-                              final String localizedError =
-                                  AuthenticationErrorMapper.toLocalizedMessage(
-                                    context.l10n,
-                                    code: errorState.errorCode,
-                                    error: errorState.message,
+                                  final String localizedError =
+                                      AuthenticationErrorMapper.toLocalizedMessage(
+                                        context.l10n,
+                                        code: errorState.errorCode,
+                                        error: errorState.message,
+                                      );
+
+                                  return Padding(
+                                    padding: const EdgeInsetsDirectional.only(
+                                      bottom: AppSpacing.lg,
+                                    ),
+                                    child: AuthErrorMessage(
+                                      message: localizedError,
+                                      onDismiss: () => context
+                                          .read<AuthenticationCubit>()
+                                          .clearFeedback(),
+                                    ),
                                   );
-
-                              return Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  bottom: AppSpacing.lg,
-                                ),
-                                child: AuthErrorMessage(
-                                  message: localizedError,
-                                  onDismiss: () => context
-                                      .read<AuthenticationCubit>()
-                                      .clearFeedback(),
-                                ),
-                              );
-                            },
+                                },
                           ),
                           AuthTextField(
                             controller: _fullNameController,
@@ -214,9 +216,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                 ),
                           ),
                           const SizedBox(height: AppSpacing.md),
-                          PasswordRequirements(
-                            controller: _passwordController,
-                          ),
+                          PasswordRequirements(controller: _passwordController),
                           const SizedBox(height: AppSpacing.lg),
                           AuthPasswordField(
                             controller: _confirmPasswordController,
