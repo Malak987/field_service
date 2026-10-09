@@ -16,9 +16,6 @@ extension BuildContextX on BuildContext {
   /// The active [TextTheme].
   TextTheme get textStyles => theme.textTheme;
 
-  /// Whether the active theme is dark.
-  bool get isDarkMode => theme.brightness == Brightness.dark;
-
   /// Current viewport size, without the space taken by the keyboard.
   Size get screenSize => MediaQuery.sizeOf(this);
 }

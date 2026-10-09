@@ -20,6 +20,7 @@ class TestAuthenticationRepository implements AuthenticationRepository {
   AppUser? currentUser;
   int signOutCalls = 0;
   int currentUserCalls = 0;
+  int signInCalls = 0;
   Object? signOutError;
   Future<AppUser?>? pendingLookup;
   Future<AppUser>? pendingSignIn;
@@ -40,6 +41,7 @@ class TestAuthenticationRepository implements AuthenticationRepository {
     required String email,
     required String password,
   }) async {
+    signInCalls++;
     if (pendingSignIn != null) {
       return pendingSignIn!;
     }

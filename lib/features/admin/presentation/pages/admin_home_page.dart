@@ -177,7 +177,6 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
 
     return Card(
       child: Padding(
@@ -189,9 +188,7 @@ class _HeaderCard extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark
-                    ? AppColors.primarySurfaceDark
-                    : AppColors.primarySurfaceLight,
+                color: AppColors.primarySurface,
               ),
               alignment: Alignment.center,
               child: Text(
@@ -229,9 +226,7 @@ class _HeaderCard extends StatelessWidget {
             Icon(
               Icons.admin_panel_settings_outlined,
               size: AppDimensions.iconXl,
-              color: isDark
-                  ? AppColors.goldAccentDarkVariant
-                  : AppColors.goldAccent,
+              color: AppColors.goldAccent,
             ),
           ],
         ),
@@ -372,7 +367,6 @@ class _CategoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
 
     return Card(
       clipBehavior: Clip.antiAlias,
@@ -386,17 +380,13 @@ class _CategoryCard extends StatelessWidget {
                 width: AppDimensions.iconXl,
                 height: AppDimensions.iconXl,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.goldSurfaceDark
-                      : AppColors.goldSurfaceLight,
+                  color: AppColors.goldSurface,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon,
                   size: AppDimensions.iconMd,
-                  color: isDark
-                      ? AppColors.goldAccentDarkVariant
-                      : AppColors.goldDeep,
+                  color: AppColors.goldDeep,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),

@@ -46,16 +46,11 @@ class CustomerSyncStatusChip extends StatelessWidget {
       ),
     };
 
-    final bool isDark = context.isDarkMode;
     final Color background = switch (status) {
-      CustomerSyncStatus.synced =>
-        isDark ? AppColors.successSurfaceDark : AppColors.successSurfaceLight,
-      CustomerSyncStatus.pending =>
-        isDark ? AppColors.warningSurfaceDark : AppColors.warningSurfaceLight,
-      CustomerSyncStatus.inProgress =>
-        isDark ? AppColors.primarySurfaceDark : AppColors.primarySurfaceLight,
-      CustomerSyncStatus.failed =>
-        isDark ? AppColors.errorSurfaceDark : AppColors.errorSurfaceLight,
+      CustomerSyncStatus.synced => AppColors.successSurface,
+      CustomerSyncStatus.pending => AppColors.warningSurface,
+      CustomerSyncStatus.inProgress => AppColors.primarySurface,
+      CustomerSyncStatus.failed => AppColors.errorSurface,
     };
 
     return _SyncBadge(

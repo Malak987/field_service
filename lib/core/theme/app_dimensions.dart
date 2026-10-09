@@ -5,11 +5,12 @@
 abstract final class AppDimensions {
   // --- Controls & Buttons --------------------------------------------------
 
-  /// Standard height of primary and secondary action buttons (`50px`).
-  static const double buttonHeight = 50;
+  /// Standard height of primary and secondary action buttons (`52px`).
+  static const double buttonHeight = 52;
 
-  /// Compact button height (`40px`) for toolbar/header controls.
-  static const double buttonHeightCompact = 40;
+  /// Compact control height (`44px`) for toolbar/header controls — also the
+  /// minimum accessible touch target.
+  static const double buttonHeightCompact = 44;
 
   /// Size of the loading spinner inside a button (`22px`).
   static const double buttonSpinnerSize = 22;
@@ -39,20 +40,18 @@ abstract final class AppDimensions {
   /// Empty-state / error illustration icon size (`48px`).
   static const double iconXl = 48;
 
-  /// Brand logo container size (`68px`).
-  static const double authLogoContainerSize = 68;
-
-  /// Brand logo icon size (`36px`).
-  static const double authLogoIconSize = 36;
+  /// Rendered width of the brand logo on authentication screens (`148px`).
+  /// The asset keeps its own aspect ratio (≈ 0.92 height/width).
+  static const double authLogoWidth = 148;
 
   // --- Responsive Layout Constraints ---------------------------------------
 
-  /// Maximum width of the authentication form card (`440px`).
+  /// Maximum width of the authentication form column (`440px`).
   static const double authFormMaxWidth = 440;
 
   /// Breakpoint below which compact mobile spacing is used (`380px`).
   static const double compactMobileBreakpoint = 380;
 
-  /// Breakpoint above which tablet/desktop card elevation and padding apply (`600px`).
+  /// Breakpoint above which tablet/desktop padding applies (`600px`).
   static const double tabletBreakpoint = 600;
 }

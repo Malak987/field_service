@@ -114,7 +114,6 @@ class _IdentityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
     final AppUser? user = this.user;
 
     return Card(
@@ -128,9 +127,7 @@ class _IdentityCard extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark
-                    ? AppColors.primarySurfaceDark
-                    : AppColors.primarySurfaceLight,
+                color: AppColors.primarySurface,
               ),
               alignment: Alignment.center,
               child: Text(
@@ -168,9 +165,7 @@ class _IdentityCard extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       borderRadius: AppRadius.circular,
-                      color: isDark
-                          ? AppColors.goldSurfaceDark
-                          : AppColors.goldSurfaceLight,
+                      color: AppColors.goldSurface,
                     ),
                     child: Text(
                       user.isAdmin
@@ -178,9 +173,7 @@ class _IdentityCard extends StatelessWidget {
                           : l10n.roleTechnicianLabel,
                       style: context.textStyles.bodySmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: isDark
-                            ? AppColors.goldAccentDarkVariant
-                            : AppColors.goldDeep,
+                        color: AppColors.goldDeep,
                       ),
                     ),
                   ),

@@ -9,7 +9,6 @@ import 'package:field_service/features/authentication/presentation/pages/login_p
 import 'package:field_service/features/authentication/presentation/pages/reset_password_page.dart';
 import 'package:field_service/features/authentication/presentation/utils/authentication_error_mapper.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
-import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_scaffold.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_secondary_button.dart';
 import 'package:field_service/features/technician/presentation/pages/technician_home_page.dart';
@@ -104,28 +103,27 @@ class _AccessDeniedGateView extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
 
     return AuthScaffold(
-      child: AuthFormContainer(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Icon(
-              Icons.gpp_bad_outlined,
-              size: AppDimensions.iconXl,
-              color: Theme.of(context).colorScheme.error,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AuthErrorMessage(message: message),
-            const SizedBox(height: AppSpacing.xl),
-            AuthSecondaryButton(
-              label: l10n.logoutButton,
-              icon: Icons.logout_outlined,
-              onPressed: () {
-                context.read<AuthenticationCubit>().signOut();
-              },
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const SizedBox(height: AppSpacing.huge),
+          Icon(
+            Icons.gpp_bad_outlined,
+            size: AppDimensions.iconXl,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          AuthErrorMessage(message: message),
+          const SizedBox(height: AppSpacing.xl),
+          AuthSecondaryButton(
+            label: l10n.logoutButton,
+            icon: Icons.logout_outlined,
+            onPressed: () {
+              context.read<AuthenticationCubit>().signOut();
+            },
+          ),
+        ],
       ),
     );
   }

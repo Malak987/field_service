@@ -1,3 +1,4 @@
+import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
@@ -6,11 +7,15 @@ import 'package:flutter/material.dart';
 /// Responsive shell shared by all authentication screens (Login, Register,
 /// Forgot Password, Reset Password).
 ///
+/// The canvas is the warm cream brand background; the form column itself is
+/// centred and width-capped so tablet/desktop never stretches the fields.
+///
 /// Features:
 /// * Top bar with optional leading back action and the [LanguageSwitcher].
 /// * `SafeArea` + `LayoutBuilder` + `SingleChildScrollView` + `ConstrainedBox`
 ///   so the layout adapts from compact phones to tablets and Flutter Web
 ///   without overflow when the on-screen keyboard appears.
+/// * Keyboard dismisses on scroll drag.
 class AuthScaffold extends StatelessWidget {
   const AuthScaffold({
     required this.child,
@@ -34,18 +39,18 @@ class AuthScaffold extends StatelessWidget {
             final bool isCompact =
                 viewportConstraints.maxWidth <
                 AppDimensions.compactMobileBreakpoint;
-            final EdgeInsetsDirectional outerPadding = isCompact
-                ? AppSpacing.pagePaddingCompact
-                : AppSpacing.pagePadding;
+            final double horizontalPadding = isCompact
+                ? AppSpacing.lg
+                : AppSpacing.xxl;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 Padding(
-                  padding: EdgeInsetsDirectional.only(
-                    start: isCompact ? AppSpacing.md : AppSpacing.xxl,
-                    end: isCompact ? AppSpacing.md : AppSpacing.xxl,
-                    top: AppSpacing.md,
+                  padding: const EdgeInsetsDirectional.only(
+                    start: AppSpacing.md,
+                    end: AppSpacing.md,
+                    top: AppSpacing.xs,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -54,17 +59,27 @@ class AuthScaffold extends StatelessWidget {
                         IconButton(
                           onPressed: onBackPressed,
                           tooltip: backTooltip,
-                          icon: const Icon(Icons.arrow_back_outlined),
+                          icon: const Icon(
+                            Icons.arrow_back_outlined,
+                            color: AppColors.primary,
+                          ),
                         )
                       else
-                        const SizedBox(width: AppDimensions.iconLg),
+                        const SizedBox(
+                          width: AppDimensions.buttonHeightCompact,
+                        ),
                       if (showLanguageSwitcher) const LanguageSwitcher(),
                     ],
                   ),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: outerPadding,
+                    padding: EdgeInsetsDirectional.only(
+                      start: horizontalPadding,
+                      end: horizontalPadding,
+                      top: AppSpacing.xxl,
+                      bottom: AppSpacing.xxl,
+                    ),
                     keyboardDismissBehavior:
                         ScrollViewKeyboardDismissBehavior.onDrag,
                     child: Center(

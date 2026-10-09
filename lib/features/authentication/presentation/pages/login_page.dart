@@ -9,7 +9,6 @@ import 'package:field_service/features/authentication/presentation/utils/authent
 import 'package:field_service/features/authentication/presentation/widgets/auth_divider.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_footer.dart';
-import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_header.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_loading_button.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_password_field.dart';
@@ -19,6 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+/// Sign-in screen.
+///
+/// Visual hierarchy (fixed brand theme, cream canvas, no enclosing card):
+/// logo → greeting → subtitle → email → password → forgot-password link →
+/// burgundy CTA → switch-to-register footer.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -90,110 +94,97 @@ class _LoginPageState extends State<LoginPage> {
         }
       },
       child: AuthScaffold(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            AuthHeader(title: l10n.loginTitle, subtitle: l10n.loginSubtitle),
-            const SizedBox(height: AppSpacing.xxl),
-            AuthFormContainer(
-              child: Form(
-                key: _formKey,
-                child: AutofillGroup(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen:
-                            (
-                              AuthenticationState previous,
-                              AuthenticationState current,
-                            ) =>
-                                previous.status != current.status ||
-                                previous.errorCode != current.errorCode ||
-                                previous.message != current.message,
-                        builder:
-                            (BuildContext context, AuthenticationState state) {
-                              if (!state.hasError) {
-                                return const SizedBox.shrink();
-                              }
+        child: Form(
+          key: _formKey,
+          child: AutofillGroup(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AuthHeader(
+                  title: l10n.loginWelcomeTitle,
+                  subtitle: l10n.loginWelcomeSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.xxxl),
+                BlocBuilder<AuthenticationCubit, AuthenticationState>(
+                  buildWhen:
+                      (
+                        AuthenticationState previous,
+                        AuthenticationState current,
+                      ) =>
+                          previous.status != current.status ||
+                          previous.errorCode != current.errorCode ||
+                          previous.message != current.message,
+                  builder: (BuildContext context, AuthenticationState state) {
+                    if (!state.hasError) {
+                      return const SizedBox.shrink();
+                    }
 
-                              final String localizedError =
-                                  AuthenticationErrorMapper.toLocalizedMessage(
-                                    context.l10n,
-                                    code: state.errorCode,
-                                    error: state.message,
-                                  );
+                    final String localizedError =
+                        AuthenticationErrorMapper.toLocalizedMessage(
+                          context.l10n,
+                          code: state.errorCode,
+                          error: state.message,
+                        );
 
-                              return Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  bottom: AppSpacing.lg,
-                                ),
-                                child: AuthErrorMessage(
-                                  message: localizedError,
-                                  onDismiss: () => context
-                                      .read<AuthenticationCubit>()
-                                      .clearFeedback(),
-                                ),
-                              );
-                            },
+                    return Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        bottom: AppSpacing.lg,
                       ),
-                      AuthTextField(
-                        controller: _emailController,
-                        label: l10n.emailLabel,
-                        hint: l10n.emailHint,
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const <String>[AutofillHints.email],
-                        validator: (String? value) =>
-                            PasswordValidator.validateEmail(
-                              value,
-                              context.l10n,
-                            ),
+                      child: AuthErrorMessage(
+                        message: localizedError,
+                        onDismiss: () =>
+                            context.read<AuthenticationCubit>().clearFeedback(),
                       ),
-                      const SizedBox(height: AppSpacing.lg),
-                      AuthPasswordField(
-                        controller: _passwordController,
-                        label: l10n.passwordLabel,
-                        hint: l10n.passwordHint,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const <String>[AutofillHints.password],
-                        onFieldSubmitted: (_) => _submit(),
-                        validator: (String? value) =>
-                            PasswordValidator.validateLoginPassword(
-                              value,
-                              context.l10n,
-                            ),
+                    );
+                  },
+                ),
+                AuthTextField(
+                  controller: _emailController,
+                  label: l10n.emailLabel,
+                  hint: l10n.emailHint,
+                  prefixIcon: Icons.mail_outline,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const <String>[AutofillHints.email],
+                  validator: (String? value) =>
+                      PasswordValidator.validateEmail(value, context.l10n),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                AuthPasswordField(
+                  controller: _passwordController,
+                  label: l10n.passwordLabel,
+                  hint: l10n.passwordHint,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const <String>[AutofillHints.password],
+                  onFieldSubmitted: (_) => _submit(),
+                  validator: (String? value) =>
+                      PasswordValidator.validateLoginPassword(
+                        value,
+                        context.l10n,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: TextButton(
-                          onPressed: _navigateToForgotPassword,
-                          child: Text(l10n.forgotPasswordLink),
-                        ),
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AuthLoadingButton(
-                        label: l10n.signInButton,
-                        icon: Icons.login_outlined,
-                        onPressed: _submit,
-                      ),
-                      if (AppConstants.allowSelfRegistration) ...<Widget>[
-                        const AuthDivider(),
-                        AuthFooter(
-                          promptText: l10n.noAccountPrompt,
-                          actionText: l10n.registerLink,
-                          onActionPressed: _navigateToRegister,
-                        ),
-                      ],
-                    ],
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: TextButton(
+                    onPressed: _navigateToForgotPassword,
+                    child: Text(l10n.forgotPasswordLink),
                   ),
                 ),
-              ),
+                const SizedBox(height: AppSpacing.xl),
+                AuthLoadingButton(label: l10n.signInButton, onPressed: _submit),
+                if (AppConstants.allowSelfRegistration) ...<Widget>[
+                  const AuthDivider(),
+                  AuthFooter(
+                    promptText: l10n.noAccountPrompt,
+                    actionText: l10n.registerLink,
+                    onActionPressed: _navigateToRegister,
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

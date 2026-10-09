@@ -507,9 +507,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                   vertical: AppSpacing.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: context.isDarkMode
-                      ? AppColors.successSurfaceDark
-                      : AppColors.successSurfaceLight,
+                  color: AppColors.successSurface,
                   borderRadius: AppRadius.control,
                 ),
                 child: Row(
@@ -583,7 +581,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                   Icons.check_rounded,
                   size: AppDimensions.iconSm,
                   // Crisp glyph on the filled success circle in both modes.
-                  color: AppColors.cardLight,
+                  color: AppColors.surface,
                 )
               : Text(
                   '$step',

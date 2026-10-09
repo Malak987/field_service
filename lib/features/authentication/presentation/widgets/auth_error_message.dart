@@ -7,6 +7,9 @@ import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
 /// Accessible inline error alert banner displayed inside authentication forms.
+///
+/// Quiet but unmistakable: a soft red wash on the white surface with a hairline
+/// red border — no giant red boxes, no dialogs, no raw exceptions.
 class AuthErrorMessage extends StatelessWidget {
   const AuthErrorMessage({required this.message, this.onDismiss, super.key});
 
@@ -15,10 +18,6 @@ class AuthErrorMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = context.isDarkMode;
-    final Color backgroundColor = isDark
-        ? AppColors.errorSurfaceDark
-        : AppColors.errorSurfaceLight;
     final Color foregroundColor = context.colors.error;
 
     return Semantics(
@@ -26,7 +25,7 @@ class AuthErrorMessage extends StatelessWidget {
       child: Container(
         padding: AppSpacing.bannerPadding,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: AppColors.errorSurface,
           borderRadius: AppRadius.bannerDirectional,
           border: Border.all(
             color: foregroundColor.withValues(alpha: 0.35),
@@ -55,6 +54,7 @@ class AuthErrorMessage extends StatelessWidget {
               const SizedBox(width: AppSpacing.xs),
               InkWell(
                 onTap: onDismiss,
+                customBorder: const CircleBorder(),
                 child: Icon(
                   Icons.close,
                   size: AppDimensions.iconSm,

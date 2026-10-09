@@ -1,6 +1,7 @@
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -11,7 +12,6 @@ import 'package:field_service/features/authentication/presentation/utils/authent
 import 'package:field_service/features/authentication/presentation/widgets/auth_divider.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_footer.dart';
-import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_header.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_loading_button.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_password_field.dart';
@@ -24,6 +24,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+/// Employee self-registration screen.
+///
+/// Same visual system as the Login screen — logo, greeting hierarchy, white
+/// inputs on the cream canvas, burgundy CTA — extended by the live password
+/// requirement checklist and the informational role banner.
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -87,201 +92,185 @@ class _RegisterPageState extends State<RegisterPage> {
       child: AuthScaffold(
         onBackPressed: _backToLogin,
         backTooltip: l10n.backToLoginButton,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            AuthHeader(
-              title: l10n.registerTitle,
-              subtitle: l10n.registerSubtitle,
-              icon: Icons.person_add_alt_1_outlined,
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            AuthFormContainer(
-              child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                buildWhen:
-                    (
-                      AuthenticationState previous,
-                      AuthenticationState current,
-                    ) =>
-                        (previous.status ==
-                            AuthenticationStatus.registrationSuccess) !=
-                        (current.status ==
-                            AuthenticationStatus.registrationSuccess),
-                builder: (BuildContext context, AuthenticationState state) {
-                  if (state.status ==
-                      AuthenticationStatus.registrationSuccess) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        AuthSuccessMessage(
-                          message: l10n.successRegistrationPending,
-                        ),
-                        const SizedBox(height: AppSpacing.xl),
-                        AuthSecondaryButton(
-                          label: l10n.backToLoginButton,
-                          icon: Icons.arrow_back_outlined,
-                          onPressed: _backToLogin,
-                        ),
-                      ],
-                    );
-                  }
+        child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
+          buildWhen:
+              (AuthenticationState previous, AuthenticationState current) =>
+                  (previous.status ==
+                      AuthenticationStatus.registrationSuccess) !=
+                  (current.status == AuthenticationStatus.registrationSuccess),
+          builder: (BuildContext context, AuthenticationState state) {
+            if (state.status == AuthenticationStatus.registrationSuccess) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  AuthHeader(
+                    title: l10n.registerTitle,
+                    subtitle: l10n.registerSubtitle,
+                  ),
+                  const SizedBox(height: AppSpacing.xxxl),
+                  AuthSuccessMessage(message: l10n.successRegistrationPending),
+                  const SizedBox(height: AppSpacing.xl),
+                  AuthSecondaryButton(
+                    label: l10n.backToLoginButton,
+                    icon: Icons.arrow_back_outlined,
+                    onPressed: _backToLogin,
+                  ),
+                ],
+              );
+            }
 
-                  return Form(
-                    key: _formKey,
-                    child: AutofillGroup(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                            buildWhen:
-                                (
-                                  AuthenticationState previous,
-                                  AuthenticationState current,
-                                ) =>
-                                    previous.status != current.status ||
-                                    previous.errorCode != current.errorCode ||
-                                    previous.message != current.message,
-                            builder:
-                                (
-                                  BuildContext context,
-                                  AuthenticationState errorState,
-                                ) {
-                                  if (!errorState.hasError) {
-                                    return const SizedBox.shrink();
-                                  }
+            return Form(
+              key: _formKey,
+              child: AutofillGroup(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    AuthHeader(
+                      title: l10n.registerTitle,
+                      subtitle: l10n.registerSubtitle,
+                    ),
+                    const SizedBox(height: AppSpacing.xxxl),
+                    BlocBuilder<AuthenticationCubit, AuthenticationState>(
+                      buildWhen:
+                          (
+                            AuthenticationState previous,
+                            AuthenticationState current,
+                          ) =>
+                              previous.status != current.status ||
+                              previous.errorCode != current.errorCode ||
+                              previous.message != current.message,
+                      builder:
+                          (
+                            BuildContext context,
+                            AuthenticationState errorState,
+                          ) {
+                            if (!errorState.hasError) {
+                              return const SizedBox.shrink();
+                            }
 
-                                  final String localizedError =
-                                      AuthenticationErrorMapper.toLocalizedMessage(
-                                        context.l10n,
-                                        code: errorState.errorCode,
-                                        error: errorState.message,
-                                      );
+                            final String localizedError =
+                                AuthenticationErrorMapper.toLocalizedMessage(
+                                  context.l10n,
+                                  code: errorState.errorCode,
+                                  error: errorState.message,
+                                );
 
-                                  return Padding(
-                                    padding: const EdgeInsetsDirectional.only(
-                                      bottom: AppSpacing.lg,
-                                    ),
-                                    child: AuthErrorMessage(
-                                      message: localizedError,
-                                      onDismiss: () => context
-                                          .read<AuthenticationCubit>()
-                                          .clearFeedback(),
-                                    ),
-                                  );
-                                },
-                          ),
-                          AuthTextField(
-                            controller: _fullNameController,
-                            label: l10n.fullNameLabel,
-                            hint: l10n.fullNameHint,
-                            prefixIcon: Icons.badge_outlined,
-                            keyboardType: TextInputType.name,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const <String>[AutofillHints.name],
-                            validator: (String? value) =>
-                                PasswordValidator.validateFullName(
-                                  value,
-                                  context.l10n,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          AuthTextField(
-                            controller: _emailController,
-                            label: l10n.emailLabel,
-                            hint: l10n.emailHint,
-                            prefixIcon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const <String>[AutofillHints.email],
-                            validator: (String? value) =>
-                                PasswordValidator.validateEmail(
-                                  value,
-                                  context.l10n,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          AuthPasswordField(
-                            controller: _passwordController,
-                            label: l10n.passwordLabel,
-                            hint: l10n.passwordHint,
-                            textInputAction: TextInputAction.next,
-                            autofillHints: const <String>[
-                              AutofillHints.newPassword,
-                            ],
-                            validator: (String? value) =>
-                                PasswordValidator.validateNewPassword(
-                                  value,
-                                  context.l10n,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          PasswordRequirements(controller: _passwordController),
-                          const SizedBox(height: AppSpacing.lg),
-                          AuthPasswordField(
-                            controller: _confirmPasswordController,
-                            label: l10n.confirmPasswordLabel,
-                            hint: l10n.confirmPasswordHint,
-                            textInputAction: TextInputAction.done,
-                            autofillHints: const <String>[
-                              AutofillHints.newPassword,
-                            ],
-                            onFieldSubmitted: (_) => _submit(),
-                            validator: (String? value) =>
-                                PasswordValidator.validateConfirmPassword(
-                                  value,
-                                  _passwordController.text,
-                                  context.l10n,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          Container(
-                            padding: AppSpacing.bannerPadding,
-                            decoration: BoxDecoration(
-                              borderRadius: AppRadius.bannerDirectional,
-                              border: Border.all(
-                                color: context.colors.outlineVariant,
-                                width: AppDimensions.borderWidth,
+                            return Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                bottom: AppSpacing.lg,
                               ),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: <Widget>[
-                                Icon(
-                                  Icons.verified_user_outlined,
-                                  size: AppDimensions.iconMd,
-                                  color: context.colors.primary,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Text(
-                                    l10n.roleNoticeBanner,
-                                    style: context.textStyles.bodySmall,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              child: AuthErrorMessage(
+                                message: localizedError,
+                                onDismiss: () => context
+                                    .read<AuthenticationCubit>()
+                                    .clearFeedback(),
+                              ),
+                            );
+                          },
+                    ),
+                    AuthTextField(
+                      controller: _fullNameController,
+                      label: l10n.fullNameLabel,
+                      hint: l10n.fullNameHint,
+                      prefixIcon: Icons.badge_outlined,
+                      keyboardType: TextInputType.name,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const <String>[AutofillHints.name],
+                      validator: (String? value) =>
+                          PasswordValidator.validateFullName(
+                            value,
+                            context.l10n,
                           ),
-                          const SizedBox(height: AppSpacing.xl),
-                          AuthLoadingButton(
-                            label: l10n.signUpButton,
-                            icon: Icons.person_add_outlined,
-                            onPressed: _submit,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthTextField(
+                      controller: _emailController,
+                      label: l10n.emailLabel,
+                      hint: l10n.emailHint,
+                      prefixIcon: Icons.mail_outline,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const <String>[AutofillHints.email],
+                      validator: (String? value) =>
+                          PasswordValidator.validateEmail(value, context.l10n),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthPasswordField(
+                      controller: _passwordController,
+                      label: l10n.passwordLabel,
+                      hint: l10n.passwordHint,
+                      textInputAction: TextInputAction.next,
+                      autofillHints: const <String>[AutofillHints.newPassword],
+                      validator: (String? value) =>
+                          PasswordValidator.validateNewPassword(
+                            value,
+                            context.l10n,
                           ),
-                          const AuthDivider(),
-                          AuthFooter(
-                            promptText: l10n.alreadyHaveAccountPrompt,
-                            actionText: l10n.loginLink,
-                            onActionPressed: _backToLogin,
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    PasswordRequirements(controller: _passwordController),
+                    const SizedBox(height: AppSpacing.lg),
+                    AuthPasswordField(
+                      controller: _confirmPasswordController,
+                      label: l10n.confirmPasswordLabel,
+                      hint: l10n.confirmPasswordHint,
+                      textInputAction: TextInputAction.done,
+                      autofillHints: const <String>[AutofillHints.newPassword],
+                      onFieldSubmitted: (_) => _submit(),
+                      validator: (String? value) =>
+                          PasswordValidator.validateConfirmPassword(
+                            value,
+                            _passwordController.text,
+                            context.l10n,
+                          ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    Container(
+                      padding: AppSpacing.bannerPadding,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: AppRadius.bannerDirectional,
+                        border: Border.all(
+                          color: AppColors.border,
+                          width: AppDimensions.borderWidth,
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          const Icon(
+                            Icons.verified_user_outlined,
+                            size: AppDimensions.iconMd,
+                            color: AppColors.goldDeep,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              l10n.roleNoticeBanner,
+                              style: context.textStyles.bodySmall,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
+                    const SizedBox(height: AppSpacing.xl),
+                    AuthLoadingButton(
+                      label: l10n.signUpButton,
+                      onPressed: _submit,
+                    ),
+                    const AuthDivider(),
+                    AuthFooter(
+                      promptText: l10n.alreadyHaveAccountPrompt,
+                      actionText: l10n.loginLink,
+                      onActionPressed: _backToLogin,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

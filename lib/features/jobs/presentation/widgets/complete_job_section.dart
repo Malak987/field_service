@@ -85,7 +85,7 @@ class CompleteJobSection extends StatelessWidget {
         Text(
           l10n.completionRequirementsTitle,
           style: context.textStyles.bodyMedium?.copyWith(
-            color: AppColors.textSecondaryLight,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -146,14 +146,14 @@ class CompleteJobSection extends StatelessWidget {
                 // animate forever while uploads are pending.
                 Icons.cloud_upload_rounded,
                 size: AppDimensions.iconMd,
-                color: AppColors.textSecondaryLight,
+                color: AppColors.textSecondary,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l10n.waitingForFileSync,
                   style: context.textStyles.bodyMedium?.copyWith(
-                    color: AppColors.textSecondaryLight,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -210,14 +210,14 @@ class _RequirementLine extends StatelessWidget {
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             size: AppDimensions.iconMd,
-            color: met ? AppColors.success : AppColors.textSecondaryLight,
+            color: met ? AppColors.success : AppColors.textSecondary,
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               label,
               style: context.textStyles.bodyMedium?.copyWith(
-                color: met ? null : AppColors.textSecondaryLight,
+                color: met ? null : AppColors.textSecondary,
               ),
             ),
           ),

@@ -47,26 +47,14 @@ class JobStatusBadge extends StatelessWidget {
   /// background. Shared by the badge itself and the status accent bars on
   /// job cards so every status indicator uses exactly the same colours.
   static (Color, Color) styleFor(BuildContext context, JobStatus status) {
-    final bool isDark = context.isDarkMode;
     final ColorScheme colors = context.colors;
 
     return switch (status.value) {
-      JobStatus.completed => (
-        AppColors.success,
-        isDark ? AppColors.successSurfaceDark : AppColors.successSurfaceLight,
-      ),
-      JobStatus.cancelled => (
-        AppColors.error,
-        isDark ? AppColors.errorSurfaceDark : AppColors.errorSurfaceLight,
-      ),
-      JobStatus.started || JobStatus.inProgress => (
-        AppColors.warning,
-        isDark ? AppColors.warningSurfaceDark : AppColors.warningSurfaceLight,
-      ),
-      JobStatus.assigned => (
-        AppColors.info,
-        isDark ? AppColors.primarySurfaceDark : AppColors.primarySurfaceLight,
-      ),
+      JobStatus.completed => (AppColors.success, AppColors.successSurface),
+      JobStatus.cancelled => (AppColors.error, AppColors.errorSurface),
+      JobStatus.started ||
+      JobStatus.inProgress => (AppColors.warning, AppColors.warningSurface),
+      JobStatus.assigned => (AppColors.info, AppColors.primarySurface),
       // Unknown backend value: neutral, theme-aware colours.
       _ => (colors.onSurfaceVariant, colors.outlineVariant),
     };

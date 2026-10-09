@@ -25,10 +25,6 @@ class PasswordRequirements extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
-    final Color borderColor = isDark
-        ? AppColors.borderDark
-        : AppColors.borderLight;
 
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: controller,
@@ -41,9 +37,10 @@ class PasswordRequirements extends StatelessWidget {
         return Container(
           padding: const EdgeInsetsDirectional.all(AppSpacing.md),
           decoration: BoxDecoration(
+            color: AppColors.surface,
             borderRadius: AppRadius.bannerDirectional,
             border: Border.all(
-              color: borderColor,
+              color: AppColors.border,
               width: AppDimensions.borderWidth,
             ),
           ),
@@ -97,9 +94,7 @@ class _RequirementRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color activeColor = isMet
         ? AppColors.success
-        : (context.isDarkMode
-              ? AppColors.textSecondaryDark
-              : AppColors.textSecondaryLight);
+        : AppColors.textSecondary;
 
     return Padding(
       padding: const EdgeInsetsDirectional.symmetric(vertical: AppSpacing.xxs),

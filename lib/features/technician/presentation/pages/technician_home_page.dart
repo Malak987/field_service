@@ -120,7 +120,6 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
 
     return Card(
       child: Padding(
@@ -132,9 +131,7 @@ class _HeaderCard extends StatelessWidget {
               height: 56,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark
-                    ? AppColors.primarySurfaceDark
-                    : AppColors.primarySurfaceLight,
+                color: AppColors.primarySurface,
               ),
               alignment: Alignment.center,
               child: Text(
@@ -172,9 +169,7 @@ class _HeaderCard extends StatelessWidget {
             Icon(
               Icons.construction_outlined,
               size: AppDimensions.iconXl,
-              color: isDark
-                  ? AppColors.goldAccentDarkVariant
-                  : AppColors.goldAccent,
+              color: AppColors.goldAccent,
             ),
           ],
         ),
@@ -362,7 +357,6 @@ class _NoAssignedJobs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
 
     return Card(
       key: const Key('tech_jobs_empty'),
@@ -378,17 +372,13 @@ class _NoAssignedJobs extends StatelessWidget {
               height: 72,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isDark
-                    ? AppColors.goldSurfaceDark
-                    : AppColors.goldSurfaceLight,
+                color: AppColors.goldSurface,
               ),
               alignment: Alignment.center,
               child: Icon(
                 Icons.event_note_outlined,
                 size: 32,
-                color: isDark
-                    ? AppColors.goldAccentDarkVariant
-                    : AppColors.goldDeep,
+                color: AppColors.goldDeep,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),

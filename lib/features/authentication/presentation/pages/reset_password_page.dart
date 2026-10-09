@@ -6,7 +6,6 @@ import 'package:field_service/features/authentication/presentation/cubit/authent
 import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
 import 'package:field_service/features/authentication/presentation/utils/authentication_error_mapper.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
-import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_header.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_loading_button.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_password_field.dart';
@@ -19,6 +18,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+/// Set-a-new-password screen (reached through the password recovery link).
+///
+/// Part of the same authentication visual system: logo, greeting hierarchy and
+/// the shared input/CTA language. The live password checklist sits directly
+/// under the new-password field.
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
 
@@ -60,135 +64,124 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     final AppLocalizations l10n = context.l10n;
 
     return AuthScaffold(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          AuthHeader(
-            title: l10n.resetPasswordTitle,
-            subtitle: l10n.resetPasswordSubtitle,
-            icon: Icons.key_outlined,
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-          AuthFormContainer(
-            child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-              buildWhen:
-                  (AuthenticationState previous, AuthenticationState current) =>
-                      (previous.status ==
-                          AuthenticationStatus.passwordResetSuccess) !=
-                      (current.status ==
-                          AuthenticationStatus.passwordResetSuccess),
-              builder: (BuildContext context, AuthenticationState state) {
-                if (state.status == AuthenticationStatus.passwordResetSuccess) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      AuthSuccessMessage(message: l10n.successPasswordUpdated),
-                      const SizedBox(height: AppSpacing.xl),
-                      AuthPrimaryButton(
-                        label: l10n.backToLoginButton,
-                        icon: Icons.login_outlined,
-                        onPressed: _returnToLogin,
-                      ),
-                    ],
-                  );
-                }
+      child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
+        buildWhen:
+            (AuthenticationState previous, AuthenticationState current) =>
+                (previous.status ==
+                    AuthenticationStatus.passwordResetSuccess) !=
+                (current.status == AuthenticationStatus.passwordResetSuccess),
+        builder: (BuildContext context, AuthenticationState state) {
+          if (state.status == AuthenticationStatus.passwordResetSuccess) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AuthHeader(
+                  title: l10n.resetPasswordTitle,
+                  subtitle: l10n.resetPasswordSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.xxxl),
+                AuthSuccessMessage(message: l10n.successPasswordUpdated),
+                const SizedBox(height: AppSpacing.xl),
+                AuthPrimaryButton(
+                  label: l10n.backToLoginButton,
+                  icon: Icons.login_outlined,
+                  onPressed: _returnToLogin,
+                ),
+              ],
+            );
+          }
 
-                return Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen:
-                            (
-                              AuthenticationState previous,
-                              AuthenticationState current,
-                            ) =>
-                                previous.status != current.status ||
-                                previous.errorCode != current.errorCode ||
-                                previous.message != current.message,
-                        builder:
-                            (
-                              BuildContext context,
-                              AuthenticationState errorState,
-                            ) {
-                              if (!errorState.hasError) {
-                                return const SizedBox.shrink();
-                              }
+          return Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AuthHeader(
+                  title: l10n.resetPasswordTitle,
+                  subtitle: l10n.resetPasswordSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.xxxl),
+                BlocBuilder<AuthenticationCubit, AuthenticationState>(
+                  buildWhen:
+                      (
+                        AuthenticationState previous,
+                        AuthenticationState current,
+                      ) =>
+                          previous.status != current.status ||
+                          previous.errorCode != current.errorCode ||
+                          previous.message != current.message,
+                  builder:
+                      (BuildContext context, AuthenticationState errorState) {
+                        if (!errorState.hasError) {
+                          return const SizedBox.shrink();
+                        }
 
-                              final String localizedError =
-                                  AuthenticationErrorMapper.toLocalizedMessage(
-                                    context.l10n,
-                                    code: errorState.errorCode,
-                                    error: errorState.message,
-                                  );
-
-                              return Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  bottom: AppSpacing.lg,
-                                ),
-                                child: AuthErrorMessage(
-                                  message: localizedError,
-                                  onDismiss: () => context
-                                      .read<AuthenticationCubit>()
-                                      .clearFeedback(),
-                                ),
-                              );
-                            },
-                      ),
-                      AuthPasswordField(
-                        controller: _newPasswordController,
-                        label: l10n.newPasswordLabel,
-                        hint: l10n.newPasswordHint,
-                        textInputAction: TextInputAction.next,
-                        autofillHints: const <String>[
-                          AutofillHints.newPassword,
-                        ],
-                        validator: (String? value) =>
-                            PasswordValidator.validateNewPassword(
-                              value,
+                        final String localizedError =
+                            AuthenticationErrorMapper.toLocalizedMessage(
                               context.l10n,
-                            ),
+                              code: errorState.errorCode,
+                              error: errorState.message,
+                            );
+
+                        return Padding(
+                          padding: const EdgeInsetsDirectional.only(
+                            bottom: AppSpacing.lg,
+                          ),
+                          child: AuthErrorMessage(
+                            message: localizedError,
+                            onDismiss: () => context
+                                .read<AuthenticationCubit>()
+                                .clearFeedback(),
+                          ),
+                        );
+                      },
+                ),
+                AuthPasswordField(
+                  controller: _newPasswordController,
+                  label: l10n.newPasswordLabel,
+                  hint: l10n.newPasswordHint,
+                  textInputAction: TextInputAction.next,
+                  autofillHints: const <String>[AutofillHints.newPassword],
+                  validator: (String? value) =>
+                      PasswordValidator.validateNewPassword(
+                        value,
+                        context.l10n,
                       ),
-                      const SizedBox(height: AppSpacing.md),
-                      PasswordRequirements(controller: _newPasswordController),
-                      const SizedBox(height: AppSpacing.lg),
-                      AuthPasswordField(
-                        controller: _confirmPasswordController,
-                        label: l10n.confirmPasswordLabel,
-                        hint: l10n.confirmPasswordHint,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const <String>[
-                          AutofillHints.newPassword,
-                        ],
-                        onFieldSubmitted: (_) => _submit(),
-                        validator: (String? value) =>
-                            PasswordValidator.validateConfirmPassword(
-                              value,
-                              _newPasswordController.text,
-                              context.l10n,
-                            ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                PasswordRequirements(controller: _newPasswordController),
+                const SizedBox(height: AppSpacing.lg),
+                AuthPasswordField(
+                  controller: _confirmPasswordController,
+                  label: l10n.confirmPasswordLabel,
+                  hint: l10n.confirmPasswordHint,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const <String>[AutofillHints.newPassword],
+                  onFieldSubmitted: (_) => _submit(),
+                  validator: (String? value) =>
+                      PasswordValidator.validateConfirmPassword(
+                        value,
+                        _newPasswordController.text,
+                        context.l10n,
                       ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AuthLoadingButton(
-                        label: l10n.savePasswordButton,
-                        icon: Icons.check_circle_outline,
-                        onPressed: _submit,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AuthSecondaryButton(
-                        label: l10n.backToLoginButton,
-                        icon: Icons.arrow_back_outlined,
-                        onPressed: _returnToLogin,
-                      ),
-                    ],
-                  ),
-                );
-              },
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AuthLoadingButton(
+                  label: l10n.savePasswordButton,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AuthSecondaryButton(
+                  label: l10n.backToLoginButton,
+                  icon: Icons.arrow_back_outlined,
+                  onPressed: _returnToLogin,
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

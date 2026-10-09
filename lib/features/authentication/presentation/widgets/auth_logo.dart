@@ -1,41 +1,30 @@
-import 'package:field_service/core/extensions/build_context_extensions.dart';
-import 'package:field_service/core/theme/app_colors.dart';
+import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
-import 'package:field_service/core/theme/app_radius.dart';
 import 'package:flutter/material.dart';
 
 /// Branded emblem displayed at the top of authentication screens.
+///
+/// Uses the final brand asset (`assets/brand/logo.png`): the burgundy house /
+/// wrench mark with the HEIMWERK wordmark and gold tagline. The asset already
+/// ships with a transparent background, so it sits cleanly on the cream canvas.
 class AuthLogo extends StatelessWidget {
-  const AuthLogo({this.icon = Icons.handyman_outlined, super.key});
+  const AuthLogo({super.key});
 
-  final IconData icon;
+  /// Bundled brand logo asset, relative to the pubspec `assets/` root.
+  static const String assetName = 'assets/brand/logo.png';
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = context.isDarkMode;
-    final ColorScheme colors = context.colors;
-    final Color accent = isDark
-        ? AppColors.goldAccentDarkVariant
-        : AppColors.goldAccent;
+    final AppLocalizations l10n = context.l10n;
 
-    // Brand mark: solid burgundy badge (lightened variant in dark mode for
-    // contrast) with the theme's `onPrimary` glyph and a gold ring — the
-    // same pairing the rest of the app uses for brand moments.
     return Center(
-      child: Container(
-        width: AppDimensions.authLogoContainerSize,
-        height: AppDimensions.authLogoContainerSize,
-        decoration: BoxDecoration(
-          color: colors.primary,
-          borderRadius: AppRadius.logoBadge,
-          border: Border.all(color: accent.withValues(alpha: 0.9), width: 1.5),
-        ),
-        alignment: AlignmentDirectional.center,
-        child: Icon(
-          icon,
-          size: AppDimensions.authLogoIconSize,
-          color: colors.onPrimary,
-        ),
+      child: Image.asset(
+        assetName,
+        width: AppDimensions.authLogoWidth,
+        fit: BoxFit.contain,
+        // The wordmark is part of the bitmap; give screen readers the brand
+        // name instead of skipping the image.
+        semanticLabel: l10n.appName,
       ),
     );
   }

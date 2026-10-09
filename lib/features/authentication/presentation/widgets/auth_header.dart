@@ -1,61 +1,77 @@
 import 'package:field_service/core/extensions/build_context_extensions.dart';
-import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
-import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_logo.dart';
 import 'package:flutter/material.dart';
 
-/// Displays the application brand, logo, screen title, and descriptive subtitle
-/// at the top of an authentication screen.
-class AuthHeader extends StatelessWidget {
-  const AuthHeader({
-    required this.title,
-    required this.subtitle,
-    this.icon = Icons.handyman_outlined,
-    this.showBrandTitle = true,
-    super.key,
-  });
+/// Brand block at the top of every authentication screen.
+///
+/// Hierarchy: logo → generous breathing room → screen title → short,
+/// reassuring subtitle. A subtle fade/slide entrance gives the screen a
+/// composed first impression without ever blocking interaction (the
+/// animation completes on its own and ignores pointers while running).
+class AuthHeader extends StatefulWidget {
+  const AuthHeader({required this.title, required this.subtitle, super.key});
 
   final String title;
   final String subtitle;
-  final IconData icon;
-  final bool showBrandTitle;
+
+  @override
+  State<AuthHeader> createState() => _AuthHeaderState();
+}
+
+class _AuthHeaderState extends State<AuthHeader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _entrance = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 360),
+  )..forward();
+
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _entrance,
+    curve: Curves.easeOutCubic,
+  );
+
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, 0.06),
+    end: Offset.zero,
+  ).animate(_fade);
+
+  @override
+  void dispose() {
+    _entrance.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-    final ColorScheme colors = context.colors;
+    final Color subtitleColor = context.colors.onSurfaceVariant;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        AuthLogo(icon: icon),
-        const SizedBox(height: AppSpacing.lg),
-        if (showBrandTitle) ...<Widget>[
-          Text(
-            l10n.appName.toUpperCase(),
-            textAlign: TextAlign.center,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: colors.primary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.2,
+    return FadeTransition(
+      opacity: _fade,
+      child: SlideTransition(
+        position: _slide,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            const AuthLogo(),
+            const SizedBox(height: AppSpacing.xxxl),
+            Text(
+              widget.title,
+              textAlign: TextAlign.center,
+              style: context.textStyles.headlineMedium,
             ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-        ],
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: context.textStyles.headlineMedium,
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              widget.subtitle,
+              textAlign: TextAlign.center,
+              style: context.textStyles.bodyMedium?.copyWith(
+                color: subtitleColor,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: context.textStyles.bodyMedium,
-        ),
-      ],
+      ),
     );
   }
 }

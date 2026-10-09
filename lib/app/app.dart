@@ -68,9 +68,8 @@ class _FieldServiceAppState extends State<FieldServiceApp> {
               return MaterialApp.router(
                 title: AppConstants.appName,
                 debugShowCheckedModeBanner: false,
+                // ONE fixed brand theme — no dark mode, no theme toggle.
                 theme: AppTheme.light,
-                darkTheme: AppTheme.dark,
-                themeMode: ThemeMode.system,
                 routerConfig: widget.router,
                 localizationsDelegates: AppLocalizations.localizationsDelegates,
                 supportedLocales: AppLocalizations.supportedLocales,

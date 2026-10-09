@@ -44,8 +44,8 @@ abstract class AppLocalizations {
   String get selectLanguage;
 
   // --- Authentication Headers ----------------------------------------------
-  String get loginTitle;
-  String get loginSubtitle;
+  String get loginWelcomeTitle;
+  String get loginWelcomeSubtitle;
   String get registerTitle;
   String get registerSubtitle;
   String get forgotPasswordTitle;
@@ -328,11 +328,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get selectLanguage => 'Select language';
 
   @override
-  String get loginTitle => 'Sign in to your account';
+  String get loginWelcomeTitle => 'Welcome back';
 
   @override
-  String get loginSubtitle =>
-      'Access your field operations and assigned service jobs';
+  String get loginWelcomeSubtitle => 'Sign in to continue to your workspace.';
 
   @override
   String get registerTitle => 'Create employee account';
@@ -1027,11 +1026,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get selectLanguage => 'Sprache auswählen';
 
   @override
-  String get loginTitle => 'Bei Ihrem Konto anmelden';
+  String get loginWelcomeTitle => 'Willkommen zurück';
 
   @override
-  String get loginSubtitle =>
-      'Greifen Sie auf Ihre Außendiensteinsätze und zugewiesenen Aufträge zu';
+  String get loginWelcomeSubtitle =>
+      'Melden Sie sich an, um in Ihrem Arbeitsbereich weiterzuarbeiten.';
 
   @override
   String get registerTitle => 'Mitarbeiterkonto erstellen';

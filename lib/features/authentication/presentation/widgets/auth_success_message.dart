@@ -1,4 +1,3 @@
-import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
@@ -14,10 +13,6 @@ class AuthSuccessMessage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = context.isDarkMode;
-    final Color backgroundColor = isDark
-        ? AppColors.successSurfaceDark
-        : AppColors.successSurfaceLight;
     const Color foregroundColor = AppColors.success;
 
     return Semantics(
@@ -25,7 +20,7 @@ class AuthSuccessMessage extends StatelessWidget {
       child: Container(
         padding: AppSpacing.bannerPadding,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: AppColors.successSurface,
           borderRadius: AppRadius.bannerDirectional,
           border: Border.all(
             color: foregroundColor.withValues(alpha: 0.35),

@@ -1,3 +1,4 @@
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/locale_cubit.dart';
 import 'package:field_service/features/admin/presentation/pages/admin_home_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
@@ -104,10 +105,11 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Dark mode rendering of the new surfaces
+  // One fixed brand theme — platform brightness never changes the app
   // ---------------------------------------------------------------------------
 
-  testWidgets('admin home and bottom nav render in dark mode', (tester) async {
+  testWidgets('admin home renders the fixed brand theme regardless of '
+      'platform brightness', (tester) async {
     tester.binding.platformDispatcher.platformBrightnessTestValue =
         Brightness.dark;
     addTearDown(
@@ -118,13 +120,17 @@ void main() {
       user: adminUser,
       jobs: <Job>[_job(id: 'job-1', number: 101)],
     );
-    // The app builds AFTER the brightness override, so the dark theme
-    // resolves from the very first frame.
+    // The app builds AFTER the brightness override. There is no dark theme:
+    // the fixed brand theme must render identically.
     await app.pump(tester);
 
     expect(find.byType(AdminHomePage), findsOneWidget);
     expect(find.byKey(const Key('bottom_nav_home')), findsOneWidget);
     expect(find.text('View Jobs'), findsOneWidget);
+
+    final BuildContext context = tester.element(find.byType(AdminHomePage));
+    expect(context.theme.brightness, Brightness.light);
+    expect(context.theme.scaffoldBackgroundColor, const Color(0xFFF6F1E7));
   });
 
   // ---------------------------------------------------------------------------

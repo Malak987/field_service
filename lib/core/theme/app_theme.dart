@@ -4,76 +4,58 @@ import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
-/// Builds the light and dark [ThemeData] of the application.
+/// Builds the single fixed brand [ThemeData] of the application.
 ///
-/// Scope: one consistent design system shared by both modes — brand colour
-/// roles, the [AppTextStyles] hierarchy, control shapes and field spacing —
-/// so that feature pages consume the theme instead of overriding styles
-/// widget by widget.
+/// The app deliberately ships ONE theme — a premium, warm "European field
+/// service" identity: burgundy brand colour, warm gold accents, cream page
+/// background and white surfaces. There is no dark mode and no theme toggle:
+/// every screen uses exactly this visual identity, in every brightness
+/// environment.
 ///
-/// Brand: burgundy ([AppColors.primary]) with a warm gold accent
-/// ([AppColors.goldAccent]) on a cream light / charcoal dark surface. Touch
-/// targets stay large and text styles stay readable because the app is used
-/// on site, often with gloves or in bright sunlight.
+/// Brand roles are pinned from [AppColors] (never derived), so the brand
+/// colour is exact. Feature pages consume the theme instead of overriding
+/// styles widget by widget.
 abstract final class AppTheme {
-  /// Corner radius shared by cards, fields and buttons.
-  static const double _radius = AppRadius.md;
+  /// Corner radius shared by inputs and buttons.
+  static const double _radius = AppRadius.field;
 
-  /// The light theme.
-  static ThemeData get light => _build(Brightness.light);
+  /// The one and only application theme.
+  static ThemeData get light => _build();
 
-  /// The dark theme.
-  static ThemeData get dark => _build(Brightness.dark);
-
-  static ThemeData _build(Brightness brightness) {
-    final bool isDark = brightness == Brightness.dark;
-    final Color brand = isDark
-        ? AppColors.primaryDarkVariant
-        : AppColors.primary;
-    final Color accent = isDark
-        ? AppColors.goldAccentDarkVariant
-        : AppColors.goldAccent;
-    final Color onBrand = isDark
-        ? const Color(0xFF331216)
-        : const Color(0xFFFFFFFF);
-    final Color onAccent = const Color(0xFF2F2010);
-    final Color borderColor = isDark
-        ? AppColors.borderDark
-        : AppColors.borderLight;
-    final Color cardSurface = isDark ? AppColors.cardDark : AppColors.cardLight;
-    final Color onSurfaceColor = isDark
-        ? const Color(0xFFEDEDED)
-        : const Color(0xFF211A17);
-    final Color onSurfaceVariantColor = isDark
-        ? AppColors.textSecondaryDark
-        : AppColors.textSecondaryLight;
+  static ThemeData _build() {
+    const Color brand = AppColors.primary;
+    const Color brandPressed = AppColors.primaryDark;
+    const Color accent = AppColors.goldAccent;
+    const Color borderColor = AppColors.border;
+    const Color cardSurface = AppColors.surface;
+    const Color onSurfaceColor = AppColors.textPrimary;
+    const Color onSurfaceVariantColor = AppColors.textSecondary;
     final BorderRadius radius = BorderRadius.circular(_radius);
 
     // Material 3 generates the full set of neutral/tonal roles from the
     // burgundy seed; the brand-critical roles are then pinned so the brand
-    // colour is exact in both modes.
+    // colour is exact everywhere.
     final ColorScheme colorScheme =
         ColorScheme.fromSeed(
           seedColor: AppColors.primary,
-          brightness: brightness,
+          brightness: Brightness.light,
         ).copyWith(
           primary: brand,
-          onPrimary: onBrand,
+          onPrimary: const Color(0xFFFFFFFF),
           secondary: accent,
-          onSecondary: onAccent,
+          onSecondary: const Color(0xFF2F2010),
           surface: cardSurface,
           onSurface: onSurfaceColor,
           onSurfaceVariant: onSurfaceVariantColor,
           outline: borderColor,
           outlineVariant: borderColor,
+          error: AppColors.error,
         );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: isDark
-          ? AppColors.surfaceDark
-          : AppColors.surfaceLight,
+      scaffoldBackgroundColor: AppColors.background,
       textTheme: _textTheme(),
 
       // --- App bar ---------------------------------------------------------
@@ -81,9 +63,7 @@ abstract final class AppTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 1,
-        backgroundColor: isDark
-            ? AppColors.surfaceDark
-            : AppColors.surfaceLight,
+        backgroundColor: AppColors.background,
         foregroundColor: onSurfaceColor,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: _textTheme().titleLarge,
@@ -96,8 +76,8 @@ abstract final class AppTheme {
         color: cardSurface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: radius,
-          side: BorderSide(color: borderColor),
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          side: const BorderSide(color: borderColor),
         ),
       ),
       dividerTheme: DividerThemeData(
@@ -110,20 +90,22 @@ abstract final class AppTheme {
       dialogTheme: DialogThemeData(
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: radius),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+        ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(_radius)),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(AppRadius.lg),
+          ),
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark
-            ? const Color(0xFF2E2E2E)
-            : const Color(0xFF332723),
+        backgroundColor: const Color(0xFF332723),
         contentTextStyle: AppTextStyles.bodyMedium.copyWith(
           color: const Color(0xFFF7F3EE),
         ),
@@ -136,9 +118,7 @@ abstract final class AppTheme {
         elevation: 0,
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: isDark
-            ? AppColors.primarySurfaceDark
-            : AppColors.primarySurfaceLight,
+        indicatorColor: AppColors.primarySurface,
         labelTextStyle: WidgetStateProperty.resolveWith(
           (Set<WidgetState> states) => AppTextStyles.bodySmall.copyWith(
             fontWeight: states.contains(WidgetState.selected)
@@ -162,69 +142,117 @@ abstract final class AppTheme {
       // --- Floating action button -------------------------------------------
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: brand,
-        foregroundColor: onBrand,
+        foregroundColor: colorScheme.onPrimary,
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
       ),
 
+      // --- Progress indicators ----------------------------------------------
+      progressIndicatorTheme: const ProgressIndicatorThemeData(
+        color: brand,
+        linearTrackColor: borderColor,
+      ),
+
+      // --- Text selection ---------------------------------------------------
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: brand,
+        selectionColor: accent.withValues(alpha: 0.35),
+        selectionHandleColor: brand,
+      ),
+
       // --- Inputs ----------------------------------------------------------
-      // Sized for one-handed use on site: tall fields, clear focus state.
+      // Sized for one-handed use on site: tall white fields on the cream
+      // canvas, hairline borders and a clear burgundy focus state.
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
         fillColor: cardSurface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 14,
+          vertical: 16,
         ),
-        labelStyle: AppTextStyles.bodyLarge,
+        labelStyle: AppTextStyles.bodyLarge.copyWith(
+          color: onSurfaceVariantColor,
+        ),
+        floatingLabelStyle: AppTextStyles.bodyMedium.copyWith(
+          color: onSurfaceVariantColor,
+        ),
         hintStyle: AppTextStyles.bodyLarge.copyWith(
           color: onSurfaceVariantColor,
         ),
-        errorStyle: AppTextStyles.bodySmall.copyWith(color: colorScheme.error),
+        helperStyle: AppTextStyles.bodySmall.copyWith(
+          color: onSurfaceVariantColor,
+        ),
+        errorStyle: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+        prefixIconColor: onSurfaceVariantColor,
+        suffixIconColor: onSurfaceVariantColor,
         border: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: borderColor),
+          borderSide: const BorderSide(color: borderColor),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: borderColor),
+          borderSide: const BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: brand, width: 1.6),
+          borderSide: BorderSide(
+            color: brand,
+            width: AppDimensions.focusedBorderWidth,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: colorScheme.error),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: radius,
-          borderSide: BorderSide(color: colorScheme.error, width: 1.6),
+          borderSide: BorderSide(
+            color: AppColors.error,
+            width: AppDimensions.focusedBorderWidth,
+          ),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: const BorderSide(color: borderColor),
         ),
       ),
 
       // --- Buttons ---------------------------------------------------------
       filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          // Full-width, thumb-friendly primary action.
-          minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
-          backgroundColor: brand,
-          foregroundColor: onBrand,
-          disabledBackgroundColor: isDark
-              ? const Color(0xFF3A3A3A)
-              : borderColor,
-          shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: AppTextStyles.buttonLabel,
-        ),
+        style:
+            FilledButton.styleFrom(
+              // Full-width, thumb-friendly primary action.
+              minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
+              backgroundColor: brand,
+              foregroundColor: colorScheme.onPrimary,
+              disabledForegroundColor: colorScheme.onPrimary.withValues(
+                alpha: 0.85,
+              ),
+              disabledBackgroundColor: brand.withValues(alpha: 0.45),
+              shape: RoundedRectangleBorder(borderRadius: radius),
+              textStyle: AppTextStyles.buttonLabel,
+            ).copyWith(
+              // Pressed state deepens the burgundy instead of washing it out.
+              overlayColor: WidgetStateProperty.resolveWith((
+                Set<WidgetState> states,
+              ) {
+                if (states.contains(WidgetState.pressed)) {
+                  return brandPressed;
+                }
+                return null;
+              }),
+            ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
           foregroundColor: brand,
+          backgroundColor: cardSurface,
+          disabledForegroundColor: onSurfaceVariantColor,
           shape: RoundedRectangleBorder(borderRadius: radius),
-          side: BorderSide(color: borderColor),
+          side: const BorderSide(color: borderColor),
           textStyle: AppTextStyles.buttonLabel,
         ),
       ),
@@ -242,6 +270,7 @@ abstract final class AppTheme {
         style: IconButton.styleFrom(
           minimumSize: const Size.square(AppDimensions.buttonHeightCompact),
           iconSize: AppDimensions.iconMd,
+          foregroundColor: onSurfaceColor,
         ),
       ),
     );
@@ -251,7 +280,7 @@ abstract final class AppTheme {
   /// slots, so every widget that reads `Theme.of(context).textTheme` gets the
   /// same sizes and weights without importing the token class. Styles keep no
   /// colour here — Material resolves `onSurface` / `onSurfaceVariant` from
-  /// the colour scheme, which keeps dark mode correct automatically.
+  /// the fixed colour scheme.
   static TextTheme _textTheme() {
     return const TextTheme(
       headlineMedium: AppTextStyles.headlineMedium,

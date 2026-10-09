@@ -20,13 +20,8 @@ class LanguageSwitcher extends StatelessWidget {
     final Locale activeLocale =
         context.watch<LocaleCubit?>()?.state ?? Localizations.localeOf(context);
     final AppLocalizations l10n = context.l10n;
-    final bool isDark = context.isDarkMode;
-    final Color borderColor = isDark
-        ? AppColors.borderDark
-        : AppColors.borderLight;
-    final Color surfaceColor = isDark
-        ? AppColors.cardDark
-        : AppColors.cardLight;
+    final Color borderColor = AppColors.border;
+    final Color surfaceColor = AppColors.surface;
 
     return Semantics(
       label: l10n.selectLanguage,

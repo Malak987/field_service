@@ -2,31 +2,48 @@ import 'package:flutter/material.dart';
 
 /// The application's colour palette — the single source of truth for colour.
 ///
-/// Technicians use this app indoors and outdoors, in bright daylight and in dim
-/// rooms, so colours are defined once here and consumed through [ColorScheme] in
-/// `app_theme.dart`. Widgets must never hardcode a `Color(0x...)` literal.
-///
-/// Phase 3 status: a starting palette with light and dark values. It is
-/// intentionally small; brand refinements happen in `app_theme.dart` without
-/// touching call sites.
+/// The app ships with ONE fixed brand theme (no light/dark variants): a warm,
+/// premium European field-service identity built on burgundy, warm gold and a
+/// cream background. Widgets must never hardcode a `Color(0x...)` literal;
+/// they consume colours through [ColorScheme] in `app_theme.dart` or through
+/// the tokens below for brand moments the scheme does not cover.
 abstract final class AppColors {
-  /// Brand colour — burgundy. Everything else is derived from it via
-  /// `ColorScheme.fromSeed`.
+  // --- Brand core -----------------------------------------------------------
+
+  /// Brand colour — primary burgundy. Primary buttons, main CTAs, selected
+  /// navigation and primary accents.
   static const Color primary = Color(0xFF7B1E28);
 
-  /// Lightened brand tone for dark mode: dark burgundy would not contrast
-  /// against the dark surface; this tint keeps the brand recognisable while
-  /// staying readable.
-  static const Color primaryDarkVariant = Color(0xFFC98A92);
+  /// Brand colour — deep burgundy. Pressed states, strong headings and
+  /// deeper visual accents.
+  static const Color primaryDark = Color(0xFF5C151D);
 
-  /// Gold accent — secondary highlights, indicators and warm emphasis.
+  /// Warm gold accent — logo highlights, small highlights, selected
+  /// indicators and decorative details. Never the base colour of a button.
   static const Color goldAccent = Color(0xFFC89F6A);
 
-  /// Lightened gold for dark mode (same reasoning as [primaryDarkVariant]).
-  static const Color goldAccentDarkVariant = Color(0xFFD6B489);
+  /// Deep gold for text/icons on light gold washes (contrast-safe accent).
+  static const Color goldDeep = Color(0xFF8A6A3B);
 
-  // --- Semantic colours ----------------------------------------------------
-  // Used by job status indicators, sync state and form validation later on.
+  // --- Neutrals -------------------------------------------------------------
+
+  /// Page background (warm cream so white surfaces stand out).
+  static const Color background = Color(0xFFF6F1E7);
+
+  /// Elevated card / input / dialog surface (pure white).
+  static const Color surface = Color(0xFFFFFFFF);
+
+  /// Primary text (headings, body copy, input values).
+  static const Color textPrimary = Color(0xFF2A2522);
+
+  /// Secondary text (hints, captions, subtitles, helper text).
+  static const Color textSecondary = Color(0xFF6F6862);
+
+  /// Hairline borders and dividers (warm neutral).
+  static const Color border = Color(0xFFE5DDD2);
+
+  // --- Semantic colours -----------------------------------------------------
+  // Used by job status indicators, sync state and form validation.
 
   /// Completed / synced / valid.
   static const Color success = Color(0xFF2E7D32);
@@ -40,71 +57,22 @@ abstract final class AppColors {
   /// Neutral emphasis, hints and informational banners.
   static const Color info = Color(0xFF0288D1);
 
-  // --- Neutral surfaces and separators -------------------------------------
-
-  /// Page background in light mode (warm cream so white cards stand out).
-  static const Color surfaceLight = Color(0xFFF6F1E7);
-
-  /// Page background in dark mode.
-  static const Color surfaceDark = Color(0xFF171717);
-
-  /// Hairline borders and dividers in light mode (warm neutral).
-  static const Color borderLight = Color(0xFFE6DECF);
-
-  /// Hairline borders and dividers in dark mode.
-  static const Color borderDark = Color(0xFF2E2E2E);
-
-  // --- Elevated card surfaces ----------------------------------------------
-
-  /// Card / form-container background in light mode (pure white so it stands
-  /// out from [surfaceLight]).
-  static const Color cardLight = Color(0xFFFFFFFF);
-
-  /// Card / form-container background in dark mode (raised above
-  /// [surfaceDark]).
-  static const Color cardDark = Color(0xFF1F1F1F);
-
-  /// Secondary text (hints, captions, requirement lines) in light mode.
-  static const Color textSecondaryLight = Color(0xFF6F6659);
-
-  /// Secondary text in dark mode.
-  static const Color textSecondaryDark = Color(0xFFA8A8A8);
-
-  // --- Tinted status surfaces -------------------------------------------------
+  // --- Tinted status surfaces ----------------------------------------------
   // Background washes behind success/warning/error/primary chips, banners and
-  // badges. The alpha channel keeps them readable over both card tones, so
-  // each semantic colour gets a light and a dark variant.
+  // badges. The alpha channel keeps them readable over the white surface.
 
-  /// Success wash (synced, completed) in light mode.
-  static const Color successSurfaceLight = Color(0x142E7D32);
+  /// Success wash (synced, completed).
+  static const Color successSurface = Color(0x142E7D32);
 
-  /// Success wash in dark mode.
-  static const Color successSurfaceDark = Color(0x332E7D32);
+  /// Warning wash (pending, deadline approaching).
+  static const Color warningSurface = Color(0x14ED6C02);
 
-  /// Warning wash (pending, deadline approaching) in light mode.
-  static const Color warningSurfaceLight = Color(0x14ED6C02);
+  /// Error wash (failures, destructive confirmations).
+  static const Color errorSurface = Color(0x14D32F2F);
 
-  /// Warning wash in dark mode.
-  static const Color warningSurfaceDark = Color(0x33ED6C02);
+  /// Primary wash (selected states, informational chips).
+  static const Color primarySurface = Color(0x147B1E28);
 
-  /// Error wash (failures, destructive confirmations) in light mode.
-  static const Color errorSurfaceLight = Color(0x14D32F2F);
-
-  /// Error wash in dark mode.
-  static const Color errorSurfaceDark = Color(0x33D32F2F);
-
-  /// Primary/info wash (selected states, informational chips) in light mode.
-  static const Color primarySurfaceLight = Color(0x147B1E28);
-
-  /// Primary/info wash in dark mode.
-  static const Color primarySurfaceDark = Color(0x33C98A92);
-
-  /// Deep gold for text/icons on light gold washes (contrast-safe accent).
-  static const Color goldDeep = Color(0xFF8A6A3B);
-
-  /// Gold wash (accent chips, timeline markers) in light mode.
-  static const Color goldSurfaceLight = Color(0x1AC89F6A);
-
-  /// Gold wash in dark mode.
-  static const Color goldSurfaceDark = Color(0x33D6B489);
+  /// Gold wash (accent chips, timeline markers).
+  static const Color goldSurface = Color(0x1AC89F6A);
 }

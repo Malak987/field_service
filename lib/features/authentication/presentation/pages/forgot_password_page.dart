@@ -6,7 +6,6 @@ import 'package:field_service/features/authentication/presentation/cubit/authent
 import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
 import 'package:field_service/features/authentication/presentation/utils/authentication_error_mapper.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_error_message.dart';
-import 'package:field_service/features/authentication/presentation/widgets/auth_form_container.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_header.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_loading_button.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_scaffold.dart';
@@ -17,6 +16,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+/// Password recovery screen.
+///
+/// Same authentication system as Login/Register — identical header, inputs and
+/// CTA styling — so switching between the screens never feels like switching
+/// products. A calm, reassuring tone: one email field, one clear action.
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -62,120 +66,107 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return AuthScaffold(
       onBackPressed: _backToLogin,
       backTooltip: l10n.backToLoginButton,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          AuthHeader(
-            title: l10n.forgotPasswordTitle,
-            subtitle: l10n.forgotPasswordSubtitle,
-            icon: Icons.lock_reset_outlined,
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-          AuthFormContainer(
-            child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
-              buildWhen:
-                  (AuthenticationState previous, AuthenticationState current) =>
-                      (previous.status ==
-                          AuthenticationStatus.passwordResetEmailSent) !=
-                      (current.status ==
-                          AuthenticationStatus.passwordResetEmailSent),
-              builder: (BuildContext context, AuthenticationState state) {
-                if (state.status ==
-                    AuthenticationStatus.passwordResetEmailSent) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      AuthSuccessMessage(
-                        message: l10n.successPasswordResetEmailSent,
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AuthSecondaryButton(
-                        label: l10n.backToLoginButton,
-                        icon: Icons.arrow_back_outlined,
-                        onPressed: _backToLogin,
-                      ),
-                    ],
-                  );
-                }
+      child: BlocBuilder<AuthenticationCubit, AuthenticationState>(
+        buildWhen:
+            (AuthenticationState previous, AuthenticationState current) =>
+                (previous.status ==
+                    AuthenticationStatus.passwordResetEmailSent) !=
+                (current.status == AuthenticationStatus.passwordResetEmailSent),
+        builder: (BuildContext context, AuthenticationState state) {
+          if (state.status == AuthenticationStatus.passwordResetEmailSent) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AuthHeader(
+                  title: l10n.forgotPasswordTitle,
+                  subtitle: l10n.forgotPasswordSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.xxxl),
+                AuthSuccessMessage(message: l10n.successPasswordResetEmailSent),
+                const SizedBox(height: AppSpacing.xl),
+                AuthSecondaryButton(
+                  label: l10n.backToLoginButton,
+                  icon: Icons.arrow_back_outlined,
+                  onPressed: _backToLogin,
+                ),
+              ],
+            );
+          }
 
-                return Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      BlocBuilder<AuthenticationCubit, AuthenticationState>(
-                        buildWhen:
-                            (
-                              AuthenticationState previous,
-                              AuthenticationState current,
-                            ) =>
-                                previous.status != current.status ||
-                                previous.errorCode != current.errorCode ||
-                                previous.message != current.message,
-                        builder:
-                            (
-                              BuildContext context,
-                              AuthenticationState errorState,
-                            ) {
-                              if (!errorState.hasError) {
-                                return const SizedBox.shrink();
-                              }
+          return Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AuthHeader(
+                  title: l10n.forgotPasswordTitle,
+                  subtitle: l10n.forgotPasswordSubtitle,
+                ),
+                const SizedBox(height: AppSpacing.xxxl),
+                BlocBuilder<AuthenticationCubit, AuthenticationState>(
+                  buildWhen:
+                      (
+                        AuthenticationState previous,
+                        AuthenticationState current,
+                      ) =>
+                          previous.status != current.status ||
+                          previous.errorCode != current.errorCode ||
+                          previous.message != current.message,
+                  builder:
+                      (BuildContext context, AuthenticationState errorState) {
+                        if (!errorState.hasError) {
+                          return const SizedBox.shrink();
+                        }
 
-                              final String localizedError =
-                                  AuthenticationErrorMapper.toLocalizedMessage(
-                                    context.l10n,
-                                    code: errorState.errorCode,
-                                    error: errorState.message,
-                                  );
-
-                              return Padding(
-                                padding: const EdgeInsetsDirectional.only(
-                                  bottom: AppSpacing.lg,
-                                ),
-                                child: AuthErrorMessage(
-                                  message: localizedError,
-                                  onDismiss: () => context
-                                      .read<AuthenticationCubit>()
-                                      .clearFeedback(),
-                                ),
-                              );
-                            },
-                      ),
-                      AuthTextField(
-                        controller: _emailController,
-                        label: l10n.emailLabel,
-                        hint: l10n.emailHint,
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.done,
-                        autofillHints: const <String>[AutofillHints.email],
-                        onFieldSubmitted: (_) => _submit(),
-                        validator: (String? value) =>
-                            PasswordValidator.validateEmail(
-                              value,
+                        final String localizedError =
+                            AuthenticationErrorMapper.toLocalizedMessage(
                               context.l10n,
-                            ),
-                      ),
-                      const SizedBox(height: AppSpacing.xl),
-                      AuthLoadingButton(
-                        label: l10n.sendResetLinkButton,
-                        icon: Icons.send_outlined,
-                        onPressed: _submit,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      AuthSecondaryButton(
-                        label: l10n.backToLoginButton,
-                        icon: Icons.arrow_back_outlined,
-                        onPressed: _backToLogin,
-                      ),
-                    ],
-                  ),
-                );
-              },
+                              code: errorState.errorCode,
+                              error: errorState.message,
+                            );
+
+                        return Padding(
+                          padding: const EdgeInsetsDirectional.only(
+                            bottom: AppSpacing.lg,
+                          ),
+                          child: AuthErrorMessage(
+                            message: localizedError,
+                            onDismiss: () => context
+                                .read<AuthenticationCubit>()
+                                .clearFeedback(),
+                          ),
+                        );
+                      },
+                ),
+                AuthTextField(
+                  controller: _emailController,
+                  label: l10n.emailLabel,
+                  hint: l10n.emailHint,
+                  prefixIcon: Icons.mail_outline,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  autofillHints: const <String>[AutofillHints.email],
+                  onFieldSubmitted: (_) => _submit(),
+                  validator: (String? value) =>
+                      PasswordValidator.validateEmail(value, context.l10n),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                AuthLoadingButton(
+                  label: l10n.sendResetLinkButton,
+                  onPressed: _submit,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AuthSecondaryButton(
+                  label: l10n.backToLoginButton,
+                  icon: Icons.arrow_back_outlined,
+                  onPressed: _backToLogin,
+                ),
+              ],
             ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

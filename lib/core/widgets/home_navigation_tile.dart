@@ -40,7 +40,6 @@ class HomeNavigationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isDark = context.isDarkMode;
     final String? subtitle = this.subtitle;
 
     return Card(
@@ -55,9 +54,7 @@ class HomeNavigationTile extends StatelessWidget {
                 width: AppDimensions.iconXl,
                 height: AppDimensions.iconXl,
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.primarySurfaceDark
-                      : AppColors.primarySurfaceLight,
+                  color: AppColors.primarySurface,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -78,9 +75,7 @@ class HomeNavigationTile extends StatelessWidget {
                       Text(
                         subtitle,
                         style: context.textStyles.bodyMedium?.copyWith(
-                          color: isDark
-                              ? AppColors.textSecondaryDark
-                              : AppColors.textSecondaryLight,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -90,9 +85,7 @@ class HomeNavigationTile extends StatelessWidget {
               Icon(
                 Icons.chevron_right_rounded,
                 size: AppDimensions.iconLg,
-                color: isDark
-                    ? AppColors.textSecondaryDark
-                    : AppColors.textSecondaryLight,
+                color: AppColors.textSecondary,
               ),
             ],
           ),

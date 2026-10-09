@@ -13,10 +13,13 @@ abstract final class AppRadius {
   /// 8px — compact controls and inline banners.
   static const double sm = 8;
 
-  /// 12px — standard radius for inputs and buttons.
+  /// 12px — compact banners and small containers.
   static const double md = 12;
 
-  /// 16px — standard radius for cards and form containers.
+  /// 14px — standard radius for inputs and buttons (premium, softly rounded).
+  static const double field = 14;
+
+  /// 16px — standard radius for cards and large containers.
   static const double lg = 16;
 
   /// 20px — prominent containers and modals.
@@ -27,14 +30,14 @@ abstract final class AppRadius {
 
   // --- BorderRadius objects (for Material InputBorder / ShapeBorder) -------
 
-  /// Standard input & button border radius (`12px`).
-  static const BorderRadius control = BorderRadius.all(Radius.circular(md));
+  /// Standard input & button border radius (`14px`).
+  static const BorderRadius control = BorderRadius.all(Radius.circular(field));
 
-  /// Standard card / form container border radius (`16px`).
-  static const BorderRadius card = BorderRadius.all(Radius.circular(lg));
-
-  /// Alert banner border radius (`12px`).
+  /// Banner / small-container border radius (`12px`).
   static const BorderRadius banner = BorderRadius.all(Radius.circular(md));
+
+  /// Standard card / large container border radius (`16px`).
+  static const BorderRadius card = BorderRadius.all(Radius.circular(lg));
 
   /// Logo badge border radius (`20px`).
   static const BorderRadius logoBadge = BorderRadius.all(Radius.circular(xl));
@@ -44,9 +47,9 @@ abstract final class AppRadius {
 
   // --- Directional BorderRadius objects (RTL/LTR ready) --------------------
 
-  /// Directional control border radius (`12px`).
+  /// Directional control border radius (`14px`).
   static const BorderRadiusDirectional controlDirectional =
-      BorderRadiusDirectional.all(Radius.circular(md));
+      BorderRadiusDirectional.all(Radius.circular(field));
 
   /// Directional card border radius (`16px`).
   static const BorderRadiusDirectional cardDirectional =
