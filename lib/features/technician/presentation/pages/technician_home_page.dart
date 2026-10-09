@@ -11,12 +11,14 @@ import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
 import 'package:field_service/features/jobs/presentation/utils/job_label_mapper.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_error_state.dart';
+import 'package:field_service/features/jobs/presentation/widgets/dashboard_category_card.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_list_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -70,6 +72,8 @@ class TechnicianHomePage extends StatelessWidget {
                 _HeaderCard(user: user),
                 const SizedBox(height: AppSpacing.xl),
                 const _JobsSections(),
+                const SizedBox(height: AppSpacing.xl),
+                const _TechnicianOverviewAndCategories(),
                 const SizedBox(height: AppSpacing.md),
                 // The existing entry into the full My Jobs list — kept with
                 // its stable key so behaviour (and tests) are unchanged.
@@ -149,12 +153,20 @@ class _HeaderCard extends StatelessWidget {
                   if (_displayName.isNotEmpty)
                     Text(
                       l10n.welcomeNameLabel(_displayName),
-                      style: context.textStyles.titleLarge,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     )
                   else
                     Text(
                       l10n.welcomeTechnician,
-                      style: context.textStyles.titleLarge,
+                      style: context.textStyles.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   const SizedBox(height: AppSpacing.xxs),
                   Text(
@@ -214,7 +226,9 @@ class _JobsSections extends StatelessWidget {
             }
 
             final List<Job> inProgress = jobs
-                .where((Job j) => j.status.value == JobStatus.inProgress)
+                .where((Job j) =>
+                    j.status.value == JobStatus.inProgress ||
+                    j.status.value == JobStatus.started)
                 .toList();
             final List<Job> assigned = jobs
                 .where((Job j) => j.status.value == JobStatus.assigned)
@@ -256,6 +270,127 @@ class _JobsSections extends StatelessWidget {
       pathParameters: <String, String>{'id': jobId},
     );
   }
+}
+
+/// Summaries and category shortcuts based only on the jobs visible to this
+/// authenticated technician (the Jobs query is scoped by the existing RLS).
+class _TechnicianOverviewAndCategories extends StatelessWidget {
+  const _TechnicianOverviewAndCategories();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    return BlocBuilder<JobsCubit, JobsState>(
+      builder: (BuildContext context, JobsState state) {
+        final bool hasData = state.status == JobsStatus.success;
+        final List<Job> jobs = hasData ? state.jobs : const <Job>[];
+        final int assigned = jobs
+            .where((Job job) => job.status.value == JobStatus.assigned)
+            .length;
+        final int inProgress = jobs
+            .where((Job job) =>
+                job.status.value == JobStatus.inProgress ||
+                job.status.value == JobStatus.started)
+            .length;
+        final int completed = jobs
+            .where((Job job) => job.status.value == JobStatus.completed)
+            .length;
+        final int kitchen = jobs
+            .where((Job job) => job.jobType == JobCategory.kitchenRenovation)
+            .length;
+        final int home = jobs
+            .where((Job job) => job.jobType == JobCategory.homeRenovation)
+            .length;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _SectionLabel(label: l10n.overviewTitle),
+            const SizedBox(height: AppSpacing.md),
+            if (hasData)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      final double itemWidth = (constraints.maxWidth - AppSpacing.sm) / 2;
+                      return Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: <Widget>[
+                          _TechnicianStat(label: l10n.totalJobsLabel, value: jobs.length, width: itemWidth),
+                          _TechnicianStat(label: l10n.statusAssigned, value: assigned, width: itemWidth),
+                          _TechnicianStat(label: l10n.statusInProgress, value: inProgress, width: itemWidth),
+                          _TechnicianStat(label: l10n.statusCompleted, value: completed, width: itemWidth),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              )
+            else if (state.status == JobsStatus.loading || state.status == JobsStatus.initial)
+              const LinearProgressIndicator(),
+            const SizedBox(height: AppSpacing.xl),
+            _SectionLabel(label: l10n.categoriesTitle),
+            const SizedBox(height: AppSpacing.md),
+            DashboardCategoryCard(
+              key: const Key('category_card_kitchen'),
+              title: l10n.jobCategoryKitchenRenovation,
+              icon: Icons.kitchen_outlined,
+              jobCount: hasData ? kitchen : null,
+              countLabel: l10n.jobsCountLabel,
+              semanticLabel: '${l10n.jobCategoryKitchenRenovation}${hasData ? ', ${l10n.jobsCountLabel(kitchen)}' : ''}',
+              isKitchen: true,
+              onTap: () => context.go('${AppRoutes.jobs}?category=${JobCategory.kitchenRenovation}'),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            DashboardCategoryCard(
+              key: const Key('category_card_home_renovation'),
+              title: l10n.jobCategoryHomeRenovation,
+              icon: Icons.house_siding_outlined,
+              jobCount: hasData ? home : null,
+              countLabel: l10n.jobsCountLabel,
+              semanticLabel: '${l10n.jobCategoryHomeRenovation}${hasData ? ', ${l10n.jobsCountLabel(home)}' : ''}',
+              isKitchen: false,
+              onTap: () => context.go('${AppRoutes.jobs}?category=${JobCategory.homeRenovation}'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TechnicianStat extends StatelessWidget {
+  const _TechnicianStat({required this.label, required this.value, required this.width});
+
+  final String label;
+  final int value;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    child: Semantics(
+      label: '$label: $value',
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 64),
+        padding: const EdgeInsets.all(AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: AppColors.primarySurface,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Text('$value', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Small uppercase section heading.

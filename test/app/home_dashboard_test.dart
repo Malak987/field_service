@@ -62,6 +62,7 @@ void main() {
     expect(find.byKey(const Key('bottom_nav_account')), findsOneWidget);
     // The technician's extra tab must not leak into the admin bar.
     expect(find.byKey(const Key('bottom_nav_my_jobs')), findsNothing);
+    expect(tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex, 0);
   });
 
   testWidgets('admin overview shows only real counts from loaded jobs', (
@@ -123,6 +124,14 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      tester.getSize(find.byKey(const Key('category_card_kitchen'))).height,
+      greaterThanOrEqualTo(44),
+    );
+    expect(
+      find.bySemanticsLabel('Kitchen Renovation, 1 job'),
+      findsOneWidget,
+    );
 
     await tester.ensureVisible(find.byKey(const Key('category_card_kitchen')));
     await tester.tap(find.byKey(const Key('category_card_kitchen')));
@@ -153,6 +162,55 @@ void main() {
     // Customer management never appears for technicians.
     expect(find.byKey(const Key('nav_customers')), findsNothing);
     expect(find.text('Customers'), findsNothing);
+  });
+
+  testWidgets('technician category cards show real counts and preserve filters', (
+    tester,
+  ) async {
+    await app.configure(
+      user: technicianUser,
+      jobs: <Job>[
+        _job(id: 'tech-kitchen', number: 201),
+        _job(id: 'tech-home', number: 202, jobType: 'home_renovation'),
+      ],
+    );
+    await app.pump(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('category_card_kitchen')), findsOneWidget);
+    expect(find.byKey(const Key('category_card_home_renovation')), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('category_card_home_renovation')),
+        matching: find.text('1 job'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('nav_customers')), findsNothing);
+
+    await tester.ensureVisible(find.byKey(const Key('category_card_home_renovation')));
+    await tester.tap(find.byKey(const Key('category_card_home_renovation')));
+    await tester.pumpAndSettle();
+    expect(find.byType(JobsPage), findsOneWidget);
+    expect(find.text('#202'), findsOneWidget);
+    expect(find.text('#201'), findsNothing);
+  });
+
+  testWidgets('dashboard layouts fit 360px and 390px widths', (tester) async {
+    await app.configure(
+      user: adminUser,
+      jobs: <Job>[
+        _job(id: 'layout-kitchen', number: 301),
+        _job(id: 'layout-home', number: 302, jobType: 'home_renovation'),
+      ],
+    );
+    for (final double width in <double>[360, 390]) {
+      await tester.binding.setSurfaceSize(Size(width, 800));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'Admin at ${width}px');
+      expect(find.byKey(const Key('bottom_nav_home')), findsOneWidget);
+    }
+    await tester.binding.setSurfaceSize(null);
   });
 
   testWidgets('technician home features the in-progress job', (tester) async {

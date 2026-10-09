@@ -4,6 +4,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/home_navigation_tile.dart';
@@ -15,6 +16,7 @@ import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
+import 'package:field_service/features/jobs/presentation/widgets/dashboard_category_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -103,18 +105,41 @@ class AdminHomePage extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xl),
                 _SectionTitle(label: l10n.categoriesTitle),
                 const SizedBox(height: AppSpacing.md),
-                _CategoryCard(
-                  key: const Key('category_card_kitchen'),
-                  icon: Icons.kitchen_outlined,
-                  title: l10n.jobCategoryKitchenRenovation,
-                  category: JobCategory.kitchenRenovation,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _CategoryCard(
-                  key: const Key('category_card_home_renovation'),
-                  icon: Icons.house_siding_outlined,
-                  title: l10n.jobCategoryHomeRenovation,
-                  category: JobCategory.homeRenovation,
+                BlocBuilder<JobsCubit, JobsState>(
+                  builder: (BuildContext context, JobsState state) {
+                    final List<Job>? jobs = state.status == JobsStatus.success
+                        ? state.jobs
+                        : null;
+                    final int? kitchenCount = jobs?.where((Job job) =>
+                        job.jobType == JobCategory.kitchenRenovation).length;
+                    final int? homeCount = jobs?.where((Job job) =>
+                        job.jobType == JobCategory.homeRenovation).length;
+                    return Column(
+                      children: <Widget>[
+                        DashboardCategoryCard(
+                          key: const Key('category_card_kitchen'),
+                          icon: Icons.kitchen_outlined,
+                          title: l10n.jobCategoryKitchenRenovation,
+                          jobCount: kitchenCount,
+                          countLabel: l10n.jobsCountLabel,
+                          semanticLabel: '${l10n.jobCategoryKitchenRenovation}${kitchenCount == null ? '' : ', ${l10n.jobsCountLabel(kitchenCount)}'}',
+                          isKitchen: true,
+                          onTap: () => context.go('${AppRoutes.jobs}?category=${JobCategory.kitchenRenovation}'),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        DashboardCategoryCard(
+                          key: const Key('category_card_home_renovation'),
+                          icon: Icons.house_siding_outlined,
+                          title: l10n.jobCategoryHomeRenovation,
+                          jobCount: homeCount,
+                          countLabel: l10n.jobsCountLabel,
+                          semanticLabel: '${l10n.jobCategoryHomeRenovation}, ${homeCount == null ? '' : l10n.jobsCountLabel(homeCount)}',
+                          isKitchen: false,
+                          onTap: () => context.go('${AppRoutes.jobs}?category=${JobCategory.homeRenovation}'),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -206,12 +231,20 @@ class _HeaderCard extends StatelessWidget {
                   if (_displayName.isNotEmpty)
                     Text(
                       l10n.welcomeNameLabel(_displayName),
-                      style: context.textStyles.titleLarge,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     )
                   else
                     Text(
                       l10n.welcomeAdmin,
-                      style: context.textStyles.titleLarge,
+                      style: context.textStyles.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   const SizedBox(height: AppSpacing.xxs),
                   Text(
@@ -235,7 +268,7 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
-/// The real-data overview: total / in progress / completed from the loaded
+/// The real-data overview: total and known status distribution from loaded
 /// jobs. Shows a progress line while loading and renders nothing on
 /// failure — the dashboard never invents numbers.
 class _OverviewCard extends StatelessWidget {
@@ -270,39 +303,86 @@ class _OverviewCard extends StatelessWidget {
             final int assigned = jobs
                 .where((Job j) => j.status.value == JobStatus.assigned)
                 .length;
+            final int started = jobs
+                .where((Job j) => j.status.value == JobStatus.started)
+                .length;
             final int inProgress = jobs
                 .where((Job j) => j.status.value == JobStatus.inProgress)
                 .length;
             final int completed = jobs
                 .where((Job j) => j.status.value == JobStatus.completed)
                 .length;
+            final int cancelled = jobs
+                .where((Job j) => j.status.value == JobStatus.cancelled)
+                .length;
             return Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.lg,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    _StatTile(
-                      key: const Key('overview_assigned'),
-                      value: assigned,
-                      label: l10n.statusAssigned,
-                      color: context.colors.primary,
-                    ),
-                    _StatTile(
-                      key: const Key('overview_in_progress'),
-                      value: inProgress,
-                      label: l10n.statusInProgress,
-                      color: AppColors.warning,
-                    ),
-                    _StatTile(
-                      key: const Key('overview_completed'),
-                      value: completed,
-                      label: l10n.statusCompleted,
-                      color: AppColors.success,
-                    ),
-                  ],
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final double tileWidth =
+                        ((constraints.maxWidth - AppSpacing.sm) / 2).clamp(
+                          140.0,
+                          220.0,
+                        ).toDouble();
+                    return Align(
+                      alignment: AlignmentDirectional.center,
+                      child: Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: <Widget>[
+                          _StatTile(
+                            key: const Key('overview_total'),
+                            value: jobs.length,
+                            label: l10n.totalJobsLabel,
+                            color: AppColors.primary,
+                            icon: Icons.work_outline_rounded,
+                            width: tileWidth,
+                          ),
+                          _StatTile(
+                            key: const Key('overview_assigned'),
+                            value: assigned,
+                            label: l10n.statusAssigned,
+                            color: AppColors.info,
+                            icon: Icons.assignment_ind_outlined,
+                            width: tileWidth,
+                          ),
+                          _StatTile(
+                            key: const Key('overview_started'),
+                            value: started,
+                            label: l10n.statusStarted,
+                            color: AppColors.goldDeep,
+                            icon: Icons.play_circle_outline_rounded,
+                            width: tileWidth,
+                          ),
+                          _StatTile(
+                            key: const Key('overview_in_progress'),
+                            value: inProgress,
+                            label: l10n.statusInProgress,
+                            color: AppColors.primaryDark,
+                            icon: Icons.handyman_outlined,
+                            width: tileWidth,
+                          ),
+                          _StatTile(
+                            key: const Key('overview_completed'),
+                            value: completed,
+                            label: l10n.statusCompleted,
+                            color: AppColors.success,
+                            icon: Icons.task_alt_rounded,
+                            width: tileWidth,
+                          ),
+                          _StatTile(
+                            key: const Key('overview_cancelled'),
+                            value: cancelled,
+                            label: l10n.statusCancelled,
+                            color: AppColors.error,
+                            icon: Icons.cancel_outlined,
+                            width: tileWidth,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             );
@@ -312,113 +392,76 @@ class _OverviewCard extends StatelessWidget {
   }
 }
 
-/// One number + label inside the overview card.
+/// One compact, readable status tile in the admin overview.
 class _StatTile extends StatelessWidget {
   const _StatTile({
     super.key,
     required this.value,
     required this.label,
     required this.color,
+    required this.icon,
+    required this.width,
   });
 
   final int value;
   final String label;
   final Color color;
+  final IconData icon;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Column(
-        children: <Widget>[
-          Text(
-            '$value',
-            style: context.textStyles.headlineMedium?.copyWith(color: color),
-          ),
-          const SizedBox(height: AppSpacing.xxs),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: context.textStyles.bodySmall?.copyWith(
-              color: context.colors.onSurfaceVariant,
+    return SizedBox(
+      width: width,
+      child: Semantics(
+        label: '$label: $value',
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 76),
+          padding: const EdgeInsetsDirectional.all(AppSpacing.sm),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.07),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: BorderDirectional(
+              start: BorderSide(color: color, width: 3),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// One of the two job categories as a large, touch-friendly shortcut into
-/// the filtered jobs list (existing route, client-side category filter).
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.category,
-  });
-
-  final IconData icon;
-  final String title;
-  final String category;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.go('${AppRoutes.jobs}?category=$category'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Row(
             children: <Widget>[
               Container(
-                width: AppDimensions.iconXl,
-                height: AppDimensions.iconXl,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.goldSurface,
+                  color: color.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  size: AppDimensions.iconMd,
-                  color: AppColors.goldDeep,
-                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: AppDimensions.iconSm, color: color),
               ),
-              const SizedBox(width: AppSpacing.md),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(title, style: context.textStyles.titleMedium),
-                    const SizedBox(height: AppSpacing.xxs),
-                    BlocBuilder<JobsCubit, JobsState>(
-                      builder: (BuildContext context, JobsState state) {
-                        if (state.status != JobsStatus.success) {
-                          return const SizedBox.shrink();
-                        }
-                        final int count = state.jobs
-                            .where((Job j) => j.jobType == category)
-                            .length;
-                        return Text(
-                          l10n.jobsCountLabel(count),
-                          style: context.textStyles.bodySmall?.copyWith(
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                        );
-                      },
+                    Text(
+                      '$value',
+                      maxLines: 1,
+                      style: context.textStyles.titleLarge?.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                size: AppDimensions.iconLg,
-                color: context.colors.onSurfaceVariant,
               ),
             ],
           ),

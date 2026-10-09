@@ -132,61 +132,98 @@ class _CustomerFormState extends State<CustomerForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
+            Text(
+              l10n.customerRequiredFieldsHint,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            _sectionHeading(context, l10n.customerBasicsGroup),
+            const SizedBox(height: AppSpacing.md),
             _field(
               controller: _name,
               label: l10n.customerNameLabel,
+              hint: l10n.customerNameHint,
+              required: true,
               textCapitalization: TextCapitalization.words,
               validator: (String? value) =>
                   CustomerFormValidators.validateRequired(value, l10n),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
+            _sectionHeading(context, l10n.customerContactGroup),
+            const SizedBox(height: AppSpacing.md),
             _field(
               controller: _phone,
               label: l10n.customerPhoneLabel,
+              hint: l10n.customerPhoneHint,
               keyboardType: TextInputType.phone,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             _field(
               controller: _email,
               label: l10n.customerEmailLabel,
+              hint: l10n.customerEmailHint,
               keyboardType: TextInputType.emailAddress,
               validator: (String? value) =>
                   CustomerFormValidators.validateOptionalEmail(value, l10n),
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
+            _sectionHeading(context, l10n.customerAddressGroup),
+            const SizedBox(height: AppSpacing.md),
             _field(
               controller: _address,
               label: l10n.customerAddressLabel,
+              hint: l10n.customerAddressHint,
+              required: true,
               textCapitalization: TextCapitalization.sentences,
               validator: (String? value) =>
                   CustomerFormValidators.validateRequired(value, l10n),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Expanded(
-                  child: _field(
-                    controller: _city,
-                    label: l10n.customerCityLabel,
-                    textCapitalization: TextCapitalization.words,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _field(
-                    controller: _postalCode,
-                    label: l10n.customerPostalCodeLabel,
-                    keyboardType: TextInputType.streetAddress,
-                    textInputAction: TextInputAction.next,
-                  ),
-                ),
-              ],
+            const SizedBox(height: AppSpacing.md),
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final Widget city = _field(
+                  controller: _city,
+                  label: l10n.customerCityLabel,
+                  hint: l10n.customerCityHint,
+                  textCapitalization: TextCapitalization.words,
+                );
+                final Widget postalCode = _field(
+                  controller: _postalCode,
+                  label: l10n.customerPostalCodeLabel,
+                  hint: l10n.customerPostalCodeHint,
+                  keyboardType: TextInputType.streetAddress,
+                );
+
+                if (constraints.maxWidth < 420) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      city,
+                      const SizedBox(height: AppSpacing.md),
+                      postalCode,
+                    ],
+                  );
+                }
+
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Expanded(child: city),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(child: postalCode),
+                  ],
+                );
+              },
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.xl),
+            _sectionHeading(context, l10n.customerNotesGroup),
+            const SizedBox(height: AppSpacing.md),
             _field(
               controller: _notes,
               label: l10n.customerNotesLabel,
+              hint: l10n.customerNotesHint,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,
               textCapitalization: TextCapitalization.sentences,
@@ -204,7 +241,7 @@ class _CustomerFormState extends State<CustomerForm> {
                         strokeWidth: AppDimensions.spinnerStrokeWidth,
                       ),
                     )
-                  : Text(l10n.saveButton),
+                  : Text(widget.submitLabel),
             ),
             if (widget.onCancel != null) ...<Widget>[
               const SizedBox(height: AppSpacing.sm),
@@ -219,11 +256,24 @@ class _CustomerFormState extends State<CustomerForm> {
     );
   }
 
+  Widget _sectionHeading(BuildContext context, String title) => Padding(
+    padding: const EdgeInsetsDirectional.only(start: AppSpacing.xs),
+    child: Text(
+      title,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    ),
+  );
+
   /// Declarative per-field builder so the decoration/enable/validation
   /// boilerplate exists exactly once.
   Widget _field({
     required TextEditingController controller,
     required String label,
+    String? hint,
+    bool required = false,
     TextInputType keyboardType = TextInputType.text,
     TextInputAction textInputAction = TextInputAction.next,
     TextCapitalization textCapitalization = TextCapitalization.none,
@@ -240,7 +290,10 @@ class _CustomerFormState extends State<CustomerForm> {
       maxLines: maxLines,
       minLines: minLines,
       validator: validator,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: required ? '$label *' : label,
+        hintText: hint,
+      ),
     );
   }
 }

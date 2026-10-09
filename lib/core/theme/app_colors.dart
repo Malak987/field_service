@@ -37,7 +37,7 @@ abstract final class AppColors {
   static const Color textPrimary = Color(0xFF2A2522);
 
   /// Secondary text (hints, captions, subtitles, helper text).
-  static const Color textSecondary = Color(0xFF6F6862);
+  static const Color textSecondary = Color(0xFF514A45);
 
   /// Hairline borders and dividers (warm neutral).
   static const Color border = Color(0xFFE5DDD2);

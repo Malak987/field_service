@@ -13,7 +13,10 @@ class CreateJobState extends Equatable {
   const CreateJobState({
     this.customers = const <Customer>[],
     this.technicians = const <Employee>[],
-    this.isLoadingOptions = true,
+    this.isLoadingCustomers = true,
+    this.isLoadingTechnicians = true,
+    this.customerOptionsFailed = false,
+    this.technicianOptionsFailed = false,
     this.selectedCustomerId,
     this.selectedCategory,
     this.description = '',
@@ -30,8 +33,13 @@ class CreateJobState extends Equatable {
   /// Selectable ACTIVE technicians (never admins, never inactive).
   final List<Employee> technicians;
 
-  /// Options are still loading.
-  final bool isLoadingOptions;
+  /// Independent option loading keeps one completed source from masking another.
+  final bool isLoadingCustomers;
+  final bool isLoadingTechnicians;
+
+  /// Customer and technician option load failures are distinct from empty lists.
+  final bool customerOptionsFailed;
+  final bool technicianOptionsFailed;
 
   /// The chosen customer (`customers.id`), or none yet.
   final String? selectedCustomerId;
@@ -68,7 +76,10 @@ class CreateJobState extends Equatable {
   CreateJobState copyWith({
     List<Customer>? customers,
     List<Employee>? technicians,
-    bool? isLoadingOptions,
+    bool? isLoadingCustomers,
+    bool? isLoadingTechnicians,
+    bool? customerOptionsFailed,
+    bool? technicianOptionsFailed,
     String? selectedCustomerId,
     String? selectedCategory,
     String? description,
@@ -82,7 +93,11 @@ class CreateJobState extends Equatable {
     return CreateJobState(
       customers: customers ?? this.customers,
       technicians: technicians ?? this.technicians,
-      isLoadingOptions: isLoadingOptions ?? this.isLoadingOptions,
+      isLoadingCustomers: isLoadingCustomers ?? this.isLoadingCustomers,
+      isLoadingTechnicians: isLoadingTechnicians ?? this.isLoadingTechnicians,
+      customerOptionsFailed: customerOptionsFailed ?? this.customerOptionsFailed,
+      technicianOptionsFailed:
+          technicianOptionsFailed ?? this.technicianOptionsFailed,
       selectedCustomerId: selectedCustomerId ?? this.selectedCustomerId,
       selectedCategory: selectedCategory ?? this.selectedCategory,
       description: description ?? this.description,
@@ -98,7 +113,10 @@ class CreateJobState extends Equatable {
   List<Object?> get props => <Object?>[
     customers,
     technicians,
-    isLoadingOptions,
+    isLoadingCustomers,
+    isLoadingTechnicians,
+    customerOptionsFailed,
+    technicianOptionsFailed,
     selectedCustomerId,
     selectedCategory,
     description,

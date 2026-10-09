@@ -57,6 +57,9 @@ class _CreateCustomerForm extends StatelessWidget {
     }
 
     if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.customerSavedSuccess)),
+      );
       context.pop();
     }
   }

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/database/tables/job_files_table.dart';
+import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
@@ -129,6 +130,49 @@ void main() {
     await tester.tap(find.byKey(const Key('take_photo_option')));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('photo tile resolves its image once across parent rebuilds', (
+    tester,
+  ) async {
+    int loadCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) => Column(
+              children: <Widget>[
+                SizedBox(
+                  width: 180,
+                  height: 180,
+                  child: BeforePhotoTile(
+                    key: const Key('stable_photo_tile'),
+                    file: _photo('stable', 'job-stable'),
+                    isFailed: false,
+                    loadBytes: (JobFile file) async {
+                      loadCalls++;
+                      return null;
+                    },
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => setState(() {}),
+                  child: const Text('Rebuild parent'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(loadCalls, 1);
+
+    await tester.tap(find.text('Rebuild parent'));
+    await tester.pumpAndSettle();
+    expect(loadCalls, 1);
+  });
 
   // 1 — technician adds a before photo to their own in-progress job.
   testWidgets('technician can add a before photo to their in-progress job', (

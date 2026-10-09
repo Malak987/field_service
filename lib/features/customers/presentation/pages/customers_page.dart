@@ -3,8 +3,11 @@ import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/sync/sync_status_cubit.dart';
+import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
@@ -73,17 +76,77 @@ class _CustomersPageView extends StatefulWidget {
 class _CustomersPageViewState extends State<_CustomersPageView> {
   String _query = '';
 
+  Widget _buildIntro(BuildContext context, int customerCount) {
+    final AppLocalizations l10n = context.l10n;
+    final String countLabel = l10n.customersCountLabel(customerCount);
+
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        AppSpacing.xxl,
+        AppSpacing.md,
+        AppSpacing.xxl,
+        AppSpacing.xs,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            l10n.customersSubtitle,
+            style: context.textStyles.bodyMedium?.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: <Widget>[
+              Semantics(
+                label: countLabel,
+                child: ExcludeSemantics(
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 32),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: AppRadius.circular,
+                    ),
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      countLabel,
+                      style: context.textStyles.labelMedium?.copyWith(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const CustomerSyncStatusBar(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   List<Customer> _applySearch(List<Customer> customers) {
     if (_query.isEmpty) {
       return customers;
     }
 
-    final String needle = _query.toLowerCase();
+    final String needle = _query.trim().toLowerCase();
     bool matches(Customer customer) {
       return customer.name.toLowerCase().contains(needle) ||
           (customer.phone?.toLowerCase().contains(needle) ?? false) ||
-          (customer.address.toLowerCase().contains(needle)) ||
-          (customer.city?.toLowerCase().contains(needle) ?? false);
+          (customer.email?.toLowerCase().contains(needle) ?? false) ||
+          customer.address.toLowerCase().contains(needle) ||
+          (customer.city?.toLowerCase().contains(needle) ?? false) ||
+          (customer.postalCode?.toLowerCase().contains(needle) ?? false);
     }
 
     return customers.where(matches).toList();
@@ -101,7 +164,6 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
         ),
         title: Text(l10n.customersTitle),
         actions: <Widget>[
-          const CustomerSyncStatusBar(),
           const Padding(
             padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
             child: Center(child: LanguageSwitcher()),
@@ -109,6 +171,9 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
+      bottomNavigationBar: widget.isAdmin
+          ? const AppBottomNav(isAdmin: true, selectedIndex: 2)
+          : null,
       // Admin-only feature (router guard refuses non-admins every
       // `/customers` route); the check stays as defense in depth, and RLS
       // rejects unauthorized writes server-side regardless.
@@ -127,22 +192,42 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
           switch (state.status) {
             case CustomersStatus.initial:
             case CustomersStatus.loading:
-              return const Center(child: CircularProgressIndicator());
+              return Column(
+                children: <Widget>[
+                  _buildIntro(context, state.customers.length),
+                  Expanded(
+                    child: Center(
+                      child: Semantics(
+                        label: l10n.customersLoadingLabel,
+                        child: const CircularProgressIndicator(),
+                      ),
+                    ),
+                  ),
+                ],
+              );
 
             case CustomersStatus.failure:
-              return _CustomersErrorView(onRetry: cubit.loadCustomers);
+              return Column(
+                children: <Widget>[
+                  _buildIntro(context, state.customers.length),
+                  Expanded(
+                    child: _CustomersErrorView(onRetry: cubit.loadCustomers),
+                  ),
+                ],
+              );
 
             case CustomersStatus.success:
               final List<Customer> visible = _applySearch(state.customers);
 
               return Column(
                 children: <Widget>[
+                  _buildIntro(context, state.customers.length),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                      AppSpacing.xxl,
                       AppSpacing.sm,
-                      AppSpacing.lg,
-                      AppSpacing.xs,
+                      AppSpacing.xxl,
+                      AppSpacing.sm,
                     ),
                     child: CustomerSearchField(
                       onQueryChanged: (String query) =>

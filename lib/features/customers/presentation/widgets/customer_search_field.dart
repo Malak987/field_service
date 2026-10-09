@@ -65,6 +65,7 @@ class _CustomerSearchFieldState extends State<CustomerSearchField> {
         suffixIcon: _controller.text.isEmpty
             ? null
             : IconButton(
+                tooltip: l10n.clearSearchButton,
                 icon: const Icon(Icons.close, size: AppDimensions.iconSm),
                 onPressed: _clear,
               ),

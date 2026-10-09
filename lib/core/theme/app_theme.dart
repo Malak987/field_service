@@ -55,6 +55,7 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
+
       scaffoldBackgroundColor: AppColors.background,
       textTheme: _textTheme(),
 
@@ -63,7 +64,7 @@ abstract final class AppTheme {
         centerTitle: false,
         elevation: 0,
         scrolledUnderElevation: 1,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.primaryDark,
         foregroundColor: onSurfaceColor,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: _textTheme().titleLarge,

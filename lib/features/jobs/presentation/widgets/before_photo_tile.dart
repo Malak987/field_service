@@ -12,7 +12,9 @@ import 'package:flutter/material.dart';
 ///
 /// Bytes are loaded lazily (local app storage first, Supabase Storage for
 /// backend-only photos) so a job with many photos never loads every
-/// full-resolution image up front.
+/// full-resolution image up front. The resolved future is retained across
+/// ordinary parent rebuilds; it changes only if the file identity or storage
+/// location changes.
 ///
 /// Tapping the tile opens a full-screen preview (same lazy byte loading) —
 /// the technician can verify a photo without leaving the page.
@@ -22,7 +24,7 @@ import 'package:flutter/material.dart';
 /// * `failed` (queued upload in the queue's failed state) → error icon,
 /// * `synced` (upload confirmed) → check icon,
 /// * otherwise `pending` (queued / awaiting retry) → cloud-upload icon.
-class BeforePhotoTile extends StatelessWidget {
+class BeforePhotoTile extends StatefulWidget {
   const BeforePhotoTile({
     super.key,
     required this.file,
@@ -39,11 +41,36 @@ class BeforePhotoTile extends StatelessWidget {
   /// Resolves the displayable bytes (usually the repository via a use case).
   final Future<Uint8List?> Function(JobFile file) loadBytes;
 
+  @override
+  State<BeforePhotoTile> createState() => _BeforePhotoTileState();
+}
+
+class _BeforePhotoTileState extends State<BeforePhotoTile> {
+  late Future<Uint8List?> _bytesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _bytesFuture = widget.loadBytes(widget.file);
+  }
+
+  @override
+  void didUpdateWidget(covariant BeforePhotoTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final JobFile oldFile = oldWidget.file;
+    final JobFile newFile = widget.file;
+    if (oldFile.id != newFile.id ||
+        oldFile.localPath != newFile.localPath ||
+        oldFile.remotePath != newFile.remotePath) {
+      _bytesFuture = widget.loadBytes(newFile);
+    }
+  }
+
   /// Opens the full-screen preview. Loads the bytes through the SAME
   /// [loadBytes] pipeline (local first, remote fallback) — no second data
   /// path. The dialog is pure presentation.
   Future<void> _openPreview(BuildContext context) async {
-    final Uint8List? bytes = await loadBytes(file);
+    final Uint8List? bytes = await widget.loadBytes(widget.file);
     if (!context.mounted) {
       return;
     }
@@ -95,38 +122,50 @@ class BeforePhotoTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-
     final Widget badge = _badge(context, l10n);
+    final JobFile file = widget.file;
+    final String syncLabel = widget.isFailed
+        ? l10n.uploadFailedLabel
+        : file.syncState == JobFileSyncState.synced
+        ? l10n.photoSyncedLabel
+        : l10n.pendingSyncLabel;
 
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: '${file.fileName}, $syncLabel',
       onTap: () => _openPreview(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: FutureBuilder<Uint8List?>(
-          future: loadBytes(file),
-          builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
-            final Uint8List? bytes = snapshot.data;
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: () => _openPreview(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: FutureBuilder<Uint8List?>(
+              future: _bytesFuture,
+              builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
+                final Uint8List? bytes = snapshot.data;
 
-            return Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                if (bytes != null)
-                  Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
-                else
-                  Container(
-                    color: context.colors.surfaceContainerHighest,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      snapshot.connectionState == ConnectionState.waiting
-                          ? Icons.hourglass_empty_rounded
-                          : Icons.photo_rounded,
-                      color: context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                Positioned(right: 4, bottom: 4, child: badge),
-              ],
-            );
-          },
+                return Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    if (bytes != null)
+                      Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+                    else
+                      Container(
+                        color: context.colors.surfaceContainerHighest,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          snapshot.connectionState == ConnectionState.waiting
+                              ? Icons.hourglass_empty_rounded
+                              : Icons.photo_rounded,
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    Positioned(right: 4, bottom: 4, child: badge),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );
@@ -137,11 +176,11 @@ class BeforePhotoTile extends StatelessWidget {
     final Color color;
     final String tooltip;
 
-    if (isFailed) {
+    if (widget.isFailed) {
       icon = Icons.error_rounded;
       color = AppColors.error;
       tooltip = l10n.uploadFailedLabel;
-    } else if (file.syncState == JobFileSyncState.synced) {
+    } else if (widget.file.syncState == JobFileSyncState.synced) {
       icon = Icons.check_circle_rounded;
       color = AppColors.success;
       tooltip = l10n.photoSyncedLabel;

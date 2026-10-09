@@ -32,7 +32,14 @@ void main() {
         CustomerModel(
           id: name,
           name: name,
-          address: '10 Test Street',
+          address: name.startsWith('Alice')
+              ? '10 Test Street'
+              : '20 Oak Avenue',
+          phone: name.startsWith('Alice') ? '+20 100 111 2222' : '+20 100 333 4444',
+          email: name.startsWith('Alice')
+              ? 'alice@example.com'
+              : 'bob@example.com',
+          city: name.startsWith('Alice') ? 'Giza' : 'Cairo',
           createdAt: DateTime.utc(2026, 1, 1),
           updatedAt: DateTime.utc(2026, 1, 1),
           syncStatus: CustomerSyncStatus.synced,
@@ -60,6 +67,8 @@ void main() {
   _testCustomers('admin: home → Customers → search → details → home', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await app.configure(user: adminUser, withCustomers: true);
     await seedCustomers();
     await app.pump(tester);
@@ -69,7 +78,29 @@ void main() {
     expect(find.byType(CustomersPage), findsOneWidget);
     expect(find.text('Alice Customer'), findsOneWidget);
     expect(find.text('Bob Customer'), findsOneWidget);
+    expect(find.text('2 customers'), findsOneWidget);
+    expect(find.text('alice@example.com'), findsOneWidget);
     expect(find.byKey(const Key('add_customer_fab')), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'bob@example.com');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Alice Customer'), findsNothing);
+    expect(find.text('Bob Customer'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '333 4444');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Alice Customer'), findsNothing);
+    expect(find.text('Bob Customer'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '20 Oak Avenue');
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Alice Customer'), findsNothing);
+    expect(find.text('Bob Customer'), findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Alice Customer'), findsOneWidget);
 
     await tester.enterText(find.byType(TextField), 'Alice');
     await tester.pump(const Duration(milliseconds: 500));
@@ -77,6 +108,8 @@ void main() {
     await tester.tap(find.text('Alice Customer'));
     await tester.pumpAndSettle();
     expect(find.byType(CustomerDetailsPage), findsOneWidget);
+    expect(find.text('alice@example.com'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('edit_customer_button')), findsOneWidget);
     expect(find.byKey(const Key('delete_customer_button')), findsOneWidget);
 
@@ -105,6 +138,11 @@ void main() {
       await tester.tap(find.byKey(const Key('add_customer_fab')));
       await tester.pumpAndSettle();
       expect(find.byType(CreateCustomerPage), findsOneWidget);
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('This field is required.'), findsNWidgets(2));
+
       await tester.enterText(
         find.byType(TextFormField).at(0),
         'Offline Customer',
@@ -113,11 +151,21 @@ void main() {
         find.byType(TextFormField).at(3),
         '10 Offline Street',
       );
+      await tester.enterText(find.byType(TextFormField).at(2), 'not-an-email');
+      await tester.ensureVisible(find.text('Save'));
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Please enter a valid email address.'), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextFormField).at(2),
+        'offline@example.com',
+      );
       await tester.ensureVisible(find.text('Save'));
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle();
       expect(find.byType(CustomersPage), findsOneWidget);
       expect(find.text('Offline Customer'), findsOneWidget);
+      expect(find.text('Customer saved successfully.'), findsOneWidget);
       final row = await app.database!
           .select(app.database!.customersTable)
           .getSingle();

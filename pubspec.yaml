@@ -80,6 +80,7 @@ dependencies:
   # ever sees them (synchronisation identifiers).
   uuid: ^4.6.0
   supabase_flutter: ^2.18.0
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -141,3 +142,11 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/brand/logo.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true

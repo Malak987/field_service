@@ -2,6 +2,7 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
@@ -60,26 +61,7 @@ class CustomerDetailsView extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.customerTitle),
-        actions: <Widget>[
-          BlocBuilder<CustomersCubit, CustomersState>(
-            buildWhen: (a, b) => a.selectedCustomer != b.selectedCustomer,
-            builder: (BuildContext context, CustomersState state) {
-              final Customer? customer = state.selectedCustomer;
-              if (customer == null) {
-                return const SizedBox.shrink();
-              }
-              return Padding(
-                padding: const EdgeInsetsDirectional.only(end: AppSpacing.sm),
-                child: Center(
-                  child: CustomerSyncStatusChip(status: customer.syncStatus),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(l10n.customerTitle)),
       body: BlocBuilder<CustomersCubit, CustomersState>(
         builder: (BuildContext context, CustomersState state) {
           switch (state.status) {
@@ -194,55 +176,124 @@ class _CustomerDetailsBody extends StatelessWidget {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: context.colors.primaryContainer,
+                    borderRadius: AppRadius.card,
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    size: AppDimensions.iconLg,
+                    color: context.colors.primary,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        customer.name,
+                        style: context.textStyles.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      if (cityLine.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          cityLine,
+                          style: context.textStyles.bodyMedium?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.sm),
+                      CustomerSyncStatusChip(status: customer.syncStatus),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if ((customer.phone ?? '').trim().isNotEmpty ||
+            (customer.email ?? '').trim().isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          _CustomerDetailsSection(
+            icon: Icons.contact_mail_outlined,
+            title: l10n.customerContactGroup,
+            children: <Widget>[
+              _DetailField(label: l10n.customerPhoneLabel, value: customer.phone),
+              _DetailField(label: l10n.customerEmailLabel, value: customer.email),
+            ],
+          ),
+        ],
+        if (customer.address.trim().isNotEmpty || cityLine.isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          _CustomerDetailsSection(
+            icon: Icons.place_outlined,
+            title: l10n.customerAddressGroup,
+            children: <Widget>[
+              _DetailField(
+                label: l10n.customerAddressLabel,
+                value: customer.address,
+              ),
+              _DetailField(
+                label: l10n.customerCityLabel,
+                value: cityLine.isEmpty ? null : cityLine,
+              ),
+            ],
+          ),
+        ],
+        if ((customer.notes ?? '').trim().isNotEmpty) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          _CustomerDetailsSection(
+            icon: Icons.notes_rounded,
+            title: l10n.customerNotesGroup,
+            children: <Widget>[
+              _DetailField(label: l10n.customerNotesLabel, value: customer.notes),
+            ],
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  customer.name,
-                  style: context.textStyles.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final bool sideBySide = constraints.maxWidth >= 400;
+                    final Widget created = _DetailField(
+                      label: l10n.createdAtLabel,
+                      value: formatCustomerDate(customer.createdAt, context),
+                    );
+                    final Widget updated = _DetailField(
+                      label: l10n.updatedAtLabel,
+                      value: formatCustomerDate(customer.updatedAt, context),
+                    );
+                    if (!sideBySide) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[created, updated],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(child: created),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: updated),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                _DetailField(
-                  label: l10n.customerPhoneLabel,
-                  value: customer.phone,
-                ),
-                _DetailField(
-                  label: l10n.customerEmailLabel,
-                  value: customer.email,
-                ),
-                _DetailField(
-                  label: l10n.customerAddressLabel,
-                  value: customer.address,
-                ),
-                _DetailField(
-                  label: l10n.customerCityLabel,
-                  value: cityLine.isEmpty ? null : cityLine,
-                ),
-                _DetailField(
-                  label: l10n.customerNotesLabel,
-                  value: customer.notes,
-                ),
-                const Divider(height: AppSpacing.xxl),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: _DetailField(
-                        label: l10n.createdAtLabel,
-                        value: formatCustomerDate(customer.createdAt, context),
-                      ),
-                    ),
-                    Expanded(
-                      child: _DetailField(
-                        label: l10n.updatedAtLabel,
-                        value: formatCustomerDate(customer.updatedAt, context),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.md),
-                CustomerSyncStatusChip(status: customer.syncStatus),
               ],
             ),
           ),
@@ -271,6 +322,46 @@ class _CustomerDetailsBody extends StatelessWidget {
       ],
     );
   }
+}
+
+class _CustomerDetailsSection extends StatelessWidget {
+  const _CustomerDetailsSection({
+    required this.icon,
+    required this.title,
+    required this.children,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(icon, size: AppDimensions.iconMd, color: context.colors.primary),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: context.textStyles.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          ...children,
+        ],
+      ),
+    ),
+  );
 }
 
 class _DetailField extends StatelessWidget {

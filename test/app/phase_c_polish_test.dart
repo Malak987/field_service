@@ -55,6 +55,8 @@ void main() {
   testWidgets('admin home renders fully in German without overflow', (
     tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await app.configure(user: adminUser);
     await app.pump(tester);
 
@@ -77,6 +79,11 @@ void main() {
     expect(find.text('SCHNELLZUGRIFF'), findsOneWidget);
     expect(find.text('ÜBERSICHT'), findsOneWidget);
     expect(find.text('KATEGORIEN'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.binding.setSurfaceSize(const Size(390, 800));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('technician jobs list renders in German without overflow', (

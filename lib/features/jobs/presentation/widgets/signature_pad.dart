@@ -131,58 +131,63 @@ class SignaturePadState extends State<SignaturePad> {
     // The Listener sees the RAW touch events (it never competes in the gesture
     // arena) and brackets every contact with the pad: finger down → the
     // page freezes its scrolling; finger up/cancelled → scrolling returns.
-    return Listener(
-      behavior: HitTestBehavior.opaque,
-      onPointerDown: (_) => _notifyDrawing(true),
-      onPointerUp: (_) => _notifyDrawing(false),
-      onPointerCancel: (_) => _notifyDrawing(false),
-      child: SizedBox(
-        height: widget.height,
-        width: double.infinity,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: AppRadius.control,
-            border: Border.all(color: context.colors.outlineVariant),
-          ),
-          child: ClipRRect(
-            borderRadius: AppRadius.control,
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                // A soft baseline the customer signs above. Painted OUTSIDE
-                // the RepaintBoundary below, so it guides the eye on screen
-                // but never ends up in the exported PNG.
-                CustomPaint(
-                  painter: _SignatureBaselinePainter(
-                    color: context.colors.outlineVariant,
+    return Semantics(
+      container: true,
+      label: l10n.customerSignatureTitle,
+      hint: l10n.signatureHint,
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) => _notifyDrawing(true),
+        onPointerUp: (_) => _notifyDrawing(false),
+        onPointerCancel: (_) => _notifyDrawing(false),
+        child: SizedBox(
+          height: widget.height,
+          width: double.infinity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: AppRadius.control,
+              border: Border.all(color: context.colors.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: AppRadius.control,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  // A soft baseline the customer signs above. Painted OUTSIDE
+                  // the RepaintBoundary below, so it guides the eye on screen
+                  // but never ends up in the exported PNG.
+                  CustomPaint(
+                    painter: _SignatureBaselinePainter(
+                      color: context.colors.outlineVariant,
+                    ),
                   ),
-                ),
-                RepaintBoundary(
-                  key: _boundaryKey,
-                  child: CustomPaint(
-                    painter: _SignaturePainter(strokes: _strokes),
+                  RepaintBoundary(
+                    key: _boundaryKey,
+                    child: CustomPaint(
+                      painter: _SignaturePainter(strokes: _strokes),
+                    ),
                   ),
-                ),
-                if (_strokes.isEmpty)
-                  IgnorePointer(
-                    child: Center(
-                      child: Text(
-                        l10n.signatureHint,
-                        style: context.textStyles.bodyMedium?.copyWith(
-                          color: context.colors.onSurfaceVariant,
+                  if (_strokes.isEmpty)
+                    IgnorePointer(
+                      child: Center(
+                        child: Text(
+                          l10n.signatureHint,
+                          style: context.textStyles.bodyMedium?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ),
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onPanStart: _panStart,
+                      onPanUpdate: _panUpdate,
+                    ),
                   ),
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onPanStart: _panStart,
-                    onPanUpdate: _panUpdate,
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -1,6 +1,5 @@
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
-import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -27,12 +26,6 @@ class AppBottomNav extends StatelessWidget {
   /// Index of the highlighted destination within the role's bar.
   final int selectedIndex;
 
-  /// Jobs-list deep links used by the admin category tabs.
-  static const String kitchenJobsLocation =
-      '${AppRoutes.jobs}?category=${JobCategory.kitchenRenovation}';
-  static const String homeRenovationJobsLocation =
-      '${AppRoutes.jobs}?category=${JobCategory.homeRenovation}';
-
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -46,16 +39,16 @@ class AppBottomNav extends StatelessWidget {
               label: l10n.homeTabLabel,
             ),
             NavigationDestination(
-              key: const Key('bottom_nav_kitchen'),
-              icon: const Icon(Icons.kitchen_outlined),
-              selectedIcon: const Icon(Icons.kitchen_rounded),
-              label: l10n.kitchenTabLabel,
+              key: const Key('bottom_nav_jobs'),
+              icon: const Icon(Icons.assignment_outlined),
+              selectedIcon: const Icon(Icons.assignment_rounded),
+              label: l10n.jobsTitle,
             ),
             NavigationDestination(
-              key: const Key('bottom_nav_home_renovation'),
-              icon: const Icon(Icons.house_siding_outlined),
-              selectedIcon: const Icon(Icons.house_siding_rounded),
-              label: l10n.homeRenovationTabLabel,
+              key: const Key('bottom_nav_customers'),
+              icon: const Icon(Icons.people_outline_rounded),
+              selectedIcon: const Icon(Icons.people_rounded),
+              label: l10n.customersTitle,
             ),
             NavigationDestination(
               key: const Key('bottom_nav_account'),
@@ -88,8 +81,8 @@ class AppBottomNav extends StatelessWidget {
     final List<String> locations = isAdmin
         ? const <String>[
             AppRoutes.root,
-            kitchenJobsLocation,
-            homeRenovationJobsLocation,
+            AppRoutes.jobs,
+            AppRoutes.customers,
             AppRoutes.account,
           ]
         : const <String>[AppRoutes.root, AppRoutes.jobs, AppRoutes.account];
@@ -103,6 +96,7 @@ class AppBottomNav extends StatelessWidget {
           context.go(location);
         }
       },
+      labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
       destinations: destinations,
     );
   }

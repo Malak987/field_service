@@ -59,13 +59,15 @@ class BeforePhotosSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: <Widget>[
-            Expanded(
-              child: Text(
-                l10n.beforePhotosTitle,
-                style: context.textStyles.titleMedium,
-              ),
+            Text(
+              l10n.beforePhotosTitle,
+              style: context.textStyles.titleMedium,
             ),
             if (canAdd)
               FilledButton.icon(

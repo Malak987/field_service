@@ -154,6 +154,9 @@ abstract class AppLocalizations {
   String get jobsTitle;
   String get myJobsTitle;
   String get jobDetailsTitle;
+  String get workflowProgressTitle;
+  String workflowProgressLabel(int completed, int total);
+  String get currentStepLabel;
   String get jobNumberLabel;
   String get customerLabel;
   String get assignedTechnicianLabel;
@@ -233,13 +236,25 @@ abstract class AppLocalizations {
   String get jobsEmptySubtitle;
   String get jobsErrorTitle;
   String get jobsErrorSubtitle;
+  String get jobsLoadingLabel;
   String get statusAssigned;
   String get statusStarted;
   String get statusInProgress;
   String get statusCompleted;
   String get statusCancelled;
+  String get searchJobsHint;
+  String get filterStatusLabel;
+  String get allStatusesLabel;
+  String get filterCategoryLabel;
+  String get allCategoriesLabel;
+  String get clearFiltersButton;
+  String get noJobsMatchTitle;
+  String get noJobsMatchSubtitle;
   // --- Job creation (admin workflow) ---------------------------------------
   String get createJobButton;
+  String get createJobIntro;
+  String get createJobReviewTitle;
+  String get createJobOptionsFailedMessage;
   String get createAndAssignJobButton;
   String get selectCustomerLabel;
   String get selectTechnicianLabel;
@@ -254,6 +269,22 @@ abstract class AppLocalizations {
   String get editCustomer;
   String get deleteCustomer;
   String get searchCustomersHint;
+  String get customersSubtitle;
+  String get customersLoadingLabel;
+  String customersCountLabel(int count);
+  String get clearSearchButton;
+  String get customerBasicsGroup;
+  String get customerContactGroup;
+  String get customerAddressGroup;
+  String get customerNotesGroup;
+  String get customerRequiredFieldsHint;
+  String get customerNameHint;
+  String get customerPhoneHint;
+  String get customerEmailHint;
+  String get customerAddressHint;
+  String get customerCityHint;
+  String get customerPostalCodeHint;
+  String get customerNotesHint;
   String get customerNameLabel;
   String get customerPhoneLabel;
   String get customerEmailLabel;
@@ -273,6 +304,7 @@ abstract class AppLocalizations {
   String get customerNotFoundTitle;
   String get customerNotFoundSubtitle;
   String get customerSaveFailed;
+  String get customerSavedSuccess;
   String get customerLinkedJobsError;
   String deleteCustomerConfirmation(String name);
   String get offlineLabel;
@@ -631,6 +663,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get jobDetailsTitle => 'Job Details';
 
   @override
+  String get workflowProgressTitle => 'Workflow progress';
+
+  @override
+  String workflowProgressLabel(int completed, int total) =>
+      '$completed of $total steps complete';
+
+  @override
+  String get currentStepLabel => 'Current step';
+
+  @override
   String get jobNumberLabel => 'Job Number';
 
   @override
@@ -862,6 +904,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Jobs could not be loaded. Please check your connection and try again.';
 
   @override
+  String get jobsLoadingLabel => 'Loading jobs';
+
+  @override
   String get statusAssigned => 'Assigned';
 
   @override
@@ -876,9 +921,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get statusCancelled => 'Cancelled';
 
+  @override
+  String get searchJobsHint => 'Search by job number, customer, category or status';
+
+  @override
+  String get filterStatusLabel => 'Status';
+
+  @override
+  String get allStatusesLabel => 'All statuses';
+
+  @override
+  String get filterCategoryLabel => 'Category';
+
+  @override
+  String get allCategoriesLabel => 'All categories';
+
+  @override
+  String get clearFiltersButton => 'Clear filters';
+
+  @override
+  String get noJobsMatchTitle => 'No matching jobs';
+
+  @override
+  String get noJobsMatchSubtitle => 'Try a different search or clear the filters.';
+
   // --- Job creation (admin workflow) -----------------------------------------
   @override
   String get createJobButton => 'Create Job';
+
+  @override
+  String get createJobIntro => 'Choose a customer, job type and active technician.';
+
+  @override
+  String get createJobReviewTitle => 'Review job details';
+
+  @override
+  String get createJobOptionsFailedMessage =>
+      'Options could not be loaded. Check your connection and try again.';
 
   @override
   String get createAndAssignJobButton => 'Create & Assign Job';
@@ -917,7 +996,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String get deleteCustomer => 'Delete customer';
 
   @override
-  String get searchCustomersHint => 'Search customers';
+  String get customersSubtitle =>
+      'Manage customer records and their contact details.';
+
+  @override
+  String get customersLoadingLabel => 'Loading customers';
+
+  @override
+  String customersCountLabel(int count) => count == 1
+      ? '1 customer'
+      : '$count customers';
+
+  @override
+  String get clearSearchButton => 'Clear search';
+
+  @override
+  String get customerBasicsGroup => 'Customer details';
+
+  @override
+  String get customerContactGroup => 'Contact information';
+
+  @override
+  String get customerAddressGroup => 'Site address';
+
+  @override
+  String get customerNotesGroup => 'Additional information';
+
+  @override
+  String get customerRequiredFieldsHint => 'Name and address are required.';
+
+  @override
+  String get customerNameHint => 'Full name';
+
+  @override
+  String get customerPhoneHint => 'Include the country code if available';
+
+  @override
+  String get customerEmailHint => 'name@example.com';
+
+  @override
+  String get customerAddressHint => 'Street and house number';
+
+  @override
+  String get customerCityHint => 'Town or city';
+
+  @override
+  String get customerPostalCodeHint => 'Postal or ZIP code';
+
+  @override
+  String get customerNotesHint => 'Access instructions or other useful context';
+
+  @override
+  String get searchCustomersHint => 'Search name, phone, email or address';
 
   @override
   String get customerNameLabel => 'Name';
@@ -980,6 +1110,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get customerSaveFailed => 'The change could not be saved.';
+
+  @override
+  String get customerSavedSuccess => 'Customer saved successfully.';
 
   @override
   String get customerLinkedJobsError =>
@@ -1335,6 +1468,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get jobDetailsTitle => 'Auftragsdetails';
 
   @override
+  String get workflowProgressTitle => 'Arbeitsfortschritt';
+
+  @override
+  String workflowProgressLabel(int completed, int total) =>
+      '$completed von $total Schritten abgeschlossen';
+
+  @override
+  String get currentStepLabel => 'Aktueller Schritt';
+
+  @override
   String get jobNumberLabel => 'Auftragsnummer';
 
   @override
@@ -1575,6 +1718,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aufträge konnten nicht geladen werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.';
 
   @override
+  String get jobsLoadingLabel => 'Aufträge werden geladen';
+
+  @override
   String get statusAssigned => 'Zugewiesen';
 
   @override
@@ -1589,9 +1735,44 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get statusCancelled => 'Storniert';
 
+  @override
+  String get searchJobsHint => 'Nach Auftragsnummer, Kunde, Kategorie oder Status suchen';
+
+  @override
+  String get filterStatusLabel => 'Status';
+
+  @override
+  String get allStatusesLabel => 'Alle Status';
+
+  @override
+  String get filterCategoryLabel => 'Kategorie';
+
+  @override
+  String get allCategoriesLabel => 'Alle Kategorien';
+
+  @override
+  String get clearFiltersButton => 'Filter zurücksetzen';
+
+  @override
+  String get noJobsMatchTitle => 'Keine passenden Aufträge';
+
+  @override
+  String get noJobsMatchSubtitle => 'Ändern Sie die Suche oder setzen Sie die Filter zurück.';
+
   // --- Job creation (admin workflow) -----------------------------------------
   @override
   String get createJobButton => 'Auftrag erstellen';
+
+  @override
+  String get createJobIntro =>
+      'Wählen Sie einen Kunden, einen Auftragstyp und einen aktiven Techniker.';
+
+  @override
+  String get createJobReviewTitle => 'Auftragsdetails überprüfen';
+
+  @override
+  String get createJobOptionsFailedMessage =>
+      'Die Auswahl konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.';
 
   @override
   String get createAndAssignJobButton => 'Auftrag erstellen & zuweisen';
@@ -1629,7 +1810,57 @@ class AppLocalizationsDe extends AppLocalizations {
   String get deleteCustomer => 'Kunden löschen';
 
   @override
-  String get searchCustomersHint => 'Kunden suchen';
+  String get customersSubtitle => 'Kundenstammdaten und Kontaktdaten verwalten.';
+
+  @override
+  String get customersLoadingLabel => 'Kunden werden geladen';
+
+  @override
+  String customersCountLabel(int count) => count == 1
+      ? '1 Kunde'
+      : '$count Kunden';
+
+  @override
+  String get clearSearchButton => 'Suche löschen';
+
+  @override
+  String get customerBasicsGroup => 'Kundendaten';
+
+  @override
+  String get customerContactGroup => 'Kontaktinformationen';
+
+  @override
+  String get customerAddressGroup => 'Einsatzadresse';
+
+  @override
+  String get customerNotesGroup => 'Weitere Hinweise';
+
+  @override
+  String get customerRequiredFieldsHint => 'Name und Adresse sind Pflichtfelder.';
+
+  @override
+  String get customerNameHint => 'Vollständiger Name';
+
+  @override
+  String get customerPhoneHint => 'Wenn möglich mit Ländervorwahl';
+
+  @override
+  String get customerEmailHint => 'name@beispiel.de';
+
+  @override
+  String get customerAddressHint => 'Straße und Hausnummer';
+
+  @override
+  String get customerCityHint => 'Ort oder Stadt';
+
+  @override
+  String get customerPostalCodeHint => 'Postleitzahl';
+
+  @override
+  String get customerNotesHint => 'Zugangshinweise oder sonstige wichtige Informationen';
+
+  @override
+  String get searchCustomersHint => 'Name, Telefon, E-Mail oder Adresse suchen';
 
   @override
   String get customerNameLabel => 'Name';
@@ -1692,6 +1923,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get customerSaveFailed =>
       'Die Änderung konnte nicht gespeichert werden.';
+
+  @override
+  String get customerSavedSuccess => 'Kunde erfolgreich gespeichert.';
 
   @override
   String get customerLinkedJobsError =>

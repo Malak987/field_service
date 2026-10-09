@@ -70,6 +70,13 @@ class CreateJobCubit extends Cubit<CreateJobState> {
       return;
     }
 
+    emit(state.copyWith(
+      isLoadingCustomers: _customersSubscription == null,
+      isLoadingTechnicians: true,
+      customerOptionsFailed: false,
+      technicianOptionsFailed: false,
+    ));
+
     // The customer dropdown streams the LOCAL mirror — the single source of
     // truth (offline-first rule). On a device whose mirror is still empty
     // (fresh install / data cleared / never opened the Customers page) the
@@ -92,7 +99,11 @@ class CreateJobCubit extends Cubit<CreateJobState> {
     _customersSubscription ??= _getCustomers().listen(
       (List<Customer> customers) {
         if (!isClosed) {
-          emit(state.copyWith(customers: customers, isLoadingOptions: false));
+          emit(state.copyWith(
+            customers: customers,
+            isLoadingCustomers: false,
+            customerOptionsFailed: false,
+          ));
         }
       },
       onError: (Object error, StackTrace stackTrace) {
@@ -101,8 +112,15 @@ class CreateJobCubit extends Cubit<CreateJobState> {
           error: error,
           stackTrace: stackTrace,
         );
+        final StreamSubscription<List<Customer>>? failedSubscription =
+            _customersSubscription;
+        _customersSubscription = null;
+        unawaited(failedSubscription?.cancel());
         if (!isClosed) {
-          emit(state.copyWith(isLoadingOptions: false));
+          emit(state.copyWith(
+            isLoadingCustomers: false,
+            customerOptionsFailed: true,
+          ));
         }
       },
     );
@@ -123,7 +141,11 @@ class CreateJobCubit extends Cubit<CreateJobState> {
       }
 
       if (!isClosed) {
-        emit(state.copyWith(technicians: technicians, isLoadingOptions: false));
+        emit(state.copyWith(
+          technicians: technicians,
+          isLoadingTechnicians: false,
+          technicianOptionsFailed: false,
+        ));
       }
     } catch (error, stackTrace) {
       AppLogger.warning(
@@ -132,7 +154,10 @@ class CreateJobCubit extends Cubit<CreateJobState> {
         stackTrace: stackTrace,
       );
       if (!isClosed) {
-        emit(state.copyWith(isLoadingOptions: false));
+        emit(state.copyWith(
+          isLoadingTechnicians: false,
+          technicianOptionsFailed: true,
+        ));
       }
     }
   }

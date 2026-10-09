@@ -181,53 +181,55 @@ class _SignatureSectionState extends State<SignatureSection> {
             onDrawingChanged: widget.onDrawingChanged,
           ),
           const SizedBox(height: AppSpacing.md),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              OutlinedButton.icon(
-                key: const Key('clear_signature_button'),
-                // The theme's buttons are full-width (infinite
-                // minimumSize); inside this row the button must size to its
-                // content.
-                style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
-                onPressed: widget.isCapturing
-                    ? null
-                    : () => _padKey.currentState?.clear(),
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  size: AppDimensions.iconMd,
-                ),
-                label: Text(l10n.clearButton),
-              ),
-              if (_replacing && signature != null) ...<Widget>[
-                const SizedBox(width: AppSpacing.sm),
-                TextButton(
-                  key: const Key('cancel_replace_signature_button'),
-                  onPressed: widget.isCapturing
-                      ? null
-                      : () => setState(() => _replacing = false),
-                  child: Text(l10n.cancelButton),
-                ),
-              ],
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: FilledButton.icon(
-                  key: const Key('save_signature_button'),
-                  onPressed: widget.isCapturing ? null : _confirm,
-                  icon: widget.isCapturing
-                      ? const SizedBox(
-                          width: AppDimensions.iconSm,
-                          height: AppDimensions.iconSm,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(
-                          Icons.draw_rounded,
-                          size: AppDimensions.iconMd,
-                        ),
-                  label: Text(
-                    widget.isCapturing
-                        ? l10n.uploadingLabel
-                        : l10n.saveSignatureButton,
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: <Widget>[
+                  OutlinedButton.icon(
+                    key: const Key('clear_signature_button'),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(0, 48),
+                    ),
+                    onPressed: widget.isCapturing
+                        ? null
+                        : () => _padKey.currentState?.clear(),
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      size: AppDimensions.iconMd,
+                    ),
+                    label: Text(l10n.clearButton),
                   ),
+                  if (_replacing && signature != null)
+                    TextButton(
+                      key: const Key('cancel_replace_signature_button'),
+                      onPressed: widget.isCapturing
+                          ? null
+                          : () => setState(() => _replacing = false),
+                      child: Text(l10n.cancelButton),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              FilledButton.icon(
+                key: const Key('save_signature_button'),
+                onPressed: widget.isCapturing ? null : _confirm,
+                icon: widget.isCapturing
+                    ? const SizedBox(
+                        width: AppDimensions.iconSm,
+                        height: AppDimensions.iconSm,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(
+                        Icons.draw_rounded,
+                        size: AppDimensions.iconMd,
+                      ),
+                label: Text(
+                  widget.isCapturing
+                      ? l10n.uploadingLabel
+                      : l10n.saveSignatureButton,
                 ),
               ),
             ],

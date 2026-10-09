@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:field_service/app/di/injection.dart';
@@ -96,6 +97,34 @@ class _CustomerStream implements GetCustomers {
 class _StubTechnicians implements GetActiveTechnicians {
   @override
   Future<List<Employee>> call() async => const <Employee>[];
+}
+
+class _FailingTechnicians implements GetActiveTechnicians {
+  @override
+  Future<List<Employee>> call() async => throw StateError('employee read failed');
+}
+
+class _FailingCustomerStream implements GetCustomers {
+  @override
+  Stream<List<Customer>> call() => Stream<List<Customer>>.error(
+    StateError('customer read failed'),
+  );
+}
+
+class _PendingCreateJob implements CreateJob {
+  final Completer<Job> result = Completer<Job>();
+  int calls = 0;
+
+  @override
+  Future<Job> call({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String assignedEmployeeId,
+  }) {
+    calls++;
+    return result.future;
+  }
 }
 
 class _UnusedCreateJob implements CreateJob {
@@ -236,6 +265,48 @@ void main() {
     },
   );
 
+  test('repeated submit while saving sends exactly one create request', () async {
+    final _PendingCreateJob createJob = _PendingCreateJob();
+    final CreateJobCubit cubit = CreateJobCubit(
+      getCustomers: _CustomerStream(const <Customer>[]),
+      getActiveTechnicians: _StubTechnicians(),
+      createJob: createJob,
+      refreshCustomers: _SpyRefreshCustomers(),
+    );
+    await cubit.loadOptions();
+    cubit
+      ..selectCustomer('customer-real-id')
+      ..selectCategory(JobCategory.kitchenRenovation)
+      ..selectTechnician('technician-real-id');
+
+    final Future<CreateJobOutcome> first = cubit.submit();
+    await Future<void>.delayed(Duration.zero);
+    expect(await cubit.submit(), CreateJobOutcome.inFlight);
+    expect(createJob.calls, 1);
+    createJob.result.complete(_job(id: 'new-job', number: 42));
+    expect(await first, CreateJobOutcome.created);
+    expect(createJob.calls, 1);
+    await cubit.close();
+  });
+
+  test('option read errors remain distinct from empty selector results', () async {
+    final CreateJobCubit cubit = CreateJobCubit(
+      getCustomers: _FailingCustomerStream(),
+      getActiveTechnicians: _FailingTechnicians(),
+      createJob: _UnusedCreateJob(),
+      refreshCustomers: _SpyRefreshCustomers(),
+    );
+
+    await cubit.loadOptions();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cubit.state.customerOptionsFailed, isTrue);
+    expect(cubit.state.technicianOptionsFailed, isTrue);
+    expect(cubit.state.isLoadingCustomers, isFalse);
+    expect(cubit.state.isLoadingTechnicians, isFalse);
+    await cubit.close();
+  });
+
   test('customers arriving on the local stream reach the form state', () async {
     final Customer remote = Customer(
       id: 'remote-cust-1',
@@ -370,7 +441,7 @@ void main() {
     // Select Home Renovation and keep the choice visible in the form.
     await tester.tap(find.text('Home Renovation').last);
     await tester.pumpAndSettle();
-    expect(find.text('Home Renovation'), findsOneWidget);
+    expect(find.text('Home Renovation'), findsWidgets);
 
     // Leave the form via the back button (ends on the non-Drift Jobs
     // page so the customers stream closes inside the test body).
@@ -614,7 +685,7 @@ void main() {
     // Pick the real-named technician; the form keeps the stored name.
     await tester.tap(find.text('Max Müller').last);
     await tester.pumpAndSettle();
-    expect(find.text('Max Müller'), findsOneWidget);
+    expect(find.text('Max Müller'), findsWidgets);
 
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
@@ -699,6 +770,65 @@ void main() {
     expect(find.text('Job started'), findsOneWidget);
     expect(find.text('In Progress'), findsWidgets);
     expect(app.startedJobIds, <String>[created.id]);
+  });
+
+  testWidgets('customer picker searches by phone and fits narrow screens', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await app.configure(
+      user: adminUser,
+      withCustomers: true,
+      technicians: const <Employee>[kMaxMueller],
+    );
+    await sl<CustomersLocalDataSource>().insert(
+      CustomerModel(
+        id: 'phone-customer',
+        name: 'Hannah Becker',
+        phone: '+49 170 1234567',
+        address: '12 Lindenstraße',
+        createdAt: DateTime.utc(2026, 1, 1),
+        updatedAt: DateTime.utc(2026, 1, 1),
+        syncStatus: CustomerSyncStatus.synced,
+      ),
+    );
+    await app.pump(tester);
+    await openJobs(tester);
+    await openCreateJob(tester);
+
+    await tester.tap(find.byKey(const Key('create_job_customer_dropdown')));
+    await tester.pumpAndSettle();
+    expect(find.text('Hannah Becker'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('create_job_customer_search')),
+      '170 1234567',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Hannah Becker'), findsOneWidget);
+    expect(find.text('Thomas Schneider'), findsNothing);
+    await tester.tap(find.text('Hannah Becker'));
+    await tester.pumpAndSettle();
+    expect(find.text('Hannah Becker'), findsWidgets);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('create_job_selection_review')),
+      120,
+      scrollable: find
+          .descendant(
+            of: find.byType(CreateJobPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('create_job_selection_review')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
   });
 
   // ---------------------------------------------------------------------------

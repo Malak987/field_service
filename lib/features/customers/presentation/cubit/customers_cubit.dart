@@ -38,13 +38,19 @@ enum CustomerDeleteOutcome {
 /// each form page own an instance, matching the `JobsCubit` convention.
 class CustomersCubit extends Cubit<CustomersState> {
   CustomersCubit({
-    required this._getCustomers,
-    required this._getCustomerById,
-    required this._createCustomer,
-    required this._updateCustomer,
-    required this._deleteCustomer,
-    required this._refreshCustomers,
-  }) : super(const CustomersState());
+    required GetCustomers getCustomers,
+    required GetCustomerById getCustomerById,
+    required CreateCustomer createCustomer,
+    required UpdateCustomer updateCustomer,
+    required DeleteCustomer deleteCustomer,
+    required RefreshCustomers refreshCustomers,
+  }) : _getCustomers = getCustomers,
+       _getCustomerById = getCustomerById,
+       _createCustomer = createCustomer,
+       _updateCustomer = updateCustomer,
+       _deleteCustomer = deleteCustomer,
+       _refreshCustomers = refreshCustomers,
+       super(const CustomersState());
 
   final GetCustomers _getCustomers;
   final GetCustomerById _getCustomerById;

@@ -21,9 +21,10 @@ class CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final String cityLine = customer.cityLine;
+    final String address = customer.address.trim();
     final String addressLine = cityLine.isEmpty
-        ? customer.address
-        : '${customer.address}, $cityLine';
+        ? address
+        : '$address, $cityLine';
 
     return Card(
       child: InkWell(
@@ -49,7 +50,7 @@ class CustomerCard extends StatelessWidget {
                   CustomerSyncStatusChip(status: customer.syncStatus),
                 ],
               ),
-              if (customer.phone != null) ...<Widget>[
+              if (customer.phone?.trim().isNotEmpty == true) ...<Widget>[
                 const SizedBox(height: AppSpacing.sm),
                 Row(
                   children: <Widget>[
@@ -62,6 +63,27 @@ class CustomerCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         customer.phone!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textStyles.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (customer.email?.trim().isNotEmpty == true) ...<Widget>[
+                const SizedBox(height: AppSpacing.xs),
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.email_outlined,
+                      size: AppDimensions.iconSm,
+                      color: context.colors.outline,
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Expanded(
+                      child: Text(
+                        customer.email!.trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.textStyles.bodyMedium,

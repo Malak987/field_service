@@ -130,6 +130,12 @@ void main() {
       expect(find.text('#101'), findsWidgets);
       expect(find.text('Kitchen Renovation'), findsWidgets);
       expect(find.text('Fix the sink.'), findsOneWidget);
+      // Responsive visual workflow summary reflects the existing assigned
+      // status only; it does not grant or change any actions.
+      expect(find.text('Workflow progress'), findsOneWidget);
+      expect(find.text('0 of 6 steps complete'), findsOneWidget);
+      expect(find.text('Step 1'), findsOneWidget);
+      expect(find.text('Current step'), findsOneWidget);
       // Customer section — exactly this job's customer.
       // The customer name is intentionally shown twice: in the header
       // and in the customer card.
@@ -140,6 +146,34 @@ void main() {
       expect(find.text('82511'), findsOneWidget);
     },
   );
+
+  // Narrow-phone regression: core job/customer information and the first
+  // stage must remain visible without a RenderFlex overflow.
+  _testJobDetails('job details fit a narrow phone viewport', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await app.configure(
+      user: technicianUser,
+      jobs: <Job>[myJob()],
+      jobCustomers: <String, JobCustomerInfo?>{'job-mine': aliceInfo},
+    );
+    await app.pump(tester);
+    await tester.tap(find.text('View Jobs'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('#101'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alice Customer'), findsWidgets);
+    expect(find.text('Step 1'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('+20 100 111 2222'),
+      180,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('+20 100 111 2222'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   // Test 3 — another technician's job: no data, error surface only.
   _testJobDetails('technician opening another technician\'s job gets no data', (

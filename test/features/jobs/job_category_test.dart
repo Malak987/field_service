@@ -42,6 +42,20 @@ void main() {
     });
   });
 
+  group('Create Job copy (EN/DE)', () {
+    const AppLocalizations en = AppLocalizationsEn();
+    const AppLocalizations de = AppLocalizationsDe();
+
+    test('includes translated intro, review and option error messages', () {
+      expect(en.createJobIntro, contains('customer'));
+      expect(en.createJobReviewTitle, 'Review job details');
+      expect(en.createJobOptionsFailedMessage, contains('connection'));
+      expect(de.createJobIntro, contains('Kunden'));
+      expect(de.createJobReviewTitle, 'Auftragsdetails überprüfen');
+      expect(de.createJobOptionsFailedMessage, contains('Verbindung'));
+    });
+  });
+
   group('JobLabelMapper categories', () {
     const JobLabelMapper en = JobLabelMapper(AppLocalizationsEn());
     const JobLabelMapper de = JobLabelMapper(AppLocalizationsDe());
