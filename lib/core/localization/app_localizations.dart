@@ -342,10 +342,10 @@ abstract class AppLocalizations {
   String get adminDeletedTechnicianNotice;
   String get adminOwnAccountNotice;
   String get adminAdministratorNotice;
-  String adminAccountsCountLabel(String count);
-  String adminAssignedJobsLabel(String count);
-  String adminCompletedJobsLabel(String count);
-  String adminCustomerJobsCountLabel(String count);
+  String adminAccountsCountLabel(int count);
+  String adminAssignedJobsLabel(int count);
+  String adminCompletedJobsLabel(int count);
+  String adminCustomerJobsCountLabel(int count);
   String adminBlockedOnLabel(String date);
   String adminDeletedOnLabel(String date);
   String get adminBlockTechnicianConfirmTitle;
@@ -1313,16 +1313,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminAdministratorNotice => "Administrator account — technician management does not apply to it.";
 
   @override
-  String adminAccountsCountLabel(String count) => '$count accounts';
+  String adminAccountsCountLabel(int count) => '$count accounts';
 
   @override
-  String adminAssignedJobsLabel(String count) => '$count assigned';
+  String adminAssignedJobsLabel(int count) => '$count assigned';
 
   @override
-  String adminCompletedJobsLabel(String count) => '$count completed';
+  String adminCompletedJobsLabel(int count) => '$count completed';
 
   @override
-  String adminCustomerJobsCountLabel(String count) => '$count jobs';
+  String adminCustomerJobsCountLabel(int count) => '$count jobs';
 
   @override
   String adminBlockedOnLabel(String date) => 'Blocked on $date';
@@ -2408,16 +2408,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get adminAdministratorNotice => "Administrator-Konto — die Technikerverwaltung greift hier nicht.";
 
   @override
-  String adminAccountsCountLabel(String count) => '$count Konten';
+  String adminAccountsCountLabel(int count) => '$count Konten';
 
   @override
-  String adminAssignedJobsLabel(String count) => '$count zugewiesen';
+  String adminAssignedJobsLabel(int count) => '$count zugewiesen';
 
   @override
-  String adminCompletedJobsLabel(String count) => '$count abgeschlossen';
+  String adminCompletedJobsLabel(int count) => '$count abgeschlossen';
 
   @override
-  String adminCustomerJobsCountLabel(String count) => '$count Aufträge';
+  String adminCustomerJobsCountLabel(int count) => '$count Aufträge';
 
   @override
   String adminBlockedOnLabel(String date) => 'Gesperrt am $date';

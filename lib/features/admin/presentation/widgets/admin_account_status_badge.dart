@@ -22,7 +22,7 @@ class AdminAccountStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final (Color foreground, Color background) = _styleFor(context, status);
+    final (Color foreground, Color background) = styleFor(context, status);
 
     return Container(
       key: Key('admin_status_badge_${status.name}'),
