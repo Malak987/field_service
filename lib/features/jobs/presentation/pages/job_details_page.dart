@@ -3,28 +3,26 @@ import 'dart:typed_data';
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
-import 'package:field_service/core/theme/app_colors.dart';
-import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
-import 'package:field_service/features/jobs/domain/entities/job_category.dart';
-import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
 import 'package:field_service/features/jobs/presentation/utils/job_label_mapper.dart';
 import 'package:field_service/features/jobs/presentation/utils/jobs_date_format.dart';
-import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/features/jobs/presentation/services/photo_picker.dart';
 import 'package:field_service/features/jobs/presentation/widgets/after_photos_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/before_photos_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/complete_job_section.dart';
-import 'package:field_service/features/jobs/presentation/widgets/job_detail_field.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_details_fields.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_details_header.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_section_heading.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_workflow_step.dart';
+import 'package:field_service/features/jobs/presentation/widgets/workflow_progress.dart';
 import 'package:field_service/features/jobs/presentation/widgets/signature_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_start_button.dart';
-import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:field_service/features/jobs/presentation/widgets/work_description_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_empty_state.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_error_state.dart';
@@ -208,10 +206,10 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       : null,
                   padding: AppSpacing.pagePadding,
                   children: <Widget>[
-                    _buildHeaderCard(context, job, mapper, state),
+                    JobDetailsHeader(job: job, mapper: mapper, state: state),
                     if (showWorkflowProgress) ...<Widget>[
                       const SizedBox(height: AppSpacing.md),
-                      _WorkflowProgress(
+                      WorkflowProgress(
                         completed: completedWorkflowSteps,
                         total: 6,
                         label: l10n.workflowProgressLabel(
@@ -228,7 +226,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                         (isActive && job.startedAt != null) ||
                         isCompleted) ...<Widget>[
                       const SizedBox(height: AppSpacing.lg),
-                      _workflowCard(
+                      JobWorkflowStep(
                         step: 1,
                         done: stepStarted,
                         current: isAssigned,
@@ -251,7 +249,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                               ),
                             if ((isActive || isCompleted) &&
                                 job.startedAt != null)
-                              _StartedAtLine(startedAt: job.startedAt!)
+                              StartedAtLine(startedAt: job.startedAt!)
                             else if (isCompleted)
                               Text(
                                 l10n.statusStarted,
@@ -267,13 +265,12 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            _sectionHeading(
-                              context,
+                            JobSectionHeading(
                               icon: Icons.assignment_outlined,
                               title: l10n.jobInformationTitle,
                             ),
                             const SizedBox(height: AppSpacing.lg),
-                            _buildJobFields(context, job, mapper),
+                            JobDetailsFields(job: job, mapper: mapper),
                           ],
                         ),
                       ),
@@ -290,8 +287,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              _sectionHeading(
-                                context,
+                              JobSectionHeading(
                                 icon: Icons.chat_bubble_outline_rounded,
                                 title: l10n.customerRequestLabel,
                               ),
@@ -312,13 +308,12 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            _sectionHeading(
-                              context,
+                            JobSectionHeading(
                               icon: Icons.person_outline_rounded,
                               title: l10n.customerLabel,
                             ),
                             const SizedBox(height: AppSpacing.lg),
-                            _buildCustomerFields(context, state),
+                            JobCustomerFields(state: state),
                           ],
                         ),
                       ),
@@ -329,7 +324,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                     // jobs get no photo surface at all.
                     if (job.status.value != JobStatus.assigned) ...<Widget>[
                       const SizedBox(height: AppSpacing.lg),
-                      _workflowCard(
+                      JobWorkflowStep(
                         step: 2,
                         done: hasBeforePhoto,
                         current: currentWorkflowStep == 2,
@@ -355,7 +350,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       // is `in_progress`; admins and closed jobs get the
                       // read-only view (the server enforces the same rule).
                       const SizedBox(height: AppSpacing.lg),
-                      _workflowCard(
+                      JobWorkflowStep(
                         step: 3,
                         done: hasWorkDescription,
                         current: currentWorkflowStep == 3,
@@ -380,7 +375,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       // closed jobs view the captured photos read-only; the
                       // server refuses any write outside that window.
                       const SizedBox(height: AppSpacing.lg),
-                      _workflowCard(
+                      JobWorkflowStep(
                         step: 4,
                         done: hasAfterPhoto,
                         current: currentWorkflowStep == 4,
@@ -404,7 +399,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       // closed jobs — sees the captured signature (or the
                       // "nothing yet" note) read-only.
                       const SizedBox(height: AppSpacing.lg),
-                      _workflowCard(
+                      JobWorkflowStep(
                         step: 5,
                         done: hasSignature,
                         current: currentWorkflowStep == 5,
@@ -441,7 +436,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       // completed workflow remains a visible six-stage path.
                       if (isCompleted) ...<Widget>[
                         const SizedBox(height: AppSpacing.lg),
-                        _workflowCard(
+                        JobWorkflowStep(
                           step: 6,
                           done: true,
                           current: false,
@@ -469,7 +464,7 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       if (isTechnician &&
                           job.status.value == JobStatus.inProgress) ...<Widget>[
                         const SizedBox(height: AppSpacing.lg),
-                        _workflowCard(
+                        JobWorkflowStep(
                           step: 6,
                           done: isCompleted,
                           current: currentWorkflowStep == 6,
@@ -510,287 +505,6 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
 
   /// Compact, high-contrast job identity card with the real status and any
   /// customer name returned by the job/customer read paths.
-  Widget _buildHeaderCard(
-    BuildContext context,
-    Job job,
-    JobLabelMapper mapper,
-    JobsState state,
-  ) {
-    final AppLocalizations l10n = context.l10n;
-    final String? customerName =
-        state.selectedJobCustomer?.name ?? job.customerName;
-    final bool isCompleted = job.status.value == JobStatus.completed;
-    final bool isKitchen = job.jobType == JobCategory.kitchenRenovation;
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: const BoxDecoration(
-          border: BorderDirectional(
-            start: BorderSide(color: AppColors.primary, width: 4),
-          ),
-        ),
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySurface,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                  ),
-                  alignment: Alignment.center,
-                  child: Icon(
-                    isKitchen
-                        ? Icons.kitchen_outlined
-                        : Icons.house_siding_outlined,
-                    size: AppDimensions.iconLg,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Wrap(
-                        spacing: AppSpacing.sm,
-                        runSpacing: AppSpacing.xs,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            '#${job.jobNumber}',
-                            style: context.textStyles.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          JobStatusBadge(
-                            label: mapper.statusLabel(job.status),
-                            status: job.status,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        mapper.jobTypeLabel(job.jobType),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.bodyMedium?.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      if (customerName != null && customerName.trim().isNotEmpty) ...<Widget>[
-                        const SizedBox(height: AppSpacing.sm),
-                        Row(
-                          children: <Widget>[
-                            Icon(
-                              Icons.person_outline_rounded,
-                              size: AppDimensions.iconSm,
-                              color: AppColors.textSecondary,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Expanded(
-                              child: Text(
-                                customerName.trim(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: context.textStyles.titleSmall,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (isCompleted && job.completedAt != null) ...<Widget>[
-              const SizedBox(height: AppSpacing.md),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySurface,
-                  borderRadius: AppRadius.control,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    const Icon(
-                      Icons.check_circle_rounded,
-                      size: AppDimensions.iconMd,
-                      color: AppColors.primary,
-                    ),
-                    const SizedBox(width: AppSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        l10n.jobCompletedAt(
-                          formatJobDateTime(job.completedAt!, context),
-                        ),
-                        style: context.textStyles.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _sectionHeading(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-  }) =>
-      Row(
-        children: <Widget>[
-          Icon(icon, size: AppDimensions.iconMd, color: AppColors.primary),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              title,
-              style: context.textStyles.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      );
-
-  /// One numbered workflow step card: step indicator on top, then the
-  /// section's own content (title / status / content / action all stay
-  /// where they already were inside the section widget).
-  Widget _workflowCard({
-    required int step,
-    required bool done,
-    required bool current,
-    required Widget child,
-  }) {
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.card,
-        side: BorderSide(
-          color: current ? AppColors.goldAccent : AppColors.border,
-          width: current ? 1.5 : 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _stepHeader(step: step, done: done, current: current),
-            const SizedBox(height: AppSpacing.md),
-            child,
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Numbered step state: completed, current, or upcoming. Both the text and
-  /// icon carry meaning; color is a reinforcing accent, never the only cue.
-  Widget _stepHeader({
-    required int step,
-    required bool done,
-    required bool current,
-  }) {
-    final AppLocalizations l10n = context.l10n;
-    final String stateLabel = done
-        ? l10n.statusCompleted
-        : current
-        ? l10n.currentStepLabel
-        : '';
-    final String semanticLabel = stateLabel.isEmpty
-        ? l10n.stepLabel(step)
-        : '${l10n.stepLabel(step)}, $stateLabel';
-
-    return Semantics(
-      container: true,
-      label: semanticLabel,
-      child: ExcludeSemantics(
-        child: Row(
-          children: <Widget>[
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: done
-                    ? AppColors.primary
-                    : current
-                    ? AppColors.goldSurface
-                    : AppColors.background,
-                border: Border.all(
-                  color: done
-                      ? AppColors.primary
-                      : current
-                      ? AppColors.goldAccent
-                      : AppColors.border,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: done
-                  ? const Icon(
-                      Icons.check_rounded,
-                      size: AppDimensions.iconSm,
-                      color: AppColors.surface,
-                    )
-                  : Text(
-                      '$step',
-                      style: context.textStyles.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: current
-                            ? AppColors.primaryDark
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                l10n.stepLabel(step),
-                style: context.textStyles.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            if (current)
-              Container(
-                constraints: const BoxConstraints(minHeight: 32),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.goldSurface,
-                  borderRadius: AppRadius.circular,
-                ),
-                child: Text(
-                  l10n.currentStepLabel,
-                  style: context.textStyles.bodySmall?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   /// Submits the Start Job action and reports the outcome once.
   ///
   /// `l10n` and the messenger are captured before the await so the async gap
@@ -1111,192 +825,4 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
 
   /// Builds the ordered, role-independent job fields. Fields whose value is
   /// not yet available (null in the database) are simply omitted.
-  Widget _buildJobFields(BuildContext context, Job job, JobLabelMapper mapper) {
-    final AppLocalizations l10n = context.l10n;
-    final List<(String, String)> values = <(String, String)>[];
-
-    void add(String label, String? value) {
-      if (value == null || value.trim().isEmpty) return;
-      values.add((label, value.trim()));
-    }
-
-    add(l10n.jobNumberLabel, '#${job.jobNumber}');
-    add(l10n.jobTypeLabel, mapper.jobTypeLabel(job.jobType));
-    add(l10n.statusLabel, mapper.statusLabel(job.status));
-    add(l10n.assignedTechnicianLabel, job.assignedEmployeeName);
-    add(
-      l10n.assignedDateLabel,
-      job.assignedAt == null ? null : formatJobDate(job.assignedAt!, context),
-    );
-    add(
-      l10n.startDateLabel,
-      job.startedAt == null ? null : formatJobDate(job.startedAt!, context),
-    );
-    add(
-      l10n.completedDateLabel,
-      job.completedAt == null ? null : formatJobDateTime(job.completedAt!, context),
-    );
-    add(l10n.createdAtLabel, formatJobDate(job.createdAt, context));
-    add(l10n.expiresAtLabel, formatJobDate(job.expiresAt, context));
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final int columns = constraints.maxWidth >= 520 ? 2 : 1;
-        final double gap = AppSpacing.md;
-        final double fieldWidth =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: AppSpacing.lg,
-          children: <Widget>[
-            for (final (String label, String value) in values)
-              SizedBox(
-                width: fieldWidth,
-                child: JobDetailField(label: label, value: value),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Builds the customer section from the per-job [JobsState.selectedJobCustomer].
-  ///
-  /// This is the ONLY customer surface a technician ever sees: read-only
-  /// display fields for the single job being opened. There are deliberately
-  /// no create/edit/delete/search actions and no list — those live in the
-  /// admin-only Customers feature. When the RPC returned nothing (another
-  /// technician's job, inactive employee, missing customer) the section
-  /// shows a short note instead of data.
-  Widget _buildCustomerFields(BuildContext context, JobsState state) {
-    final AppLocalizations l10n = context.l10n;
-    final JobCustomerInfo? customer = state.selectedJobCustomer;
-
-    if (customer == null) {
-      return Text(
-        l10n.customerInfoUnavailable,
-        style: context.textStyles.bodyMedium?.copyWith(
-          color: AppColors.textSecondary,
-        ),
-      );
-    }
-
-    final List<(String, String)> values = <(String, String)>[];
-    void add(String label, String? value) {
-      if (value == null || value.trim().isEmpty) return;
-      values.add((label, value.trim()));
-    }
-
-    add(l10n.customerNameLabel, customer.name);
-    add(l10n.customerPhoneLabel, customer.phone);
-    add(l10n.customerAddressLabel, customer.address);
-    add(l10n.customerCityLabel, customer.city);
-    add(l10n.customerPostalCodeLabel, customer.postalCode);
-
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final int columns = constraints.maxWidth >= 520 ? 2 : 1;
-        final double gap = AppSpacing.md;
-        final double fieldWidth =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: AppSpacing.lg,
-          children: <Widget>[
-            for (final (String label, String value) in values)
-              SizedBox(
-                width: fieldWidth,
-                child: JobDetailField(label: label, value: value),
-              ),
-          ],
-        );
-      },
-    );
-  }
-
-}
-
-/// Compact progress meter derived exclusively from this job's existing
-/// workflow facts. It does not enable, disable, or change any workflow action.
-class _WorkflowProgress extends StatelessWidget {
-  const _WorkflowProgress({
-    required this.completed,
-    required this.total,
-    required this.label,
-    required this.title,
-  });
-
-  final int completed;
-  final int total;
-  final String label;
-  final String title;
-
-  @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            title,
-            style: context.textStyles.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            label,
-            style: context.textStyles.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Semantics(
-            container: true,
-            label: '$title: $label',
-            child: ExcludeSemantics(
-              child: ClipRRect(
-                borderRadius: AppRadius.circular,
-                child: LinearProgressIndicator(
-                  minHeight: 8,
-                  value: total == 0 ? 0 : completed / total,
-                  backgroundColor: AppColors.border,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-/// The workflow-state line shown in place of the Start Job button once the
-/// job is `in_progress`: "Started: `<server timestamp>`". Purely presentational
-/// — the value comes from `jobs.started_at` (database-generated), formatted
-/// with the project's existing date convention.
-class _StartedAtLine extends StatelessWidget {
-  const _StartedAtLine({required this.startedAt});
-
-  final DateTime startedAt;
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-
-    return Row(
-      children: <Widget>[
-        const Icon(Icons.access_time_rounded, size: AppDimensions.iconMd),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: Text(
-            l10n.jobStartedAt(formatJobDateTime(startedAt, context)),
-            style: context.textStyles.bodyMedium,
-          ),
-        ),
-      ],
-    );
-  }
 }
