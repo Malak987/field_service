@@ -257,7 +257,7 @@ class JobsRepositoryImpl implements JobsRepository {
 
     final String jobId = _stableId(idempotencyKey, 'job');
     final String customerId = _stableId(idempotencyKey, 'customer');
-    final String cleanDescription = _cleanDescription(description);
+    final String? cleanDescription = _cleanDescription(description);
 
     await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,
@@ -302,7 +302,7 @@ class JobsRepositoryImpl implements JobsRepository {
     }
 
     final String jobId = _stableId(idempotencyKey, 'job');
-    final String cleanDescription = _cleanDescription(description);
+    final String? cleanDescription = _cleanDescription(description);
 
     await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,

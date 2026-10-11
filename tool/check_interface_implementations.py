@@ -6,9 +6,13 @@ turns every implementer that lacks it into a hard compile error. This script
 walks `lib/` and `test/`, resolves each `implements` clause to a class declared
 somewhere in the project, and reports missing members.
 
-It is deliberately syntactic (no Dart analyzer needed): member names are what
-matter here, not signatures — a missing override is the failure mode that a
-sandbox without the Dart SDK cannot otherwise catch.
+It is deliberately syntactic (no Dart analyzer needed) and checks MEMBER
+NAMES ONLY.
+
+Known blind spot: an override with the right name but a drifted parameter
+list or return type (`invalid_override`) is NOT caught here — normalizing
+Dart parameter lists with regex produced more false positives than signal
+when it was tried. Signature drift needs the real `flutter analyze`.
 
 Usage: python3 tool/check_interface_implementations.py
 Exit code 0 = nothing missing, 1 = problems found.
@@ -154,6 +158,7 @@ def main() -> int:
                     problems.append('%s (%s) does not implement %s: %s'
                                     % (class_name, os.path.relpath(path, ROOT),
                                        interface, ', '.join(missing)))
+
 
     if problems:
         print('INTERFACE IMPLEMENTATIONS: %d problem(s)' % len(problems))

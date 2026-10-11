@@ -106,14 +106,17 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
   }) async => throw UnimplementedError();
 
   @override
-  Future<Map<String, Object>> technicianCreateCustomerAndJob({
+  Future<Job> technicianCreateCustomerAndJob({
+    required String jobId,
+    required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
     String? description,
   }) async => throw UnimplementedError();
 
   @override
-  Future<Map<String, Object>> technicianCreateJobForCustomer({
+  Future<Job> technicianCreateJobForCustomer({
+    required String jobId,
     required String customerId,
     required String jobType,
     String? description,

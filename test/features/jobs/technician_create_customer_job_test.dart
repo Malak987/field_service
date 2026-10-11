@@ -60,7 +60,10 @@ class _RecordingCreateCustomerAndJob
   _RecordingCreateCustomerAndJob({this.result, this.error});
 
   final TechnicianJobCreation? result;
-  final Object? error;
+
+  /// Mutable so a test can fail the first attempt and then retry the SAME
+  /// form (the idempotency-key test).
+  Object? error;
 
   /// Every accepted call, exactly as the cubit handed it over.
   final List<Map<String, Object?>> calls = <Map<String, Object?>>[];

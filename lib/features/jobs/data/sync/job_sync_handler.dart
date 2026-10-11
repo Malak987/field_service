@@ -80,7 +80,7 @@ class JobSyncHandler implements SyncOperationHandler {
           'Technician job creation operation carries no customer draft.',
         );
       }
-      final _TechnicianJobDraft draft = _draftOf(operation);
+      final _TechnicianJobDraft? draft = _draftOf(operation);
       if (draft == null) {
         return RemotePushResult.failure(
           'Technician job creation operation is missing its ids.',
