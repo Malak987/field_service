@@ -32,6 +32,25 @@ abstract final class AppRoutes {
   /// Technician area.
   static const String technician = '/technician';
 
+  /// Technician management (`إدارة الفنيين`) — admin-only. Lists every
+  /// employee with its real name and state and offers block / unblock /
+  /// soft delete. Declared *outside* the [admin] alias because that alias
+  /// redirects to [root]; these routes must build pages instead.
+  static const String adminTechnicians = '/admin/technicians';
+
+  /// Customer management (`إدارة العملاء`) — admin-only.
+  static const String adminCustomers = '/admin/customers';
+
+  /// Create-customer form of the management area. Declared before
+  /// [adminCustomerDetails] so the static segment wins over `:id`.
+  static const String adminCustomerCreate = '/admin/customers/create';
+
+  /// Customer details of the management area; requires a `:id` parameter.
+  static const String adminCustomerDetails = '/admin/customers/:id';
+
+  /// Edit-customer form of the management area; requires a `:id` parameter.
+  static const String adminCustomerEdit = '/admin/customers/:id/edit';
+
   /// Employee account screen (identity, language, sign-out) — available to
   /// both roles; the router refuses it for unauthenticated visitors.
   static const String account = '/account';

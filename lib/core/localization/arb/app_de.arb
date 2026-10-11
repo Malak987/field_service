@@ -271,5 +271,149 @@
   "pendingSyncLabel": "Synchronisierung ausstehend",
   "syncedLabel": "Synchronisiert",
   "syncFailedLabel": "Sync fehlgeschlagen",
-  "validationRequiredField": "Pflichtfeld."
+  "validationRequiredField": "Pflichtfeld.",
+  "adminManagementTitle": "Verwaltung",
+  "adminTechniciansTileSubtitle": "Techniker-Konten sperren, entsperren oder löschen.",
+  "adminCustomersTileSubtitle": "Kunden anlegen, bearbeiten, sperren oder löschen.",
+  "adminTechniciansTitle": "Techniker verwalten",
+  "adminTechniciansSubtitle": "Alle Techniker-Konten mit Status, Auftragshistorie und Verwaltungsaktionen.",
+  "adminTechniciansLoadingLabel": "Techniker werden geladen…",
+  "adminTechniciansEmptyTitle": "Keine Techniker-Konten",
+  "adminTechniciansEmptySubtitle": "Techniker erscheinen hier, sobald sie ihre E-Mail bestätigt haben und automatisch angelegt wurden.",
+  "adminCustomersTitle": "Kunden verwalten",
+  "adminCustomersLoadingLabel": "Kunden werden geladen…",
+  "adminCustomersEmptyTitle": "Noch keine Kunden",
+  "adminCustomersEmptySubtitle": "Legen Sie den ersten Kunden an, um Aufträge erstellen zu können.",
+  "adminCustomerDetailsTitle": "Kundendetails",
+  "adminLoadFailedTitle": "Laden fehlgeschlagen",
+  "adminStatusActive": "Aktiv",
+  "adminStatusBlocked": "Gesperrt",
+  "adminStatusDeleted": "Gelöscht",
+  "adminStatusUnknown": "Unbekannt",
+  "adminBlockAction": "Sperren",
+  "adminUnblockAction": "Entsperren",
+  "adminSoftDeleteAction": "Löschen",
+  "adminConfirmAction": "Bestätigen",
+  "adminHistoryKeptNotice": "Bereits erfasste Aufträge, Fotos und Unterschriften bleiben erhalten — es wird nichts gelöscht.",
+  "adminDeletedTechnicianNotice": "Dieser Techniker ist gelöscht. Aufträge, Fotos und Unterschriften bleiben erhalten; eine Reaktivierung ist nicht möglich.",
+  "adminDeletedCustomerNotice": "Dieser Kunde ist gelöscht. Die Historie bleibt lesbar; bearbeiten oder reaktivieren ist nicht möglich.",
+  "adminOwnAccountNotice": "Das ist Ihr eigenes Konto — der Status kann nicht geändert werden.",
+  "adminAdministratorNotice": "Administrator-Konto — die Technikerverwaltung greift hier nicht.",
+  "adminAccountsCountLabel": "{count} Konten",
+  "@adminAccountsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAssignedJobsLabel": "{count} zugewiesen",
+  "@adminAssignedJobsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCompletedJobsLabel": "{count} abgeschlossen",
+  "@adminCompletedJobsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCustomerJobsCountLabel": "{count} Aufträge",
+  "@adminCustomerJobsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockedOnLabel": "Gesperrt am {date}",
+  "@adminBlockedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeletedOnLabel": "Gelöscht am {date}",
+  "@adminDeletedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockTechnicianConfirmTitle": "Techniker sperren?",
+  "adminBlockTechnicianConfirmBody": "„{name}“ verliert sofort den Zugriff: Es kann kein Auftrag gestartet, kein Foto hochgeladen und keine bestehenden Daten mehr gelesen werden. Beim nächsten Start wird das Konto abgemeldet.",
+  "@adminBlockTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUnblockTechnicianConfirmTitle": "Techniker entsperren?",
+  "adminUnblockTechnicianConfirmBody": "„{name}“ erhält wieder Zugriff auf zugewiesene Aufträge, Fotos und Unterschriften.",
+  "@adminUnblockTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteTechnicianConfirmTitle": "Techniker löschen?",
+  "adminDeleteTechnicianConfirmBody": "„{name}“ wird aus den Verwaltungslisten entfernt (logisches Löschen). Das Auth-Konto und der Mitarbeitereintrag bleiben erhalten, historische Aufträge bleiben dem Namen zugeordnet; eine Reaktivierung ist nicht möglich.",
+  "@adminDeleteTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockCustomerConfirmTitle": "Kunden sperren?",
+  "adminBlockCustomerConfirmBody": "„{name}“ kann für neue Aufträge nicht mehr ausgewählt werden. Bestehende Aufträge, Fotos und Unterschriften bleiben einsehbar.",
+  "@adminBlockCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUnblockCustomerConfirmTitle": "Kunden entsperren?",
+  "adminUnblockCustomerConfirmBody": "„{name}“ kann sofort wieder für neue Aufträge ausgewählt werden.",
+  "@adminUnblockCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteCustomerConfirmTitle": "Kunden löschen?",
+  "adminDeleteCustomerConfirmBody": "„{name}“ wird logisch gelöscht und kann nicht mehr ausgewählt oder bearbeitet werden. Auftrags- und Dateihistorie bleibt erhalten.",
+  "@adminDeleteCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminTechnicianBlockedMessage": "Techniker gesperrt.",
+  "adminTechnicianUnblockedMessage": "Techniker entsperrt.",
+  "adminTechnicianDeletedMessage": "Techniker gelöscht (Historie bleibt erhalten).",
+  "adminCustomerBlockedMessage": "Kunde gesperrt.",
+  "adminCustomerUnblockedMessage": "Kunde entsperrt.",
+  "adminCustomerDeletedMessage": "Kunde gelöscht (Historie bleibt erhalten).",
+  "adminCustomerCreatedMessage": "Kunde angelegt.",
+  "adminCustomerUpdatedMessage": "Kunde aktualisiert.",
+  "adminErrorNotAuthorized": "Nur ein Administrator darf Techniker und Kunden verwalten.",
+  "adminErrorNotFound": "Der Datensatz existiert auf dem Server nicht mehr.",
+  "adminErrorRecordDeleted": "Der Datensatz ist gelöscht und kann nicht mehr geändert werden.",
+  "adminErrorInvalidInput": "Der Server hat die Eingaben abgelehnt. Bitte prüfen Sie das Formular.",
+  "adminErrorCustomerBlocked": "Dieser Kunde ist gesperrt oder gelöscht und kann für einen neuen Auftrag nicht verwendet werden.",
+  "adminErrorNetwork": "Keine Verbindung zum Server. Bitte erneut versuchen.",
+  "adminErrorUnknown": "Die Aktion ist fehlgeschlagen. Bitte erneut versuchen."
 }

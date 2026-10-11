@@ -313,6 +313,68 @@ abstract class AppLocalizations {
   String get syncedLabel;
   String get syncFailedLabel;
   String get validationRequiredField;
+
+  // --- Admin management (technicians & customers) ---------------------------
+  String get adminManagementTitle;
+  String get adminTechniciansTileSubtitle;
+  String get adminCustomersTileSubtitle;
+  String get adminTechniciansTitle;
+  String get adminTechniciansSubtitle;
+  String get adminTechniciansLoadingLabel;
+  String get adminTechniciansEmptyTitle;
+  String get adminTechniciansEmptySubtitle;
+  String get adminCustomersTitle;
+  String get adminCustomersLoadingLabel;
+  String get adminCustomersEmptyTitle;
+  String get adminCustomersEmptySubtitle;
+  String get adminCustomerDetailsTitle;
+  String get adminLoadFailedTitle;
+  String get adminStatusActive;
+  String get adminStatusBlocked;
+  String get adminStatusDeleted;
+  String get adminStatusUnknown;
+  String get adminBlockAction;
+  String get adminUnblockAction;
+  String get adminSoftDeleteAction;
+  String get adminConfirmAction;
+  String get adminHistoryKeptNotice;
+  String get adminDeletedCustomerNotice;
+  String get adminDeletedTechnicianNotice;
+  String get adminOwnAccountNotice;
+  String get adminAdministratorNotice;
+  String adminAccountsCountLabel(String count);
+  String adminAssignedJobsLabel(String count);
+  String adminCompletedJobsLabel(String count);
+  String adminCustomerJobsCountLabel(String count);
+  String adminBlockedOnLabel(String date);
+  String adminDeletedOnLabel(String date);
+  String get adminBlockTechnicianConfirmTitle;
+  String adminBlockTechnicianConfirmBody(String name);
+  String get adminUnblockTechnicianConfirmTitle;
+  String adminUnblockTechnicianConfirmBody(String name);
+  String get adminDeleteTechnicianConfirmTitle;
+  String adminDeleteTechnicianConfirmBody(String name);
+  String get adminBlockCustomerConfirmTitle;
+  String adminBlockCustomerConfirmBody(String name);
+  String get adminUnblockCustomerConfirmTitle;
+  String adminUnblockCustomerConfirmBody(String name);
+  String get adminDeleteCustomerConfirmTitle;
+  String adminDeleteCustomerConfirmBody(String name);
+  String get adminTechnicianBlockedMessage;
+  String get adminTechnicianUnblockedMessage;
+  String get adminTechnicianDeletedMessage;
+  String get adminCustomerBlockedMessage;
+  String get adminCustomerUnblockedMessage;
+  String get adminCustomerDeletedMessage;
+  String get adminCustomerCreatedMessage;
+  String get adminCustomerUpdatedMessage;
+  String get adminErrorNotAuthorized;
+  String get adminErrorNotFound;
+  String get adminErrorRecordDeleted;
+  String get adminErrorInvalidInput;
+  String get adminErrorCustomerBlocked;
+  String get adminErrorNetwork;
+  String get adminErrorUnknown;
 }
 
 class _AppLocalizationsDelegate
@@ -1140,6 +1202,187 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validationRequiredField => 'This field is required.';
+
+  // --- Admin management (technicians & customers) ---------------------------
+  @override
+  String get adminManagementTitle => "Administration";
+
+  @override
+  String get adminTechniciansTileSubtitle => "Block, unblock or delete technician accounts.";
+
+  @override
+  String get adminCustomersTileSubtitle => "Add, edit, block or delete customers.";
+
+  @override
+  String get adminTechniciansTitle => "Manage Technicians";
+
+  @override
+  String get adminTechniciansSubtitle => "Every technician account with its state, job history and management actions.";
+
+  @override
+  String get adminTechniciansLoadingLabel => "Loading technicians…";
+
+  @override
+  String get adminTechniciansEmptyTitle => "No technician accounts";
+
+  @override
+  String get adminTechniciansEmptySubtitle => "Technicians appear here as soon as they confirm their email and are provisioned automatically.";
+
+  @override
+  String get adminCustomersTitle => "Manage Customers";
+
+  @override
+  String get adminCustomersLoadingLabel => "Loading customers…";
+
+  @override
+  String get adminCustomersEmptyTitle => "No customers yet";
+
+  @override
+  String get adminCustomersEmptySubtitle => "Add the first customer to be able to create jobs.";
+
+  @override
+  String get adminCustomerDetailsTitle => "Customer details";
+
+  @override
+  String get adminLoadFailedTitle => "Could not load";
+
+  @override
+  String get adminStatusActive => "Active";
+
+  @override
+  String get adminStatusBlocked => "Blocked";
+
+  @override
+  String get adminStatusDeleted => "Deleted";
+
+  @override
+  String get adminStatusUnknown => "Unknown";
+
+  @override
+  String get adminBlockAction => "Block";
+
+  @override
+  String get adminUnblockAction => "Unblock";
+
+  @override
+  String get adminSoftDeleteAction => "Delete";
+
+  @override
+  String get adminConfirmAction => "Confirm";
+
+  @override
+  String get adminHistoryKeptNotice => "Jobs, photos and signatures already recorded are kept — nothing is deleted.";
+
+  @override
+  String get adminDeletedTechnicianNotice => "This technician is deleted. Jobs, photos and signatures stay recorded, and the account cannot be reactivated.";
+  @override
+  String get adminDeletedCustomerNotice => "This customer is deleted. Its history stays readable, and it cannot be edited or reactivated.";
+
+  @override
+  String get adminOwnAccountNotice => "This is your own account — you cannot change its status.";
+
+  @override
+  String get adminAdministratorNotice => "Administrator account — technician management does not apply to it.";
+
+  @override
+  String adminAccountsCountLabel(String count) => '$count accounts';
+
+  @override
+  String adminAssignedJobsLabel(String count) => '$count assigned';
+
+  @override
+  String adminCompletedJobsLabel(String count) => '$count completed';
+
+  @override
+  String adminCustomerJobsCountLabel(String count) => '$count jobs';
+
+  @override
+  String adminBlockedOnLabel(String date) => 'Blocked on $date';
+
+  @override
+  String adminDeletedOnLabel(String date) => 'Deleted on $date';
+
+  @override
+  String get adminBlockTechnicianConfirmTitle => "Block technician?";
+
+  @override
+  String adminBlockTechnicianConfirmBody(String name) => '“$name” loses access immediately: no job can be started, no photo uploaded and no existing data read. The app signs the account out on the next start.';
+
+  @override
+  String get adminUnblockTechnicianConfirmTitle => "Unblock technician?";
+
+  @override
+  String adminUnblockTechnicianConfirmBody(String name) => '“$name” regains access to assigned jobs, photos and signatures.';
+
+  @override
+  String get adminDeleteTechnicianConfirmTitle => "Delete technician?";
+
+  @override
+  String adminDeleteTechnicianConfirmBody(String name) => '“$name” is removed from the management lists (logical deletion). The auth account and the employee row are kept, historical jobs stay assigned to the name, and the account cannot be reactivated.';
+
+  @override
+  String get adminBlockCustomerConfirmTitle => "Block customer?";
+
+  @override
+  String adminBlockCustomerConfirmBody(String name) => '“$name” can no longer be selected for new jobs. Existing jobs, photos and signatures stay viewable.';
+
+  @override
+  String get adminUnblockCustomerConfirmTitle => "Unblock customer?";
+
+  @override
+  String adminUnblockCustomerConfirmBody(String name) => '“$name” can be selected for new jobs again immediately.';
+
+  @override
+  String get adminDeleteCustomerConfirmTitle => "Delete customer?";
+
+  @override
+  String adminDeleteCustomerConfirmBody(String name) => '“$name” is logically deleted and can no longer be selected or edited. Job and file history is preserved.';
+
+  @override
+  String get adminTechnicianBlockedMessage => "Technician blocked.";
+
+  @override
+  String get adminTechnicianUnblockedMessage => "Technician unblocked.";
+
+  @override
+  String get adminTechnicianDeletedMessage => "Technician deleted (history preserved).";
+
+  @override
+  String get adminCustomerBlockedMessage => "Customer blocked.";
+
+  @override
+  String get adminCustomerUnblockedMessage => "Customer unblocked.";
+
+  @override
+  String get adminCustomerDeletedMessage => "Customer deleted (history preserved).";
+
+  @override
+  String get adminCustomerCreatedMessage => "Customer created.";
+
+  @override
+  String get adminCustomerUpdatedMessage => "Customer updated.";
+
+  @override
+  String get adminErrorNotAuthorized => "Only an administrator may manage technicians and customers.";
+
+  @override
+  String get adminErrorNotFound => "The record no longer exists on the server.";
+
+  @override
+  String get adminErrorRecordDeleted => "The record is deleted and can no longer be changed.";
+
+  @override
+  String get adminErrorInvalidInput => "The server rejected the values. Please check the form.";
+
+  @override
+  String get adminErrorCustomerBlocked => "This customer is blocked or deleted and cannot be used for a new job.";
+
+  @override
+  String get adminErrorNetwork => "No connection to the server. Please try again.";
+
+  @override
+  String get adminErrorUnknown => "The action failed. Please try again.";
+
 }
 
 /// German (`de`) translations — natural, idiomatic German for professional field service use.
@@ -1955,6 +2198,187 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get validationRequiredField => 'Pflichtfeld.';
+
+  // --- Admin management (technicians & customers) ---------------------------
+  @override
+  String get adminManagementTitle => "Verwaltung";
+
+  @override
+  String get adminTechniciansTileSubtitle => "Techniker-Konten sperren, entsperren oder löschen.";
+
+  @override
+  String get adminCustomersTileSubtitle => "Kunden anlegen, bearbeiten, sperren oder löschen.";
+
+  @override
+  String get adminTechniciansTitle => "Techniker verwalten";
+
+  @override
+  String get adminTechniciansSubtitle => "Alle Techniker-Konten mit Status, Auftragshistorie und Verwaltungsaktionen.";
+
+  @override
+  String get adminTechniciansLoadingLabel => "Techniker werden geladen…";
+
+  @override
+  String get adminTechniciansEmptyTitle => "Keine Techniker-Konten";
+
+  @override
+  String get adminTechniciansEmptySubtitle => "Techniker erscheinen hier, sobald sie ihre E-Mail bestätigt haben und automatisch angelegt wurden.";
+
+  @override
+  String get adminCustomersTitle => "Kunden verwalten";
+
+  @override
+  String get adminCustomersLoadingLabel => "Kunden werden geladen…";
+
+  @override
+  String get adminCustomersEmptyTitle => "Noch keine Kunden";
+
+  @override
+  String get adminCustomersEmptySubtitle => "Legen Sie den ersten Kunden an, um Aufträge erstellen zu können.";
+
+  @override
+  String get adminCustomerDetailsTitle => "Kundendetails";
+
+  @override
+  String get adminLoadFailedTitle => "Laden fehlgeschlagen";
+
+  @override
+  String get adminStatusActive => "Aktiv";
+
+  @override
+  String get adminStatusBlocked => "Gesperrt";
+
+  @override
+  String get adminStatusDeleted => "Gelöscht";
+
+  @override
+  String get adminStatusUnknown => "Unbekannt";
+
+  @override
+  String get adminBlockAction => "Sperren";
+
+  @override
+  String get adminUnblockAction => "Entsperren";
+
+  @override
+  String get adminSoftDeleteAction => "Löschen";
+
+  @override
+  String get adminConfirmAction => "Bestätigen";
+
+  @override
+  String get adminHistoryKeptNotice => "Bereits erfasste Aufträge, Fotos und Unterschriften bleiben erhalten — es wird nichts gelöscht.";
+
+  @override
+  String get adminDeletedTechnicianNotice => "Dieser Techniker ist gelöscht. Aufträge, Fotos und Unterschriften bleiben erhalten; eine Reaktivierung ist nicht möglich.";
+  @override
+  String get adminDeletedCustomerNotice => "Dieser Kunde ist gelöscht. Die Historie bleibt lesbar; bearbeiten oder reaktivieren ist nicht möglich.";
+
+  @override
+  String get adminOwnAccountNotice => "Das ist Ihr eigenes Konto — der Status kann nicht geändert werden.";
+
+  @override
+  String get adminAdministratorNotice => "Administrator-Konto — die Technikerverwaltung greift hier nicht.";
+
+  @override
+  String adminAccountsCountLabel(String count) => '$count Konten';
+
+  @override
+  String adminAssignedJobsLabel(String count) => '$count zugewiesen';
+
+  @override
+  String adminCompletedJobsLabel(String count) => '$count abgeschlossen';
+
+  @override
+  String adminCustomerJobsCountLabel(String count) => '$count Aufträge';
+
+  @override
+  String adminBlockedOnLabel(String date) => 'Gesperrt am $date';
+
+  @override
+  String adminDeletedOnLabel(String date) => 'Gelöscht am $date';
+
+  @override
+  String get adminBlockTechnicianConfirmTitle => "Techniker sperren?";
+
+  @override
+  String adminBlockTechnicianConfirmBody(String name) => '„$name“ verliert sofort den Zugriff: Es kann kein Auftrag gestartet, kein Foto hochgeladen und keine bestehenden Daten mehr gelesen werden. Beim nächsten Start wird das Konto abgemeldet.';
+
+  @override
+  String get adminUnblockTechnicianConfirmTitle => "Techniker entsperren?";
+
+  @override
+  String adminUnblockTechnicianConfirmBody(String name) => '„$name“ erhält wieder Zugriff auf zugewiesene Aufträge, Fotos und Unterschriften.';
+
+  @override
+  String get adminDeleteTechnicianConfirmTitle => "Techniker löschen?";
+
+  @override
+  String adminDeleteTechnicianConfirmBody(String name) => '„$name“ wird aus den Verwaltungslisten entfernt (logisches Löschen). Das Auth-Konto und der Mitarbeitereintrag bleiben erhalten, historische Aufträge bleiben dem Namen zugeordnet; eine Reaktivierung ist nicht möglich.';
+
+  @override
+  String get adminBlockCustomerConfirmTitle => "Kunden sperren?";
+
+  @override
+  String adminBlockCustomerConfirmBody(String name) => '„$name“ kann für neue Aufträge nicht mehr ausgewählt werden. Bestehende Aufträge, Fotos und Unterschriften bleiben einsehbar.';
+
+  @override
+  String get adminUnblockCustomerConfirmTitle => "Kunden entsperren?";
+
+  @override
+  String adminUnblockCustomerConfirmBody(String name) => '„$name“ kann sofort wieder für neue Aufträge ausgewählt werden.';
+
+  @override
+  String get adminDeleteCustomerConfirmTitle => "Kunden löschen?";
+
+  @override
+  String adminDeleteCustomerConfirmBody(String name) => '„$name“ wird logisch gelöscht und kann nicht mehr ausgewählt oder bearbeitet werden. Auftrags- und Dateihistorie bleibt erhalten.';
+
+  @override
+  String get adminTechnicianBlockedMessage => "Techniker gesperrt.";
+
+  @override
+  String get adminTechnicianUnblockedMessage => "Techniker entsperrt.";
+
+  @override
+  String get adminTechnicianDeletedMessage => "Techniker gelöscht (Historie bleibt erhalten).";
+
+  @override
+  String get adminCustomerBlockedMessage => "Kunde gesperrt.";
+
+  @override
+  String get adminCustomerUnblockedMessage => "Kunde entsperrt.";
+
+  @override
+  String get adminCustomerDeletedMessage => "Kunde gelöscht (Historie bleibt erhalten).";
+
+  @override
+  String get adminCustomerCreatedMessage => "Kunde angelegt.";
+
+  @override
+  String get adminCustomerUpdatedMessage => "Kunde aktualisiert.";
+
+  @override
+  String get adminErrorNotAuthorized => "Nur ein Administrator darf Techniker und Kunden verwalten.";
+
+  @override
+  String get adminErrorNotFound => "Der Datensatz existiert auf dem Server nicht mehr.";
+
+  @override
+  String get adminErrorRecordDeleted => "Der Datensatz ist gelöscht und kann nicht mehr geändert werden.";
+
+  @override
+  String get adminErrorInvalidInput => "Der Server hat die Eingaben abgelehnt. Bitte prüfen Sie das Formular.";
+
+  @override
+  String get adminErrorCustomerBlocked => "Dieser Kunde ist gesperrt oder gelöscht und kann für einen neuen Auftrag nicht verwendet werden.";
+
+  @override
+  String get adminErrorNetwork => "Keine Verbindung zum Server. Bitte erneut versuchen.";
+
+  @override
+  String get adminErrorUnknown => "Die Aktion ist fehlgeschlagen. Bitte erneut versuchen.";
+
 }
 
 /// Ergonomic shorthand on [BuildContext] for localized strings.

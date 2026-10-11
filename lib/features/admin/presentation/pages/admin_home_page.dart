@@ -99,6 +99,29 @@ class AdminHomePage extends StatelessWidget {
                   onTap: () => context.push(AppRoutes.jobCreate),
                 ),
                 const SizedBox(height: AppSpacing.xl),
+                // --- Admin management ------------------------------------------
+                // Admin-only sections: the technician home screen has no
+                // counterpart (and the router refuses these routes for any
+                // non-admin role, while the SECURITY DEFINER RPCs behind them
+                // refuse a non-admin caller regardless of the UI).
+                _SectionTitle(label: l10n.adminManagementTitle),
+                const SizedBox(height: AppSpacing.md),
+                HomeNavigationTile(
+                  key: const Key('nav_admin_technicians'),
+                  icon: Icons.badge_outlined,
+                  label: l10n.adminTechniciansTitle,
+                  subtitle: l10n.adminTechniciansTileSubtitle,
+                  onTap: () => context.push(AppRoutes.adminTechnicians),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                HomeNavigationTile(
+                  key: const Key('nav_admin_customers'),
+                  icon: Icons.manage_accounts_outlined,
+                  label: l10n.adminCustomersTitle,
+                  subtitle: l10n.adminCustomersTileSubtitle,
+                  onTap: () => context.push(AppRoutes.adminCustomers),
+                ),
+                const SizedBox(height: AppSpacing.xl),
                 _SectionTitle(label: l10n.overviewTitle),
                 const SizedBox(height: AppSpacing.md),
                 const _OverviewCard(),

@@ -12,6 +12,7 @@ import 'package:field_service/features/jobs/domain/entities/job.dart';
 class CreateJobState extends Equatable {
   const CreateJobState({
     this.customers = const <Customer>[],
+    this.unavailableCustomerIds = const <String>{},
     this.technicians = const <Employee>[],
     this.isLoadingCustomers = true,
     this.isLoadingTechnicians = true,
@@ -28,7 +29,24 @@ class CreateJobState extends Equatable {
   });
 
   /// Selectable customers (existing Customers feature, offline-first).
+  ///
+  /// Blocked and soft deleted customers are already removed — see
+  /// [unavailableCustomerIds].
   final List<Customer> customers;
+
+  /// Customers the server declared unusable for NEW jobs (blocked or soft
+  /// deleted, `admin_unavailable_customer_ids()`).
+  ///
+  /// Purely informational/defensive on the client: the `create_job` RPC refuses
+  /// such a customer with `F0008` no matter what this set says (offline mirror,
+  /// stale session, tampered client). When the set cannot be loaded (e.g. the
+  /// management migration is not applied yet) it stays empty and the server
+  /// remains the only filter.
+  final Set<String> unavailableCustomerIds;
+
+  /// Whether any customer was hidden from the selector because the server
+  /// refuses it for new jobs.
+  bool get hasHiddenCustomers => unavailableCustomerIds.isNotEmpty;
 
   /// Selectable ACTIVE technicians (never admins, never inactive).
   final List<Employee> technicians;
@@ -75,12 +93,14 @@ class CreateJobState extends Equatable {
 
   CreateJobState copyWith({
     List<Customer>? customers,
+    Set<String>? unavailableCustomerIds,
     List<Employee>? technicians,
     bool? isLoadingCustomers,
     bool? isLoadingTechnicians,
     bool? customerOptionsFailed,
     bool? technicianOptionsFailed,
     String? selectedCustomerId,
+    bool clearSelectedCustomerId = false,
     String? selectedCategory,
     String? description,
     String? selectedTechnicianId,
@@ -92,13 +112,17 @@ class CreateJobState extends Equatable {
   }) {
     return CreateJobState(
       customers: customers ?? this.customers,
+      unavailableCustomerIds:
+          unavailableCustomerIds ?? this.unavailableCustomerIds,
       technicians: technicians ?? this.technicians,
       isLoadingCustomers: isLoadingCustomers ?? this.isLoadingCustomers,
       isLoadingTechnicians: isLoadingTechnicians ?? this.isLoadingTechnicians,
       customerOptionsFailed: customerOptionsFailed ?? this.customerOptionsFailed,
       technicianOptionsFailed:
           technicianOptionsFailed ?? this.technicianOptionsFailed,
-      selectedCustomerId: selectedCustomerId ?? this.selectedCustomerId,
+      selectedCustomerId: clearSelectedCustomerId
+          ? null
+          : (selectedCustomerId ?? this.selectedCustomerId),
       selectedCategory: selectedCategory ?? this.selectedCategory,
       description: description ?? this.description,
       selectedTechnicianId: selectedTechnicianId ?? this.selectedTechnicianId,
@@ -112,6 +136,7 @@ class CreateJobState extends Equatable {
   @override
   List<Object?> get props => <Object?>[
     customers,
+    unavailableCustomerIds,
     technicians,
     isLoadingCustomers,
     isLoadingTechnicians,

@@ -8,6 +8,10 @@ import 'package:field_service/features/authentication/presentation/pages/forgot_
 import 'package:field_service/features/authentication/presentation/pages/login_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/register_page.dart';
 import 'package:field_service/features/authentication/presentation/pages/reset_password_page.dart';
+import 'package:field_service/features/admin/presentation/pages/admin_customer_details_page.dart';
+import 'package:field_service/features/admin/presentation/pages/admin_customer_form_page.dart';
+import 'package:field_service/features/admin/presentation/pages/admin_customers_page.dart';
+import 'package:field_service/features/admin/presentation/pages/admin_technicians_page.dart';
 import 'package:field_service/features/customers/presentation/pages/create_customer_page.dart';
 import 'package:field_service/features/customers/presentation/pages/customer_details_page.dart';
 import 'package:field_service/features/customers/presentation/pages/customers_page.dart';
@@ -106,6 +110,49 @@ class AppRouter {
       redirect: (BuildContext context, GoRouterState state) => AppRoutes.root,
     ),
 
+    // --- Admin management (admin-only) ----------------------------------------
+    // Real pages, deliberately NOT nested under the `AppRoutes.admin` alias:
+    // that alias exists to redirect home URLs to the gate, so nesting would
+    // bounce every child back to `/`. Guarding happens in `_redirect`.
+    GoRoute(
+      path: AppRoutes.adminTechnicians,
+      name: 'adminTechnicians',
+      builder: (BuildContext context, GoRouterState state) =>
+          const AdminTechniciansPage(),
+    ),
+    GoRoute(
+      path: AppRoutes.adminCustomers,
+      name: 'adminCustomers',
+      builder: (BuildContext context, GoRouterState state) =>
+          const AdminCustomersPage(),
+      routes: <RouteBase>[
+        GoRoute(
+          path: 'create',
+          name: 'adminCustomerCreate',
+          builder: (BuildContext context, GoRouterState state) =>
+              const AdminCustomerFormPage(),
+        ),
+        GoRoute(
+          path: ':id',
+          name: 'adminCustomerDetails',
+          builder: (BuildContext context, GoRouterState state) =>
+              AdminCustomerDetailsPage(
+                customerId: state.pathParameters['id']!,
+              ),
+          routes: <RouteBase>[
+            GoRoute(
+              path: 'edit',
+              name: 'adminCustomerEdit',
+              builder: (BuildContext context, GoRouterState state) =>
+                  AdminCustomerFormPage(
+                    customerId: state.pathParameters['id']!,
+                  ),
+            ),
+          ],
+        ),
+      ],
+    ),
+
     // --- Jobs ------------------------------------------------------------------
     GoRoute(
       path: AppRoutes.jobs,
@@ -175,8 +222,14 @@ class AppRouter {
       return path == AppRoutes.resetPassword ? null : AppRoutes.resetPassword;
     }
 
-    final bool isProtected =
+    // `/admin` is the alias of the gate; `/admin/<section>` are the real
+    // management pages. Both are protected, and both are admin-only.
+    final bool isAdminArea =
         path == AppRoutes.admin ||
+        path.startsWith('${AppRoutes.admin}/');
+
+    final bool isProtected =
+        isAdminArea ||
         path == AppRoutes.technician ||
         path == AppRoutes.account ||
         path == AppRoutes.jobs ||
@@ -214,6 +267,14 @@ class AppRouter {
     // page builds (survives typed URLs / deep links); the `create_job` RPC
     // re-enforces the rule server-side regardless.
     if (path == AppRoutes.jobCreate && !user.isAdmin) {
+      return AppRoutes.root;
+    }
+
+    // Technician / customer management (`/admin/technicians`,
+    // `/admin/customers`, …) belongs to the admin alone. The guard keeps a
+    // technician (or a typed URL / deep link) away from the pages; the
+    // SECURITY DEFINER RPCs behind them refuse a non-admin caller anyway.
+    if (isAdminArea && !user.isAdmin) {
       return AppRoutes.root;
     }
 

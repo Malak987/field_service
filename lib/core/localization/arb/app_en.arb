@@ -271,5 +271,149 @@
   "pendingSyncLabel": "Pending sync",
   "syncedLabel": "Synced",
   "syncFailedLabel": "Sync failed",
-  "validationRequiredField": "This field is required."
+  "validationRequiredField": "This field is required.",
+  "adminManagementTitle": "Administration",
+  "adminTechniciansTileSubtitle": "Block, unblock or delete technician accounts.",
+  "adminCustomersTileSubtitle": "Add, edit, block or delete customers.",
+  "adminTechniciansTitle": "Manage Technicians",
+  "adminTechniciansSubtitle": "Every technician account with its state, job history and management actions.",
+  "adminTechniciansLoadingLabel": "Loading technicians…",
+  "adminTechniciansEmptyTitle": "No technician accounts",
+  "adminTechniciansEmptySubtitle": "Technicians appear here as soon as they confirm their email and are provisioned automatically.",
+  "adminCustomersTitle": "Manage Customers",
+  "adminCustomersLoadingLabel": "Loading customers…",
+  "adminCustomersEmptyTitle": "No customers yet",
+  "adminCustomersEmptySubtitle": "Add the first customer to be able to create jobs.",
+  "adminCustomerDetailsTitle": "Customer details",
+  "adminLoadFailedTitle": "Could not load",
+  "adminStatusActive": "Active",
+  "adminStatusBlocked": "Blocked",
+  "adminStatusDeleted": "Deleted",
+  "adminStatusUnknown": "Unknown",
+  "adminBlockAction": "Block",
+  "adminUnblockAction": "Unblock",
+  "adminSoftDeleteAction": "Delete",
+  "adminConfirmAction": "Confirm",
+  "adminHistoryKeptNotice": "Jobs, photos and signatures already recorded are kept — nothing is deleted.",
+  "adminDeletedTechnicianNotice": "This technician is deleted. Jobs, photos and signatures stay recorded, and the account cannot be reactivated.",
+  "adminDeletedCustomerNotice": "This customer is deleted. Its history stays readable, and it cannot be edited or reactivated.",
+  "adminOwnAccountNotice": "This is your own account — you cannot change its status.",
+  "adminAdministratorNotice": "Administrator account — technician management does not apply to it.",
+  "adminAccountsCountLabel": "{count} accounts",
+  "@adminAccountsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminAssignedJobsLabel": "{count} assigned",
+  "@adminAssignedJobsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCompletedJobsLabel": "{count} completed",
+  "@adminCompletedJobsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminCustomerJobsCountLabel": "{count} jobs",
+  "@adminCustomerJobsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockedOnLabel": "Blocked on {date}",
+  "@adminBlockedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeletedOnLabel": "Deleted on {date}",
+  "@adminDeletedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockTechnicianConfirmTitle": "Block technician?",
+  "adminBlockTechnicianConfirmBody": "“{name}” loses access immediately: no job can be started, no photo uploaded and no existing data read. The app signs the account out on the next start.",
+  "@adminBlockTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUnblockTechnicianConfirmTitle": "Unblock technician?",
+  "adminUnblockTechnicianConfirmBody": "“{name}” regains access to assigned jobs, photos and signatures.",
+  "@adminUnblockTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteTechnicianConfirmTitle": "Delete technician?",
+  "adminDeleteTechnicianConfirmBody": "“{name}” is removed from the management lists (logical deletion). The auth account and the employee row are kept, historical jobs stay assigned to the name, and the account cannot be reactivated.",
+  "@adminDeleteTechnicianConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminBlockCustomerConfirmTitle": "Block customer?",
+  "adminBlockCustomerConfirmBody": "“{name}” can no longer be selected for new jobs. Existing jobs, photos and signatures stay viewable.",
+  "@adminBlockCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminUnblockCustomerConfirmTitle": "Unblock customer?",
+  "adminUnblockCustomerConfirmBody": "“{name}” can be selected for new jobs again immediately.",
+  "@adminUnblockCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminDeleteCustomerConfirmTitle": "Delete customer?",
+  "adminDeleteCustomerConfirmBody": "“{name}” is logically deleted and can no longer be selected or edited. Job and file history is preserved.",
+  "@adminDeleteCustomerConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "adminTechnicianBlockedMessage": "Technician blocked.",
+  "adminTechnicianUnblockedMessage": "Technician unblocked.",
+  "adminTechnicianDeletedMessage": "Technician deleted (history preserved).",
+  "adminCustomerBlockedMessage": "Customer blocked.",
+  "adminCustomerUnblockedMessage": "Customer unblocked.",
+  "adminCustomerDeletedMessage": "Customer deleted (history preserved).",
+  "adminCustomerCreatedMessage": "Customer created.",
+  "adminCustomerUpdatedMessage": "Customer updated.",
+  "adminErrorNotAuthorized": "Only an administrator may manage technicians and customers.",
+  "adminErrorNotFound": "The record no longer exists on the server.",
+  "adminErrorRecordDeleted": "The record is deleted and can no longer be changed.",
+  "adminErrorInvalidInput": "The server rejected the values. Please check the form.",
+  "adminErrorCustomerBlocked": "This customer is blocked or deleted and cannot be used for a new job.",
+  "adminErrorNetwork": "No connection to the server. Please try again.",
+  "adminErrorUnknown": "The action failed. Please try again."
 }
