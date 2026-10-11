@@ -9,6 +9,11 @@ import 'package:field_service/core/database/app_database.dart';
 import 'package:field_service/core/network/connectivity_service.dart';
 import 'package:field_service/core/network/network_info.dart';
 import 'package:field_service/core/sync/sync_manager.dart';
+import 'package:field_service/features/admin/domain/entities/admin_account_status.dart';
+import 'package:field_service/features/admin/domain/entities/admin_failure.dart';
+import 'package:field_service/features/admin/domain/entities/managed_customer.dart';
+import 'package:field_service/features/admin/domain/entities/managed_employee.dart';
+import 'package:field_service/features/admin/domain/repositories/admin_repository.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
 import 'package:field_service/features/customers/data/datasources/customers_remote_data_source.dart';
@@ -47,6 +52,7 @@ class AppTestHarness {
   late GoRouter router;
   AppDatabase? database;
   _FakeJobsRepository? _fakeJobs;
+  _FakeAdminRepository? _fakeAdmin;
 
   /// Whether [configure] ran — plain (non-widget) tests may use the harness
   /// type without booting the app; [dispose] must not crash for them.
@@ -93,12 +99,34 @@ class AppTestHarness {
     Map<String, List<JobFile>> initialSignatures =
         const <String, List<JobFile>>{},
     bool completionOffline = false,
+    List<ManagedEmployee> adminEmployees = const <ManagedEmployee>[],
+    List<ManagedCustomer> adminCustomers = const <ManagedCustomer>[],
+    Set<String> unavailableCustomerIds = const <String>{},
+    Object? adminReadError,
+    Object? adminActionError,
+    bool adminForbidden = false,
   }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await configureDependencies();
     authentication.currentUser = user;
     await sl.unregister<AuthenticationRepository>();
     sl.registerSingleton<AuthenticationRepository>(authentication);
+
+    // Admin management (technician/customer) is ALWAYS faked: the production
+    // data source talks to Supabase RPCs, and tests never initialize Supabase.
+    // The fake mirrors the SERVER contract (admin-only, soft delete keeps the
+    // row and its history, blocked customers are unusable for NEW jobs).
+    final _FakeAdminRepository adminRepository = _FakeAdminRepository(
+      employees: adminEmployees,
+      customers: adminCustomers,
+      unavailableCustomerIds: unavailableCustomerIds,
+      readError: adminReadError,
+      actionError: adminActionError,
+      forbidden: adminForbidden,
+    );
+    _fakeAdmin = adminRepository;
+    await sl.unregister<AdminRepository>();
+    sl.registerSingleton<AdminRepository>(adminRepository);
 
     if (!withJobsSync) {
       _fakeJobs = _FakeJobsRepository(
@@ -221,6 +249,37 @@ class AppTestHarness {
     _fakeJobs?.failedPhotoIds = ids;
   }
 
+  // --- Admin management (fake "server" facts, UI-test assertions) ------------
+
+  /// The employee rows the fake management server holds right now.
+  List<ManagedEmployee> get adminEmployees =>
+      _fakeAdmin?.employees ?? const <ManagedEmployee>[];
+
+  /// The customer rows the fake management server holds right now.
+  List<ManagedCustomer> get adminCustomers =>
+      _fakeAdmin?.customers ?? const <ManagedCustomer>[];
+
+  /// Technician status transitions the fake server applied, in order
+  /// (`employee_id`, `status`).
+  List<Map<String, Object?>> get adminEmployeeStatusChanges =>
+      _fakeAdmin?.employeeStatusChanges ?? const <Map<String, Object?>>[];
+
+  /// Customer status transitions the fake server applied, in order.
+  List<Map<String, Object?>> get adminCustomerStatusChanges =>
+      _fakeAdmin?.customerStatusChanges ?? const <Map<String, Object?>>[];
+
+  /// Customers the fake server created, in order.
+  List<Map<String, Object?>> get adminCreatedCustomers =>
+      _fakeAdmin?.createdCustomers ?? const <Map<String, Object?>>[];
+
+  /// Customers the fake server updated, in order.
+  List<Map<String, Object?>> get adminUpdatedCustomers =>
+      _fakeAdmin?.updatedCustomers ?? const <Map<String, Object?>>[];
+
+  /// How many times the Create Job screen asked for the blocked customer ids.
+  int get unavailableCustomerIdCalls =>
+      _fakeAdmin?.unavailableCustomerIdCalls ?? 0;
+
   Future<void> dispose() async {
     if (!_configured) {
       await authentication.dispose();
@@ -252,6 +311,290 @@ class _FakeEmployeesRepository implements EmployeesRepository {
       throw error!; // ignore: only_throw_errors
     }
     return technicians;
+  }
+}
+
+/// Test double of the admin management RPCs of
+/// `supabase/admin_management_setup.sql`.
+///
+/// It mirrors the SERVER contract rather than the UI:
+/// * a non-admin caller is refused with [AdminFailureKind.notAuthorized]
+///   ([forbidden]) — exactly what SQLSTATE 42501 does;
+/// * a soft deleted account can no longer change state
+///   ([AdminFailureKind.recordDeleted]);
+/// * the soft delete KEEPS the row and its counters, so the test can prove
+///   that history survives;
+/// * blocking a customer removes it from [unavailableCustomerIds]' result,
+///   which is what keeps it out of the Create Job selector.
+class _FakeAdminRepository implements AdminRepository {
+  _FakeAdminRepository({
+    required List<ManagedEmployee> employees,
+    required List<ManagedCustomer> customers,
+    required Set<String> unavailableCustomerIds,
+    this.readError,
+    this.actionError,
+    this.forbidden = false,
+  }) : employees = List<ManagedEmployee>.of(employees),
+       customers = List<ManagedCustomer>.of(customers),
+       _configuredUnavailable = Set<String>.of(unavailableCustomerIds);
+
+  final List<ManagedEmployee> employees;
+  final List<ManagedCustomer> customers;
+  final Set<String> _configuredUnavailable;
+
+  /// Thrown by every read (`listEmployees` / `listCustomers` /
+  /// `unavailableCustomerIds`) when set.
+  final Object? readError;
+
+  /// Thrown by every write (status change, create, update) when set.
+  final Object? actionError;
+
+  /// Simulates the database refusing a non-admin caller (SQLSTATE 42501).
+  final bool forbidden;
+
+  final List<Map<String, Object?>> employeeStatusChanges =
+      <Map<String, Object?>>[];
+  final List<Map<String, Object?>> customerStatusChanges =
+      <Map<String, Object?>>[];
+  final List<Map<String, Object?>> createdCustomers = <Map<String, Object?>>[];
+  final List<Map<String, Object?>> updatedCustomers = <Map<String, Object?>>[];
+  int unavailableCustomerIdCalls = 0;
+
+  int _customerSeq = 0;
+
+  Never _refuseWrite() {
+    if (forbidden) {
+      throw const AdminFailure(
+        AdminFailureKind.notAuthorized,
+        code: '42501',
+        message: 'Only an active admin can change employee accounts',
+      );
+    }
+    throw actionError!;
+  }
+
+  void _guardRead() {
+    if (forbidden) {
+      throw const AdminFailure(
+        AdminFailureKind.notAuthorized,
+        code: '42501',
+        message: 'Only an active admin can list employees',
+      );
+    }
+    if (readError != null) {
+      throw readError!; // ignore: only_throw_errors
+    }
+  }
+
+  void _guardWrite() {
+    if (forbidden || actionError != null) {
+      _refuseWrite();
+    }
+  }
+
+  int _indexOfEmployee(String id) =>
+      employees.indexWhere((ManagedEmployee e) => e.id == id);
+
+  int _indexOfCustomer(String id) =>
+      customers.indexWhere((ManagedCustomer c) => c.id == id);
+
+  @override
+  Future<List<ManagedEmployee>> listEmployees() async {
+    _guardRead();
+    return List<ManagedEmployee>.unmodifiable(employees);
+  }
+
+  @override
+  Future<ManagedEmployee> setEmployeeStatus({
+    required String employeeId,
+    required AdminAccountStatus status,
+  }) async {
+    _guardWrite();
+    final int index = _indexOfEmployee(employeeId);
+    if (index < 0) {
+      throw const AdminFailure(AdminFailureKind.notFound, code: 'P0002');
+    }
+    final ManagedEmployee current = employees[index];
+    if (current.status.isDeleted) {
+      throw const AdminFailure(
+        AdminFailureKind.recordDeleted,
+        code: 'P0001',
+        message: 'The employee account is deleted',
+      );
+    }
+    employeeStatusChanges.add(<String, Object?>{
+      'employee_id': employeeId,
+      'status': status.remoteValue,
+    });
+    // The soft delete keeps every fact of the row (name, counters, dates):
+    // history is never rewritten by a management action.
+    final ManagedEmployee updated = ManagedEmployee(
+      id: current.id,
+      name: current.name,
+      role: current.role,
+      status: status,
+      employeeCode: current.employeeCode,
+      email: current.email,
+      phone: current.phone,
+      blockedAt: status.isBlocked ? DateTime.utc(2026, 2, 1) : null,
+      deletedAt: status.isDeleted ? DateTime.utc(2026, 3, 1) : null,
+      assignedJobs: current.assignedJobs,
+      completedJobs: current.completedJobs,
+    );
+    employees[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<List<ManagedCustomer>> listCustomers({String? search}) async {
+    _guardRead();
+    final String needle = (search ?? '').trim().toLowerCase();
+    if (needle.isEmpty) {
+      return List<ManagedCustomer>.unmodifiable(customers);
+    }
+    return customers
+        .where(
+          (ManagedCustomer c) =>
+              c.name.toLowerCase().contains(needle) ||
+              c.address.toLowerCase().contains(needle),
+        )
+        .toList(growable: false);
+  }
+
+  @override
+  Future<ManagedCustomer> createCustomer({
+    required String name,
+    required String address,
+    String? phone,
+    String? email,
+    String? city,
+    String? postalCode,
+    String? notes,
+  }) async {
+    _guardWrite();
+    _customerSeq++;
+    final ManagedCustomer created = ManagedCustomer(
+      id: 'cust-$_customerSeq',
+      name: name,
+      address: address,
+      phone: phone,
+      email: email,
+      city: city,
+      postalCode: postalCode,
+      notes: notes,
+      createdAt: DateTime.utc(2026, 4, 1),
+      updatedAt: DateTime.utc(2026, 4, 1),
+    );
+    customers.add(created);
+    createdCustomers.add(<String, Object?>{
+      'id': created.id,
+      'name': name,
+      'address': address,
+      'phone': phone,
+      'email': email,
+      'city': city,
+      'postal_code': postalCode,
+      'notes': notes,
+    });
+    return created;
+  }
+
+  @override
+  Future<ManagedCustomer> updateCustomer({
+    required String customerId,
+    required String name,
+    required String address,
+    String? phone,
+    String? email,
+    String? city,
+    String? postalCode,
+    String? notes,
+  }) async {
+    _guardWrite();
+    final int index = _indexOfCustomer(customerId);
+    if (index < 0) {
+      throw const AdminFailure(AdminFailureKind.notFound, code: 'P0002');
+    }
+    final ManagedCustomer current = customers[index];
+    if (current.status.isDeleted) {
+      throw const AdminFailure(
+        AdminFailureKind.recordDeleted,
+        code: 'P0001',
+        message: 'A soft deleted customer cannot be edited',
+      );
+    }
+    final ManagedCustomer updated = ManagedCustomer(
+      id: current.id,
+      name: name,
+      address: address,
+      phone: phone,
+      email: email,
+      city: city,
+      postalCode: postalCode,
+      notes: notes,
+      status: current.status,
+      blockedAt: current.blockedAt,
+      deletedAt: current.deletedAt,
+      createdAt: current.createdAt,
+      updatedAt: DateTime.utc(2026, 5, 1),
+      jobsCount: current.jobsCount,
+    );
+    customers[index] = updated;
+    updatedCustomers.add(<String, Object?>{'id': customerId, 'name': name});
+    return updated;
+  }
+
+  @override
+  Future<ManagedCustomer> setCustomerStatus({
+    required String customerId,
+    required AdminAccountStatus status,
+  }) async {
+    _guardWrite();
+    final int index = _indexOfCustomer(customerId);
+    if (index < 0) {
+      throw const AdminFailure(AdminFailureKind.notFound, code: 'P0002');
+    }
+    final ManagedCustomer current = customers[index];
+    if (current.status.isDeleted) {
+      throw const AdminFailure(
+        AdminFailureKind.recordDeleted,
+        code: 'P0001',
+        message: 'The customer account is deleted',
+      );
+    }
+    customerStatusChanges.add(<String, Object?>{
+      'customer_id': customerId,
+      'status': status.remoteValue,
+    });
+    final ManagedCustomer updated = ManagedCustomer(
+      id: current.id,
+      name: current.name,
+      address: current.address,
+      phone: current.phone,
+      email: current.email,
+      city: current.city,
+      postalCode: current.postalCode,
+      notes: current.notes,
+      status: status,
+      blockedAt: status.isBlocked ? DateTime.utc(2026, 2, 1) : null,
+      deletedAt: status.isDeleted ? DateTime.utc(2026, 3, 1) : null,
+      createdAt: current.createdAt,
+      updatedAt: current.updatedAt,
+      jobsCount: current.jobsCount,
+    );
+    customers[index] = updated;
+    return updated;
+  }
+
+  @override
+  Future<Set<String>> unavailableCustomerIds() async {
+    unavailableCustomerIdCalls++;
+    _guardRead();
+    return <String>{
+      ..._configuredUnavailable,
+      for (final ManagedCustomer customer in customers)
+        if (!customer.status.isActive) customer.id,
+    };
   }
 }
 

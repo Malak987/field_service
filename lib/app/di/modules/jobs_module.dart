@@ -3,6 +3,7 @@ import 'package:field_service/core/storage/file_storage.dart';
 import 'package:field_service/core/storage/local_file_storage.dart';
 import 'package:field_service/core/sync/sync_handler.dart';
 import 'package:field_service/core/sync/sync_operation.dart';
+import 'package:field_service/features/admin/domain/usecases/get_unavailable_customer_ids.dart';
 import 'package:field_service/features/customers/domain/usecases/get_customers.dart';
 import 'package:field_service/features/customers/domain/usecases/refresh_customers.dart';
 import 'package:field_service/features/employees/domain/usecases/get_active_technicians.dart';
@@ -181,6 +182,9 @@ void registerJobsModule(GetIt sl) {
       getActiveTechnicians: sl<GetActiveTechnicians>(),
       createJob: sl<CreateJob>(),
       refreshCustomers: sl<RefreshCustomers>(),
+      // Registered by the admin module (management RPCs); used here to keep
+      // blocked/deleted customers out of the selector.
+      getUnavailableCustomerIds: sl<GetUnavailableCustomerIds>(),
     ),
   );
 

@@ -1,3 +1,4 @@
+import 'package:field_service/app/di/modules/admin_module.dart';
 import 'package:field_service/app/di/modules/app_module.dart';
 import 'package:field_service/app/di/modules/authentication_module.dart';
 import 'package:field_service/app/di/modules/core_module.dart';
@@ -24,7 +25,8 @@ final GetIt sl = GetIt.instance;
 /// Registration order matters once: the offline module must exist before
 /// feature modules register their sync handlers into its registry, and the
 /// Supabase client (core module) must exist before the feature data sources
-/// resolve it.
+/// resolve it. All registrations are lazy, so the order below is documentation
+/// of that dependency, not a runtime constraint.
 Future<void> configureDependencies() async {
   registerAppModule(sl);
   registerCoreModule(sl);
@@ -33,6 +35,7 @@ Future<void> configureDependencies() async {
   registerEmployeesModule(sl);
   registerJobsModule(sl);
   registerCustomersModule(sl);
+  registerAdminModule(sl);
 }
 
 /// Disposes and clears the graph.

@@ -2,6 +2,7 @@
 import 'dart:async';
 
 import 'package:field_service/core/utils/logger.dart';
+import 'package:field_service/features/admin/domain/usecases/get_unavailable_customer_ids.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/domain/usecases/get_customers.dart';
 import 'package:field_service/features/customers/domain/usecases/refresh_customers.dart';
@@ -44,24 +45,36 @@ enum CreateJobOutcome {
 /// * technicians — the Employees read (ACTIVE technicians only),
 /// * submission — the `create_job` RPC via [CreateJob]; the server stamps
 ///   `assigned_at` and the job number, the client never invents either.
+///
+/// Customers the server refuses for a NEW job (blocked / soft deleted, see
+/// [GetUnavailableCustomerIds]) are filtered out of the selector. That filter
+/// is a courtesy, not a guarantee: the `create_job` RPC rejects such a customer
+/// on its own (`F0008`), which is what protects the data even with a stale
+/// session, a tampered client or an outdated local mirror.
 class CreateJobCubit extends Cubit<CreateJobState> {
   CreateJobCubit({
     required GetCustomers getCustomers,
     required GetActiveTechnicians getActiveTechnicians,
     required CreateJob createJob,
     required RefreshCustomers refreshCustomers,
+    required GetUnavailableCustomerIds getUnavailableCustomerIds,
   }) : _getCustomers = getCustomers,
        _getActiveTechnicians = getActiveTechnicians,
        _createJob = createJob,
        _refreshCustomers = refreshCustomers,
+       _getUnavailableCustomerIds = getUnavailableCustomerIds,
        super(const CreateJobState());
 
   final GetCustomers _getCustomers;
   final GetActiveTechnicians _getActiveTechnicians;
   final CreateJob _createJob;
   final RefreshCustomers _refreshCustomers;
+  final GetUnavailableCustomerIds _getUnavailableCustomerIds;
 
   StreamSubscription<List<Customer>>? _customersSubscription;
+
+  /// Last raw emission of the local mirror (before the blocked filter).
+  List<Customer> _mirrorCustomers = const <Customer>[];
 
   /// Loads both selector options: the live customer stream (offline-first
   /// Drift) and the one-shot active-technician list.
@@ -96,11 +109,18 @@ class CreateJobCubit extends Cubit<CreateJobState> {
       }),
     );
 
+    // Ask the server which customers it will NOT accept for a new job. Purely
+    // best effort: without the answer (offline, migration not applied yet) the
+    // selector simply shows the whole mirror and `create_job` still refuses a
+    // blocked customer server-side.
+    unawaited(_loadUnavailableCustomerIds());
+
     _customersSubscription ??= _getCustomers().listen(
       (List<Customer> customers) {
+        _mirrorCustomers = customers;
         if (!isClosed) {
           emit(state.copyWith(
-            customers: customers,
+            customers: _selectableCustomers(),
             isLoadingCustomers: false,
             customerOptionsFailed: false,
           ));
@@ -162,10 +182,60 @@ class CreateJobCubit extends Cubit<CreateJobState> {
     }
   }
 
-  void selectCustomer(String? customerId) {
-    if (!isClosed) {
-      emit(state.copyWith(selectedCustomerId: customerId));
+  /// Loads the ids the server refuses for a new job and re-filters the mirror.
+  Future<void> _loadUnavailableCustomerIds() async {
+    try {
+      final Set<String> ids = await _getUnavailableCustomerIds();
+      if (isClosed) {
+        return;
+      }
+      final String? selected = state.selectedCustomerId;
+      emit(
+        state.copyWith(
+          unavailableCustomerIds: ids,
+          // Keep whatever the stream already delivered; a later emission
+          // re-applies the filter with the new set.
+          customers: _mirrorCustomers.isEmpty
+              ? null
+              : _selectableCustomers(unavailable: ids),
+          // A customer that just became unusable must not stay selected.
+          selectedCustomerId: selected,
+          clearSelectedCustomerId:
+              selected != null && ids.contains(selected),
+        ),
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'The customers blocked for new jobs could not be read; the server '
+        'still refuses them when a job is created.',
+        error: error,
+        stackTrace: stackTrace,
+      );
     }
+  }
+
+  /// The mirror minus the customers the server refuses for new jobs.
+  List<Customer> _selectableCustomers({Set<String>? unavailable}) {
+    final Set<String> blocked = unavailable ?? state.unavailableCustomerIds;
+    if (blocked.isEmpty) {
+      return _mirrorCustomers;
+    }
+    return _mirrorCustomers
+        .where((Customer customer) => !blocked.contains(customer.id))
+        .toList();
+  }
+
+  void selectCustomer(String? customerId) {
+    if (isClosed) {
+      return;
+    }
+    // Defensive: never let a screened-out customer be chosen through a stale
+    // UI or a programmatic call.
+    if (customerId != null &&
+        state.unavailableCustomerIds.contains(customerId)) {
+      return;
+    }
+    emit(state.copyWith(selectedCustomerId: customerId));
   }
 
   /// Selects one of the two supported categories. Unsupported values are

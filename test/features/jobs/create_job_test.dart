@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:field_service/features/admin/domain/usecases/get_unavailable_customer_ids.dart';
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/features/admin/presentation/pages/admin_home_page.dart';
@@ -97,6 +98,18 @@ class _CustomerStream implements GetCustomers {
 class _StubTechnicians implements GetActiveTechnicians {
   @override
   Future<List<Employee>> call() async => const <Employee>[];
+}
+
+/// Stub of the admin screening use case: the ids the server refuses for a NEW
+/// job (blocked / soft deleted customers). Empty by default — the filter is
+/// exercised in the admin block/blocked-customer test.
+class _UnavailableCustomers implements GetUnavailableCustomerIds {
+  _UnavailableCustomers([this.ids = const <String>{}]);
+
+  final Set<String> ids;
+
+  @override
+  Future<Set<String>> call() async => ids;
 }
 
 class _FailingTechnicians implements GetActiveTechnicians {
@@ -254,6 +267,7 @@ void main() {
         getActiveTechnicians: _StubTechnicians(),
         createJob: _UnusedCreateJob(),
         refreshCustomers: refresh,
+        getUnavailableCustomerIds: _UnavailableCustomers(),
       );
 
       await cubit.loadOptions();
@@ -272,6 +286,7 @@ void main() {
       getActiveTechnicians: _StubTechnicians(),
       createJob: createJob,
       refreshCustomers: _SpyRefreshCustomers(),
+      getUnavailableCustomerIds: _UnavailableCustomers(),
     );
     await cubit.loadOptions();
     cubit
@@ -295,6 +310,7 @@ void main() {
       getActiveTechnicians: _FailingTechnicians(),
       createJob: _UnusedCreateJob(),
       refreshCustomers: _SpyRefreshCustomers(),
+      getUnavailableCustomerIds: _UnavailableCustomers(),
     );
 
     await cubit.loadOptions();
@@ -321,6 +337,7 @@ void main() {
       getActiveTechnicians: _StubTechnicians(),
       createJob: _UnusedCreateJob(),
       refreshCustomers: _SpyRefreshCustomers(),
+      getUnavailableCustomerIds: _UnavailableCustomers(),
     );
 
     await cubit.loadOptions();
