@@ -8,7 +8,7 @@ import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
-import 'package:field_service/core/widgets/language_switcher.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_cubit.dart';
@@ -164,10 +164,6 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
         ),
         title: Text(l10n.customersTitle),
         actions: <Widget>[
-          const Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
-            child: Center(child: LanguageSwitcher()),
-          ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -260,7 +256,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                                 // One surface for the whole directory, rows
                                 // separated by hairlines — a stack of identical
                                 // cards made every row shout equally.
-                                Material(
+                                AppContentWidth(child: Material(
                                   color: context.colors.surface,
                                   clipBehavior: Clip.antiAlias,
                                   shape: RoundedRectangleBorder(
@@ -295,7 +291,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                                       ],
                                     ],
                                   ),
-                                ),
+                                )),
                               ],
                             ),
                     ),

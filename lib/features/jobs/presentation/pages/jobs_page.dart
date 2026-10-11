@@ -6,6 +6,7 @@ import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -176,7 +177,8 @@ class _JobsPageViewState extends State<_JobsPageView> {
               // over an empty result is busywork.
               final bool showControls = state.jobs.isNotEmpty;
 
-              return Column(
+              return AppContentWidth(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
                   if (showControls) ...<Widget>[
@@ -230,6 +232,7 @@ class _JobsPageViewState extends State<_JobsPageView> {
                     ),
                   ),
                 ],
+                ),
               );
           }
         },

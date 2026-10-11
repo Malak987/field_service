@@ -70,3 +70,31 @@ class AppPageBody extends StatelessWidget {
     );
   }
 }
+
+/// Width cap for list and detail content on tablets and wide desktop windows.
+///
+/// A 1400px-wide job list of full-bleed rows is unreadable — the eye has to
+/// travel the whole viewport to get from a job number to its status. Content is
+/// capped at [AppDimensions.wideContentMaxWidth] and centred, which is the same
+/// breakpoint the form screens already use, so a tablet reads consistently
+/// across the app. On a phone this is a no-op.
+class AppContentWidth extends StatelessWidget {
+  const AppContentWidth({super.key, required this.child, this.maxWidth});
+
+  final Widget child;
+
+  /// Defaults to the wide-content breakpoint; pass [AppDimensions.contentMaxWidth]
+  /// for narrower reading columns.
+  final double? maxWidth;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: AlignmentDirectional.topCenter,
+    child: ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: maxWidth ?? AppDimensions.wideContentMaxWidth,
+      ),
+      child: child,
+    ),
+  );
+}

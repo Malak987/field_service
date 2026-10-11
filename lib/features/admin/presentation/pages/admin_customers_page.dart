@@ -5,8 +5,8 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
-import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/admin/domain/entities/admin_account_status.dart';
 import 'package:field_service/features/admin/domain/entities/admin_failure.dart';
 import 'package:field_service/features/admin/domain/entities/managed_customer.dart';
@@ -109,10 +109,6 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
         ),
         title: Text(l10n.adminCustomersTitle),
         actions: <Widget>[
-          const Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
-            child: Center(child: LanguageSwitcher()),
-          ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -197,7 +193,7 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                           ),
                         )
                       else
-                        Material(
+                        AppContentWidth(child: Material(
                           color: context.colors.surface,
                           clipBehavior: Clip.antiAlias,
                           shape: RoundedRectangleBorder(
@@ -237,7 +233,7 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                               ],
                             ],
                           ),
-                        ),
+                        )),
                     ],
                   ),
                 ),

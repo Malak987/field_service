@@ -5,8 +5,8 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
-import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/admin/domain/entities/admin_account_status.dart';
 import 'package:field_service/features/admin/domain/entities/admin_failure.dart';
 import 'package:field_service/features/admin/domain/entities/managed_employee.dart';
@@ -64,10 +64,6 @@ class _AdminTechniciansView extends StatelessWidget {
         ),
         title: Text(l10n.adminTechniciansTitle),
         actions: <Widget>[
-          const Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
-            child: Center(child: LanguageSwitcher()),
-          ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -119,15 +115,43 @@ class _AdminTechniciansView extends StatelessWidget {
                   count: state.employees.length,
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                for (final ManagedEmployee employee in state.employees) ...[
-                  _TechnicianCard(
-                    employee: employee,
-                    isBusy: state.busyEmployeeId == employee.id,
-                    isOwnAccount: ownEmployeeId == employee.id,
-                    isAnyBusy: state.isBusy,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
+                if (state.employees.isNotEmpty)
+                  AppContentWidth(child: Material(
+                    color: context.colors.surface,
+                    clipBehavior: Clip.antiAlias,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppRadius.card,
+                      side: BorderSide(color: context.colors.outlineVariant),
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        for (
+                          int rowIndex = 0;
+                          rowIndex < state.employees.length;
+                          rowIndex++
+                        ) ...<Widget>[
+                          if (rowIndex > 0)
+                            Divider(
+                              height: 1,
+                              indent: AppSpacing.lg,
+                              color: context.colors.outlineVariant,
+                            ),
+                          Builder(
+                            builder: (BuildContext context) {
+                              final ManagedEmployee employee =
+                                  state.employees[rowIndex];
+                              return _TechnicianCard(
+                                employee: employee,
+                                isBusy: state.busyEmployeeId == employee.id,
+                                isOwnAccount: ownEmployeeId == employee.id,
+                                isAnyBusy: state.isBusy,
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  )),
               ],
             ),
           );
@@ -201,10 +225,15 @@ class _TechnicianCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Card(
+    // Flat row: the list supplies one shared surface and the hairlines, so the
+    // roster reads as a table instead of a stack of identical boxes. The row
+    // key stays on the outermost widget.
+    return Padding(
       key: Key('technician_row_${employee.id}'),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -339,8 +368,7 @@ class _TechnicianCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
+      );
   }
 
   String _subtitle(AppLocalizations l10n) {
