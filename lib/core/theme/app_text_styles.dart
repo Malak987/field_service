@@ -6,32 +6,39 @@ import 'package:flutter/material.dart';
 /// styles, keeping font sizes, weights, and line heights in one place.
 abstract final class AppTextStyles {
   /// Main screen title (e.g., Login / Register header).
+  ///
+  /// Kept at 22px on purpose: a field-service screen has to fit a greeting,
+  /// a job list and an action without the heading eating the viewport.
   static const TextStyle headlineMedium = TextStyle(
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: FontWeight.w700,
     height: 1.25,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   );
 
-  /// Section title.
+  /// Section title / app bar title.
   static const TextStyle titleLarge = TextStyle(
-    fontSize: 20,
-    fontWeight: FontWeight.w600,
+    fontSize: 17,
+    fontWeight: FontWeight.w700,
     height: 1.3,
+    letterSpacing: -0.1,
   );
 
   /// Card title / important label.
   static const TextStyle titleMedium = TextStyle(
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: FontWeight.w600,
     height: 1.4,
   );
 
-  /// Subtitle / small heading.
+  /// Subtitle / small heading — also the section-label size, where the slight
+  /// tracking separates a label from the content it heads without resorting
+  /// to all-caps.
   static const TextStyle titleSmall = TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w600,
+    fontSize: 13.5,
+    fontWeight: FontWeight.w700,
     height: 1.4,
+    letterSpacing: 0.1,
   );
 
   /// Primary body copy and input text.
@@ -53,11 +60,12 @@ abstract final class AppTextStyles {
     fontSize: 12.5,
     fontWeight: FontWeight.w400,
     height: 1.4,
+    letterSpacing: 0.05,
   );
 
   /// Primary and secondary button label style.
   static const TextStyle buttonLabel = TextStyle(
-    fontSize: 15.5,
+    fontSize: 15,
     fontWeight: FontWeight.w600,
     height: 1.2,
     letterSpacing: 0.1,

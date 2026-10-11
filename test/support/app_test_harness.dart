@@ -6,6 +6,7 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_router.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/database/app_database.dart';
+import 'package:field_service/core/localization/locale_cubit.dart';
 import 'package:field_service/core/network/connectivity_service.dart';
 import 'package:field_service/core/network/network_info.dart';
 import 'package:field_service/core/sync/sync_manager.dart';
@@ -31,6 +32,7 @@ import 'package:field_service/features/jobs/domain/entities/technician_job_creat
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 
 import 'dart:typed_data';
+import 'dart:ui' show Locale;
 
 import 'test_photos.dart';
 
@@ -130,9 +132,21 @@ class AppTestHarness {
     Object? adminReadError,
     Object? adminActionError,
     bool adminForbidden = false,
+    String localeCode = 'en',
   }) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     await configureDependencies();
+
+    // The product default is German. These suites assert English copy, so the
+    // language is pinned here rather than inherited from whatever the
+    // production default happens to be — otherwise changing the default would
+    // silently rewrite every expected string. Tests that need German pass
+    // `localeCode: 'de'` (see locale_default_test.dart).
+    await sl.unregister<LocaleCubit>();
+    sl.registerSingleton<LocaleCubit>(
+      LocaleCubit(initialLocale: Locale(localeCode)),
+    );
+
     authentication.currentUser = user;
     await sl.unregister<AuthenticationRepository>();
     sl.registerSingleton<AuthenticationRepository>(authentication);

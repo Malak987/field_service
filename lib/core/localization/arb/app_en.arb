@@ -75,6 +75,8 @@
   "welcomeTechnician": "Welcome, Technician",
   "roleNoticeBanner": "Role permissions are assigned automatically by your administrator.",
   "pageNotFoundTitle": "Page not found",
+  "pageNotFoundSubtitle": "This link does not lead anywhere. It may be outdated or incomplete.",
+  "pageNotFoundAction": "Back to start",
   "viewJobsButton": "View Jobs",
   "welcomeNameLabel": "Welcome, {name}",
   "roleAdminLabel": "Administrator",
@@ -100,8 +102,12 @@
   "workflowProgressLabel": "{completed} of {total} steps complete",
   "@workflowProgressLabel": {
     "placeholders": {
-      "completed": {"type": "int"},
-      "total": {"type": "int"}
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
     }
   },
   "currentStepLabel": "Current step",
@@ -201,7 +207,6 @@
   "statusInProgress": "In Progress",
   "statusCompleted": "Completed",
   "statusCancelled": "Cancelled",
-
   "searchJobsHint": "Search by job number, customer, category or status",
   "filterStatusLabel": "Status",
   "allStatusesLabel": "All statuses",
@@ -215,7 +220,9 @@
   "customersCountLabel": "{count, plural, =1{1 customer} other{{count} customers}}",
   "@customersCountLabel": {
     "placeholders": {
-      "count": {"type": "int"}
+      "count": {
+        "type": "int"
+      }
     }
   },
   "clearSearchButton": "Clear search",

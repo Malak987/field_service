@@ -33,8 +33,10 @@ abstract class AppLocalizations {
 
   /// Supported locales of the application.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
+    // German first: it is the default locale, so an unmatched platform locale
+    // resolves here rather than to English.
     Locale('de'),
+    Locale('en'),
   ];
 
   // --- General & Language Switcher -----------------------------------------
@@ -129,6 +131,8 @@ abstract class AppLocalizations {
   String get technicianHomeTitle;
   String get welcomeTechnician;
   String get pageNotFoundTitle;
+  String get pageNotFoundSubtitle;
+  String get pageNotFoundAction;
   String get viewJobsButton;
 
   // --- Home Dashboard, Navigation & Account ---------------------------------
@@ -687,6 +691,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pageNotFoundTitle => 'Page not found';
+
+  @override
+  String get pageNotFoundSubtitle =>
+      'This link does not lead anywhere. It may be outdated or incomplete.';
+
+  @override
+  String get pageNotFoundAction => 'Back to start';
 
   @override
   String get viewJobsButton => 'View Jobs';
@@ -1771,6 +1782,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pageNotFoundTitle => 'Seite nicht gefunden';
+
+  @override
+  String get pageNotFoundSubtitle =>
+      'Dieser Link führt ins Leere. Er ist möglicherweise veraltet oder '
+      'unvollständig.';
+
+  @override
+  String get pageNotFoundAction => 'Zur Startseite';
 
   @override
   String get viewJobsButton => 'Aufträge anzeigen';
