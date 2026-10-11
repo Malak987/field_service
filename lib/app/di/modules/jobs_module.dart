@@ -18,6 +18,9 @@ import 'package:field_service/features/jobs/domain/usecases/add_before_photo.dar
 import 'package:field_service/features/jobs/domain/usecases/capture_customer_signature.dart';
 import 'package:field_service/features/jobs/domain/usecases/complete_job.dart';
 import 'package:field_service/features/jobs/domain/usecases/create_job.dart';
+import 'package:field_service/features/jobs/domain/usecases/create_technician_customer_and_job.dart';
+import 'package:field_service/features/jobs/domain/usecases/create_technician_job_for_customer.dart';
+import 'package:field_service/features/jobs/domain/usecases/get_accessible_customers.dart';
 import 'package:field_service/features/jobs/domain/usecases/get_failed_job_file_ids.dart';
 import 'package:field_service/features/jobs/domain/usecases/get_job_by_id.dart';
 import 'package:field_service/features/jobs/domain/usecases/get_job_customer_info.dart';
@@ -33,6 +36,7 @@ import 'package:field_service/features/jobs/domain/usecases/watch_before_photos.
 import 'package:field_service/features/jobs/domain/usecases/watch_signature.dart';
 import 'package:field_service/features/jobs/presentation/cubit/create_job_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
+import 'package:field_service/features/jobs/presentation/cubit/technician_job_form_cubit.dart';
 import 'package:field_service/features/jobs/presentation/services/photo_picker.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -97,6 +101,23 @@ void registerJobsModule(GetIt sl) {
   // Customers feature (offline-first) and the Employees read — nothing here
   // is duplicated.
   sl.registerLazySingleton<CreateJob>(() => CreateJob(sl<JobsRepository>()));
+
+  // --- Technician: create customer & job ------------------------------------
+  // The technician's own creation path: `technician_create_customer_and_job`
+  // / `technician_create_job_for_customer` SECURITY DEFINER RPCs. The server
+  // resolves the assignee from the caller's auth identity, so no employee id
+  // is ever registered or passed here.
+  sl.registerLazySingleton<GetAccessibleCustomers>(
+    () => GetAccessibleCustomers(sl<JobsRepository>()),
+  );
+
+  sl.registerLazySingleton<CreateTechnicianCustomerAndJob>(
+    () => CreateTechnicianCustomerAndJob(sl<JobsRepository>()),
+  );
+
+  sl.registerLazySingleton<CreateTechnicianJobForCustomer>(
+    () => CreateTechnicianJobForCustomer(sl<JobsRepository>()),
+  );
 
   // --- Before Photos use cases ------------------------------------------------
   sl.registerLazySingleton<AddBeforePhoto>(
@@ -185,6 +206,16 @@ void registerJobsModule(GetIt sl) {
       // Registered by the admin module (management RPCs); used here to keep
       // blocked/deleted customers out of the selector.
       getUnavailableCustomerIds: sl<GetUnavailableCustomerIds>(),
+    ),
+  );
+
+  // Technician "Create Customer & Job" form. Factory: the page owns one
+  // instance, which also owns the idempotency key of that form.
+  sl.registerFactory<TechnicianJobFormCubit>(
+    () => TechnicianJobFormCubit(
+      createCustomerAndJob: sl<CreateTechnicianCustomerAndJob>(),
+      createJobForCustomer: sl<CreateTechnicianJobForCustomer>(),
+      getAccessibleCustomers: sl<GetAccessibleCustomers>(),
     ),
   );
 

@@ -20,11 +20,14 @@ import 'package:field_service/features/customers/data/datasources/customers_remo
 import 'package:field_service/features/customers/data/models/customer_model.dart';
 import 'package:field_service/features/employees/domain/entities/employee.dart';
 import 'package:field_service/features/employees/domain/repositories/employees_repository.dart';
+import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
+import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
+import 'package:field_service/features/jobs/domain/entities/technician_job_creation.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 
 import 'dart:typed_data';
@@ -71,6 +74,21 @@ class AppTestHarness {
   /// Jobs the fake "server" created through the `create_job` RPC.
   List<Job> get createdJobs => _fakeJobs?.createdJobs ?? const <Job>[];
 
+  // --- Technician: create customer & job (fake-server facts) ----------------
+
+  /// Jobs the fake "server" created for a technician, in order.
+  List<Job> get technicianCreatedJobs =>
+      _fakeJobs?.technicianCreatedJobs ?? const <Job>[];
+
+  /// Customers the fake "server" registered for a technician, in order.
+  List<NewCustomerDraft> get technicianCreatedCustomers =>
+      _fakeJobs?.technicianCreatedCustomers ?? const <NewCustomerDraft>[];
+
+  /// Every technician creation the fake "server" accepted (payload exactly
+  /// as the repository handed it over — no employee id, no job number).
+  List<Map<String, Object?>> get technicianCreateCalls =>
+      _fakeJobs?.technicianCreateCalls ?? const <Map<String, Object?>>[];
+
   /// The work descriptions the fake "server" accepted, by job id (in order).
   Map<String, List<String>> get savedWorkDescriptions =>
       _fakeJobs?.savedWorkDescriptions ?? const <String, List<String>>{};
@@ -88,6 +106,13 @@ class AppTestHarness {
     Object? startJobError,
     Object? createJobError,
     Object? saveWorkDescriptionError,
+    List<AccessibleCustomer> accessibleCustomers =
+        const <AccessibleCustomer>[],
+    Set<String> technicianAllowedCustomerIds = const <String>{},
+    Object? accessibleCustomersError,
+    Object? technicianCreateError,
+    bool technicianCreateOffline = false,
+    String technicianEmployeeId = 'emp-tech',
     Set<String> alreadyStartedJobIds = const <String>{},
     bool withJobsSync = false,
     bool jobsOnline = false,
@@ -136,6 +161,12 @@ class AppTestHarness {
         startJobError: startJobError,
         createJobError: createJobError,
         saveWorkDescriptionError: saveWorkDescriptionError,
+        accessibleCustomers: accessibleCustomers,
+        technicianAllowedCustomerIds: technicianAllowedCustomerIds,
+        accessibleCustomersError: accessibleCustomersError,
+        technicianCreateError: technicianCreateError,
+        technicianCreateOffline: technicianCreateOffline,
+        technicianEmployeeId: technicianEmployeeId,
         alreadyStartedJobIds: alreadyStartedJobIds,
         photoDeniedJobIds: photoDeniedJobIds,
         initialBeforePhotos: initialBeforePhotos,
@@ -668,6 +699,12 @@ class _FakeJobsRepository implements JobsRepository {
     this.startJobError,
     this.createJobError,
     this.saveWorkDescriptionError,
+    this.accessibleCustomers = const <AccessibleCustomer>[],
+    this.technicianAllowedCustomerIds = const <String>{},
+    this.accessibleCustomersError,
+    this.technicianCreateError,
+    this.technicianCreateOffline = false,
+    this.technicianEmployeeId = 'emp-tech',
     this.alreadyStartedJobIds = const <String>{},
     Set<String> photoDeniedJobIds = const <String>{},
     Map<String, List<JobFile>> initialBeforePhotos =
@@ -712,6 +749,46 @@ class _FakeJobsRepository implements JobsRepository {
   final Object? createJobError;
   final Object? saveWorkDescriptionError;
   final Set<String> alreadyStartedJobIds;
+
+  // --- Technician: create customer & job ----------------------------------
+
+  /// The customers the fake `technician_accessible_customers` RPC returns
+  /// (already scoped by the server to the caller's own jobs).
+  final List<AccessibleCustomer> accessibleCustomers;
+
+  /// Customers the fake `technician_create_job_for_customer` RPC accepts a
+  /// new job for (mirrors its 42501 access rule).
+  final Set<String> technicianAllowedCustomerIds;
+
+  /// Simulates a refused/failed customer read (offline, RLS, ...).
+  final Object? accessibleCustomersError;
+
+  /// Simulates a refused technician creation.
+  final Object? technicianCreateError;
+
+  /// The device is offline for the creation: the REAL repository would
+  /// queue it, so the fake reports exactly that.
+  final bool technicianCreateOffline;
+
+  /// The employee row the fake server resolves from `auth.uid()` — the
+  /// assignee it writes. Never a client-supplied value.
+  final String technicianEmployeeId;
+
+  /// Jobs the fake server created for a technician (assertions).
+  final List<Job> technicianCreatedJobs = <Job>[];
+
+  /// Customer drafts the fake server registered (assertions).
+  final List<NewCustomerDraft> technicianCreatedCustomers =
+      <NewCustomerDraft>[];
+
+  /// Every accepted technician creation, with the payload as received.
+  final List<Map<String, Object?>> technicianCreateCalls =
+      <Map<String, Object?>>[];
+
+  /// Idempotency keys the fake server already applied a creation for
+  /// (mirrors the RPC's replay rule: same key -> same job, no second row).
+  final Map<String, Job> _technicianCreationsByIdempotencyKey =
+      <String, Job>{};
 
   /// Job ids the fake server accepted a start for (test assertions).
   final List<String> startedJobIds = <String>[];
@@ -943,6 +1020,161 @@ class _FakeJobsRepository implements JobsRepository {
       'description': description,
       'assigned_employee_id': assignedEmployeeId,
     });
+    return created;
+  }
+
+  // --- Technician: create customer & job ------------------------------------
+  //
+  // Mirrors the technician RPCs of `technician_customer_job_setup.sql`:
+  // * the assignee is resolved by the SERVER (here: [technicianEmployeeId]) —
+  //   it is never taken from the call, so a test can prove the client sends
+  //   no identity,
+  // * the job number is generated here (the identity column),
+  // * `status = 'assigned'` and every timestamp come from the server clock,
+  // * a replay with the same idempotency key returns the SAME job (no second
+  //   row, no second events),
+  // * an existing customer must be one the caller may work for, otherwise the
+  //   typed 42501 refusal (the RPC's access rule).
+
+  @override
+  Future<List<AccessibleCustomer>> getAccessibleCustomers({
+    String search = '',
+  }) async {
+    if (accessibleCustomersError != null) {
+      throw accessibleCustomersError!; // ignore: only_throw_errors
+    }
+    final String needle = search.trim().toLowerCase();
+    if (needle.isEmpty) {
+      return accessibleCustomers;
+    }
+    return accessibleCustomers.where((AccessibleCustomer customer) {
+      return customer.name.toLowerCase().contains(needle) ||
+          (customer.phone ?? '').toLowerCase().contains(needle) ||
+          (customer.address ?? '').toLowerCase().contains(needle) ||
+          (customer.city ?? '').toLowerCase().contains(needle);
+    }).toList();
+  }
+
+  @override
+  Future<TechnicianJobCreation> createTechnicianCustomerAndJob({
+    required NewCustomerDraft customer,
+    required String jobType,
+    String? description,
+    required String idempotencyKey,
+  }) async {
+    if (technicianCreateOffline) {
+      // What the REAL repository returns without connectivity: queued, never
+      // a fake server confirmation.
+      return TechnicianJobCreation.queued(jobId: 'queued-$idempotencyKey');
+    }
+    if (technicianCreateError != null) {
+      throw technicianCreateError!; // ignore: only_throw_errors
+    }
+    if (!JobCategory.isSupported(jobType)) {
+      throw ArgumentError.value(jobType, 'jobType', 'Unsupported job category');
+    }
+    final Job? replay = _technicianCreationsByIdempotencyKey[idempotencyKey];
+    if (replay != null) {
+      // Idempotent replay: the same job comes back, nothing is inserted.
+      return TechnicianJobCreation.created(replay);
+    }
+
+    technicianCreatedCustomers.add(customer);
+    final String customerId = 'fake-cust-${technicianCreatedCustomers.length}';
+
+    final Job created = _insertTechnicianJob(
+      customerId: customerId,
+      jobType: jobType,
+      description: description,
+      idempotencyKey: idempotencyKey,
+      call: <String, Object?>{
+        'customer_id': customerId,
+        'customer_name': customer.name,
+        'job_type': jobType,
+        'description': description,
+      },
+    );
+    return TechnicianJobCreation.created(created);
+  }
+
+  @override
+  Future<TechnicianJobCreation> createTechnicianJobForCustomer({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String idempotencyKey,
+  }) async {
+    if (technicianCreateOffline) {
+      return TechnicianJobCreation.queued(jobId: 'queued-$idempotencyKey');
+    }
+    if (technicianCreateError != null) {
+      throw technicianCreateError!; // ignore: only_throw_errors
+    }
+    if (!JobCategory.isSupported(jobType)) {
+      throw ArgumentError.value(jobType, 'jobType', 'Unsupported job category');
+    }
+    final Job? replay = _technicianCreationsByIdempotencyKey[idempotencyKey];
+    if (replay != null) {
+      return TechnicianJobCreation.created(replay);
+    }
+
+    // The RPC's access rule: a customer outside the caller's own jobs is
+    // refused server-side, whatever the client sends.
+    if (!technicianAllowedCustomerIds.contains(customerId)) {
+      throw const TechnicianJobCreationRejectedException(
+        reason: TechnicianJobRejectReason.unauthorized,
+        serverMessage: 'You are not allowed to create a job for this customer.',
+      );
+    }
+
+    final Job created = _insertTechnicianJob(
+      customerId: customerId,
+      jobType: jobType,
+      description: description,
+      idempotencyKey: idempotencyKey,
+      call: <String, Object?>{
+        'customer_id': customerId,
+        'job_type': jobType,
+        'description': description,
+      },
+    );
+    return TechnicianJobCreation.created(created);
+  }
+
+  /// The fake server's insert: job number from its own sequence, assignee
+  /// resolved from the session, timestamps from its own clock.
+  Job _insertTechnicianJob({
+    required String customerId,
+    required String jobType,
+    required String? description,
+    required String idempotencyKey,
+    required Map<String, Object?> call,
+  }) {
+    final int nextNumber =
+        jobs.fold<int>(
+          0,
+          (int max, Job job) => job.jobNumber > max ? job.jobNumber : max,
+        ) +
+        1;
+
+    final Job created = Job(
+      id: 'tech-created-$nextNumber',
+      jobNumber: nextNumber,
+      customerId: customerId,
+      assignedEmployeeId: technicianEmployeeId,
+      jobType: jobType,
+      description: description,
+      status: const JobStatus(JobStatus.assigned),
+      assignedAt: serverStartedAt,
+      createdAt: serverStartedAt,
+      updatedAt: serverStartedAt,
+      expiresAt: serverStartedAt.add(const Duration(days: 90)),
+    );
+
+    jobs.insert(0, created);
+    technicianCreatedJobs.add(created);
+    technicianCreateCalls.add(call);
+    _technicianCreationsByIdempotencyKey[idempotencyKey] = created;
     return created;
   }
 

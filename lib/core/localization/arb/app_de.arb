@@ -415,5 +415,45 @@
   "adminErrorInvalidInput": "Der Server hat die Eingaben abgelehnt. Bitte prüfen Sie das Formular.",
   "adminErrorCustomerBlocked": "Dieser Kunde ist gesperrt oder gelöscht und kann für einen neuen Auftrag nicht verwendet werden.",
   "adminErrorNetwork": "Keine Verbindung zum Server. Bitte erneut versuchen.",
-  "adminErrorUnknown": "Die Aktion ist fehlgeschlagen. Bitte erneut versuchen."
+  "adminErrorUnknown": "Die Aktion ist fehlgeschlagen. Bitte erneut versuchen.",
+  "technicianCreateJobTitle": "Kunde & Auftrag anlegen",
+  "technicianCreateJobSubtitle": "Erfasse einen Kunden vor Ort und lege seinen Auftrag in einem Schritt an. Der Auftrag wird immer dir zugewiesen.",
+  "technicianCreateJobButton": "Kunde & Auftrag anlegen",
+  "technicianCreateJobEntryTitle": "Neuer Kunde & Auftrag",
+  "technicianCreateJobEntrySubtitle": "Kunden erfassen und Auftrag anlegen.",
+  "technicianJobCustomerSection": "Kunde",
+  "technicianJobDetailsSection": "Auftragsdaten",
+  "technicianJobCustomerModeNew": "Neuer Kunde",
+  "technicianJobCustomerModeExisting": "Bestehender Kunde",
+  "technicianSelectExistingCustomerTitle": "Wähle einen Kunden, für den du arbeitest",
+  "technicianAccessibleCustomersEmptySubtitle": "Du kannst einen Auftrag für Kunden anlegen, für die du bereits arbeitest. Für alle anderen erfasse bitte einen neuen Kunden.",
+  "technicianAccessibleCustomersError": "Deine Kunden konnten nicht geladen werden. Du kannst trotzdem einen neuen Kunden erfassen.",
+  "technicianJobDescriptionHint": "Was der Kunde benötigt",
+  "technicianJobAssignedToLabel": "Zugewiesener Techniker",
+  "technicianJobAssignedToHint": "Aufträge, die du anlegst, werden immer dir zugewiesen.",
+  "technicianCreateJobSuccess": "Auftrag #{jobNumber} erstellt.",
+  "@technicianCreateJobSuccess": {
+    "placeholders": {
+      "jobNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "technicianCreateJobQueued": "Auf diesem Gerät gespeichert — die Übertragung an den Server erfolgt, sobald du online bist.",
+  "technicianCreateJobFailed": "Der Auftrag konnte nicht angelegt werden. Bitte erneut versuchen.",
+  "technicianCreateJobErrorUnauthorized": "Du darfst diesen Auftrag nicht anlegen.",
+  "technicianCreateJobErrorCustomerNotFound": "Dieser Kunde existiert nicht mehr.",
+  "technicianCreateJobErrorCustomerBlocked": "Dieser Kunde ist gesperrt oder gelöscht und kann keinen neuen Auftrag erhalten.",
+  "technicianCreateJobErrorInvalidInput": "Bitte prüfe das Formular und versuche es erneut.",
+  "technicianCreateJobErrorNotAuthenticated": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+  "technicianCreateJobErrorUnknown": "Der Server hat die Anfrage abgelehnt. Bitte erneut versuchen.",
+  "validationFieldTooLong": "Verwende höchstens {count} Zeichen.",
+  "@validationFieldTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "validationPhoneInvalid": "Bitte gib eine gültige Telefonnummer ein."
 }

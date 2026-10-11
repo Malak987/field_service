@@ -15,10 +15,13 @@ import 'package:field_service/core/database/tables/job_files_table.dart';
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/models/job_file_model.dart';
+import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
+import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
+import 'package:field_service/features/jobs/domain/entities/technician_job_creation.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -94,6 +97,45 @@ class JobsRepositoryImpl implements JobsRepository {
   /// local copy while offline.
   static const String workDescriptionKey = 'work_description';
 
+  // --- Technician "Create Customer & Job" payload schema ---------------------
+  //
+  // Declared next to the other payload keys so the enqueue side (this class)
+  // and the replay side (`JobSyncHandler`) share ONE schema: a queued
+  // operation always carries exactly the arguments its RPC needs.
+
+  /// The `technician_create_customer_and_job` action: create the customer and
+  /// its job as one server-side unit.
+  static const String technicianCreateCustomerAndJobAction =
+      'technician_create_customer_and_job';
+
+  /// The `technician_create_job_for_customer` action: create a job for an
+  /// existing customer the technician may work for.
+  static const String technicianCreateJobAction = 'technician_create_job';
+
+  /// Payload key of the client-generated `jobs.id` (the idempotency key of
+  /// the RPC). Also the operation's `entityId`.
+  static const String jobIdKey = 'job_id';
+
+  /// Payload key of the stable `customers.id` the job is linked to.
+  static const String customerIdKey = 'customer_id';
+
+  /// Payload key of the job category (`jobs.job_type`).
+  static const String jobTypeKey = 'job_type';
+
+  /// Payload key of the job description (`jobs.description`).
+  static const String descriptionKey = 'description';
+
+  /// Payload key of the nested customer draft (only for
+  /// [technicianCreateCustomerAndJobAction]).
+  static const String customerKey = 'customer';
+
+  /// Fixed namespace UUID (RFC 4122 DNS namespace) for the deterministic
+  /// ids derived from the caller's idempotency key via `uuid` v5.
+  ///
+  /// A plain constant rather than a `Namespace` enum reference so this
+  /// derivation never depends on a package export detail.
+  static const String _idNamespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
+
   @override
   Future<List<Job>> getJobs() {
     return _remoteDataSource.getJobs();
@@ -140,6 +182,269 @@ class JobsRepositoryImpl implements JobsRepository {
   @override
   Future<JobCustomerInfo?> getJobCustomerInfo(String jobId) {
     return _remoteDataSource.getJobCustomerInfo(jobId);
+  }
+
+  // --- Technician: create customer & job --------------------------------------
+  //
+  // Offline-first on the EXISTING stack, and deliberately ONE operation for
+  // the whole logical unit:
+  //
+  //   1. derive STABLE ids from the caller's idempotency key (a v5 UUID, so
+  //      every retry of the same form reuses exactly the same job id and the
+  //      same queue row),
+  //   2. enqueue ONE durable `job` operation carrying the full draft — this
+  //      is the local copy that survives a process kill,
+  //   3. online: call the RPC and return the authoritative row; offline:
+  //      report `queued` and let the shared `SyncManager` push it later.
+  //
+  // The RPC itself is idempotent on the job id, so step 3 racing with a
+  // background push (or a replay after a lost acknowledgement) can never
+  // create a second job or a second pair of events.
+
+  @override
+  Future<List<AccessibleCustomer>> getAccessibleCustomers({
+    String search = '',
+  }) {
+    return _remoteDataSource.getTechnicianAccessibleCustomers(search: search);
+  }
+
+  @override
+  Future<TechnicianJobCreation> createTechnicianCustomerAndJob({
+    required NewCustomerDraft customer,
+    required String jobType,
+    String? description,
+    required String idempotencyKey,
+  }) async {
+    // Client-side pre-flight guard (defense in depth): the business supports
+    // exactly two categories and the fields have an agreed bound. The server
+    // re-validates every security-relevant rule on its own.
+    _requireSupportedCategory(jobType);
+    _requireWithinLimit(
+      value: customer.name,
+      limit: JobsRepository.maxCustomerNameLength,
+      field: 'customer.name',
+    );
+    _requireWithinLimit(
+      value: customer.address,
+      limit: JobsRepository.maxCustomerAddressLength,
+      field: 'customer.address',
+    );
+    _requireWithinLimit(
+      value: customer.phone,
+      limit: JobsRepository.maxCustomerPhoneLength,
+      field: 'customer.phone',
+    );
+    _requireWithinLimit(
+      value: customer.email,
+      limit: JobsRepository.maxCustomerEmailLength,
+      field: 'customer.email',
+    );
+    _requireWithinLimit(
+      value: customer.city,
+      limit: JobsRepository.maxCustomerCityLength,
+      field: 'customer.city',
+    );
+    _requireWithinLimit(
+      value: customer.postalCode,
+      limit: JobsRepository.maxCustomerPostalCodeLength,
+      field: 'customer.postalCode',
+    );
+    _requireWithinLimit(
+      value: customer.notes,
+      limit: JobsRepository.maxCustomerNotesLength,
+      field: 'customer.notes',
+    );
+
+    final String jobId = _stableId(idempotencyKey, 'job');
+    final String customerId = _stableId(idempotencyKey, 'customer');
+    final String cleanDescription = _cleanDescription(description);
+
+    await _enqueueTechnicianCreation(
+      idempotencyKey: idempotencyKey,
+      jobId: jobId,
+      payload: <String, Object?>{
+        actionKey: technicianCreateCustomerAndJobAction,
+        jobIdKey: jobId,
+        customerIdKey: customerId,
+        jobTypeKey: jobType,
+        descriptionKey: cleanDescription,
+        customerKey: customer.toPayload(),
+      },
+    );
+
+    return _submitTechnicianCreation(
+      jobId: jobId,
+      idempotencyKey: idempotencyKey,
+      push: () => _remoteDataSource.technicianCreateCustomerAndJob(
+        jobId: jobId,
+        customerId: customerId,
+        customer: customer,
+        jobType: jobType,
+        description: cleanDescription,
+      ),
+    );
+  }
+
+  @override
+  Future<TechnicianJobCreation> createTechnicianJobForCustomer({
+    required String customerId,
+    required String jobType,
+    String? description,
+    required String idempotencyKey,
+  }) async {
+    _requireSupportedCategory(jobType);
+    if (customerId.trim().isEmpty) {
+      throw ArgumentError.value(
+        customerId,
+        'customerId',
+        'A customer id is required',
+      );
+    }
+
+    final String jobId = _stableId(idempotencyKey, 'job');
+    final String cleanDescription = _cleanDescription(description);
+
+    await _enqueueTechnicianCreation(
+      idempotencyKey: idempotencyKey,
+      jobId: jobId,
+      payload: <String, Object?>{
+        actionKey: technicianCreateJobAction,
+        jobIdKey: jobId,
+        customerIdKey: customerId.trim(),
+        jobTypeKey: jobType,
+        descriptionKey: cleanDescription,
+      },
+    );
+
+    return _submitTechnicianCreation(
+      jobId: jobId,
+      idempotencyKey: idempotencyKey,
+      push: () => _remoteDataSource.technicianCreateJobForCustomer(
+        jobId: jobId,
+        customerId: customerId.trim(),
+        jobType: jobType,
+        description: cleanDescription,
+      ),
+    );
+  }
+
+  /// Derives a stable UUID from [idempotencyKey] and [purpose].
+  ///
+  /// Deterministic on purpose: retrying the same form must reuse the same
+  /// job/customer/operation ids, otherwise a lost acknowledgement would
+  /// produce a second job. A different form instance uses a different key.
+  String _stableId(String idempotencyKey, String purpose) {
+    final String key = idempotencyKey.trim();
+    if (key.isEmpty) {
+      throw ArgumentError.value(
+        idempotencyKey,
+        'idempotencyKey',
+        'An idempotency key is required',
+      );
+    }
+    return _uuid.v5(_idNamespace, 'field-service:$purpose:$key');
+  }
+
+  /// Persists the creation as ONE durable queue operation.
+  ///
+  /// The operation id is derived from the same idempotency key, so a retried
+  /// enqueue is a no-op (`SyncQueue.enqueue` is `DoNothing` on `id`) — a
+  /// double tap or a re-submitted form can never queue the creation twice.
+  Future<void> _enqueueTechnicianCreation({
+    required String idempotencyKey,
+    required String jobId,
+    required Map<String, Object?> payload,
+  }) {
+    return _syncQueue.enqueue(
+      SyncOperation(
+        id: _stableId(idempotencyKey, 'operation'),
+        entityType: SyncEntityType.job,
+        entityId: jobId,
+        type: SyncOperationType.create,
+        payload: payload,
+        createdAt: _now(),
+      ),
+    );
+  }
+
+  /// Pushes the queued creation now when the device is online.
+  ///
+  /// Online: the RPC answer is authoritative — the caller receives the real
+  /// row (with the database-generated job number) and the queue row is
+  /// marked synced. Offline: nothing is claimed to be saved on the server;
+  /// the caller receives `queued` and the shared engine pushes it as soon as
+  /// connectivity returns. A failed push leaves the operation queued for the
+  /// existing retry path (connectivity event / Retry action).
+  Future<TechnicianJobCreation> _submitTechnicianCreation({
+    required String jobId,
+    required String idempotencyKey,
+    required Future<Job> Function() push,
+  }) async {
+    if (!await _networkInfo.isConnected) {
+      _nudgeSyncProcessor();
+      return TechnicianJobCreation.queued(jobId: jobId);
+    }
+
+    try {
+      final Job job = await push();
+      // Best effort: the engine may already have pushed the same operation
+      // (the RPC is idempotent, so that is harmless). A bookkeeping failure
+      // here must never mask a successful creation.
+      try {
+        await _syncQueue.markSynced(_stableId(idempotencyKey, 'operation'));
+      } catch (error, stackTrace) {
+        AppLogger.warning(
+          'The queued technician job creation could not be marked synced '
+          'after a successful push.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+      return TechnicianJobCreation.created(job);
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'The technician job creation could not be pushed; it stays queued '
+        'for the next sync.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      // Keep the durable operation for the retry path and rethrow so the UI
+      // can explain the refusal instead of pretending it succeeded.
+      _nudgeSyncProcessor();
+      rethrow;
+    }
+  }
+
+  /// Trims the description and normalizes "blank" to `null` (the RPC stores
+  /// `NULLIF(TRIM(...), '')` anyway; this keeps the queued payload clean).
+  static String? _cleanDescription(String? description) {
+    final String trimmed = description?.trim() ?? '';
+    return trimmed.isEmpty ? null : trimmed;
+  }
+
+  void _requireSupportedCategory(String jobType) {
+    if (!JobCategory.isSupported(jobType)) {
+      throw ArgumentError.value(
+        jobType,
+        'jobType',
+        'Unsupported job category',
+      );
+    }
+  }
+
+  void _requireWithinLimit({
+    required String? value,
+    required int limit,
+    required String field,
+  }) {
+    final String trimmed = value?.trim() ?? '';
+    if (trimmed.length > limit) {
+      throw ArgumentError.value(
+        value,
+        field,
+        'Exceeds the maximum length of $limit characters',
+      );
+    }
   }
 
   @override
@@ -523,6 +828,18 @@ class JobsRepositoryImpl implements JobsRepository {
   }
 
   // --- Helpers ------------------------------------------------------------------
+
+  /// Fire-and-forget nudge of the shared sync engine (same convention as
+  /// [startJob]): online it pushes immediately, offline it finds nothing it
+  /// can do and the operation simply stays queued. A sync run never crashes
+  /// the write path.
+  void _nudgeSyncProcessor() {
+    unawaited(
+      _syncProcessor.processPendingOperations().catchError((Object _) {
+        // Sync runs never crash the write path; the operation stays queued.
+      }),
+    );
+  }
 
   /// Merges locally registered photos with backend-registered ones
   /// (deduplicated by the stable file id, ordered by capture time).

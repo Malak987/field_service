@@ -2,6 +2,7 @@ import 'package:field_service/core/sync/sync_handler.dart';
 import 'package:field_service/core/sync/sync_operation.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/repositories/jobs_repository_impl.dart';
+import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
 
 /// Pushes queued `job` operations to Supabase.
 ///
@@ -66,9 +67,100 @@ class JobSyncHandler implements SyncOperationHandler {
       return const RemotePushResult.ok();
     }
 
+    if (operation.type == SyncOperationType.create &&
+        action == JobsRepositoryImpl.technicianCreateCustomerAndJobAction) {
+      // The whole "new customer + job" unit is ONE operation: the RPC inserts
+      // both rows in a single transaction and is idempotent on the
+      // client-generated job id, so a replay after a lost acknowledgement
+      // returns the existing job instead of creating a second one.
+      final Object? customerPayload =
+          operation.payload[JobsRepositoryImpl.customerKey];
+      if (customerPayload is! Map) {
+        return RemotePushResult.failure(
+          'Technician job creation operation carries no customer draft.',
+        );
+      }
+      final _TechnicianJobDraft draft = _draftOf(operation);
+      if (draft == null) {
+        return RemotePushResult.failure(
+          'Technician job creation operation is missing its ids.',
+        );
+      }
+
+      await _remote.technicianCreateCustomerAndJob(
+        jobId: draft.jobId,
+        customerId: draft.customerId,
+        customer: NewCustomerDraft.fromPayload(
+          Map<String, Object?>.from(customerPayload),
+        ),
+        jobType: draft.jobType,
+        description: draft.description,
+      );
+      return const RemotePushResult.ok();
+    }
+
+    if (operation.type == SyncOperationType.create &&
+        action == JobsRepositoryImpl.technicianCreateJobAction) {
+      final _TechnicianJobDraft? draft = _draftOf(operation);
+      if (draft == null) {
+        return RemotePushResult.failure(
+          'Technician job creation operation is missing its ids.',
+        );
+      }
+
+      await _remote.technicianCreateJobForCustomer(
+        jobId: draft.jobId,
+        customerId: draft.customerId,
+        jobType: draft.jobType,
+        description: draft.description,
+      );
+      return const RemotePushResult.ok();
+    }
+
     return RemotePushResult.failure(
       'Unsupported job operation (type: ${operation.type.name}, '
       'action: $action).',
     );
   }
+
+  /// Reads the shared part of a queued technician creation payload.
+  ///
+  /// `null` means the queue row is malformed — the manager then persists it
+  /// as a failed (retryable, diagnosable) operation instead of pushing
+  /// half-known data. A corrupt row is never silently "synced".
+  static _TechnicianJobDraft? _draftOf(SyncOperation operation) {
+    final Object? jobId = operation.payload[JobsRepositoryImpl.jobIdKey];
+    final Object? customerId =
+        operation.payload[JobsRepositoryImpl.customerIdKey];
+    final Object? jobType = operation.payload[JobsRepositoryImpl.jobTypeKey];
+    final Object? description =
+        operation.payload[JobsRepositoryImpl.descriptionKey];
+
+    if (jobId is! String || customerId is! String || jobType is! String) {
+      return null;
+    }
+
+    return _TechnicianJobDraft(
+      jobId: jobId,
+      customerId: customerId,
+      jobType: jobType,
+      description: description is String ? description : null,
+    );
+  }
+}
+
+/// The arguments every queued technician creation carries (the customer
+/// draft travels separately, nested under its own payload key).
+class _TechnicianJobDraft {
+  const _TechnicianJobDraft({
+    required this.jobId,
+    required this.customerId,
+    required this.jobType,
+    required this.description,
+  });
+
+  final String jobId;
+  final String customerId;
+  final String jobType;
+  final String? description;
 }

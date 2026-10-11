@@ -70,6 +70,18 @@ class TechnicianHomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 _HeaderCard(user: user),
+                const SizedBox(height: AppSpacing.lg),
+                // The technician's own creation entry (the customer
+                // management area stays admin-only — this form creates ONE
+                // customer for ONE job, and the server assigns the job to
+                // the caller).
+                HomeNavigationTile(
+                  key: const Key('nav_create_customer_job'),
+                  icon: Icons.person_add_alt_1_outlined,
+                  label: l10n.technicianCreateJobEntryTitle,
+                  subtitle: l10n.technicianCreateJobEntrySubtitle,
+                  onTap: () => context.push(AppRoutes.jobTechnicianCreate),
+                ),
                 const SizedBox(height: AppSpacing.xl),
                 const _JobsSections(),
                 const SizedBox(height: AppSpacing.xl),

@@ -415,5 +415,45 @@
   "adminErrorInvalidInput": "The server rejected the values. Please check the form.",
   "adminErrorCustomerBlocked": "This customer is blocked or deleted and cannot be used for a new job.",
   "adminErrorNetwork": "No connection to the server. Please try again.",
-  "adminErrorUnknown": "The action failed. Please try again."
+  "adminErrorUnknown": "The action failed. Please try again.",
+  "technicianCreateJobTitle": "Create Customer & Job",
+  "technicianCreateJobSubtitle": "Register a customer on site and create their job in one step. The job is always assigned to you.",
+  "technicianCreateJobButton": "Create Customer & Job",
+  "technicianCreateJobEntryTitle": "New customer & job",
+  "technicianCreateJobEntrySubtitle": "Register a customer and create their job.",
+  "technicianJobCustomerSection": "Customer",
+  "technicianJobDetailsSection": "Job details",
+  "technicianJobCustomerModeNew": "New customer",
+  "technicianJobCustomerModeExisting": "Existing customer",
+  "technicianSelectExistingCustomerTitle": "Select a customer you work for",
+  "technicianAccessibleCustomersEmptySubtitle": "You can create a job for a customer you already work for. For anybody else, register a new customer.",
+  "technicianAccessibleCustomersError": "Your customers could not be loaded. You can still register a new customer.",
+  "technicianJobDescriptionHint": "What the customer asked for",
+  "technicianJobAssignedToLabel": "Assigned technician",
+  "technicianJobAssignedToHint": "Jobs you create are always assigned to you.",
+  "technicianCreateJobSuccess": "Job #{jobNumber} created.",
+  "@technicianCreateJobSuccess": {
+    "placeholders": {
+      "jobNumber": {
+        "type": "int"
+      }
+    }
+  },
+  "technicianCreateJobQueued": "Saved on this device — it will be sent to the server as soon as you are online.",
+  "technicianCreateJobFailed": "The job could not be created. Please try again.",
+  "technicianCreateJobErrorUnauthorized": "You are not allowed to create this job.",
+  "technicianCreateJobErrorCustomerNotFound": "This customer no longer exists.",
+  "technicianCreateJobErrorCustomerBlocked": "This customer is blocked or deleted and cannot receive a new job.",
+  "technicianCreateJobErrorInvalidInput": "Please check the form and try again.",
+  "technicianCreateJobErrorNotAuthenticated": "Your session has expired. Please sign in again.",
+  "technicianCreateJobErrorUnknown": "The server refused the request. Please try again.",
+  "validationFieldTooLong": "Use at most {count} characters.",
+  "@validationFieldTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "validationPhoneInvalid": "Please enter a valid phone number."
 }
