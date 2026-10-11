@@ -168,9 +168,9 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
             children: <Widget>[
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.xxl,
+                  AppSpacing.lg,
                   AppSpacing.md,
-                  AppSpacing.xxl,
+                  AppSpacing.lg,
                   AppSpacing.sm,
                 ),
                 child: CustomerSearchField(
@@ -195,10 +195,32 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                             textAlign: TextAlign.center,
                             style: context.textStyles.titleMedium,
                           ),
-                        ),
-                      for (final ManagedCustomer customer in visible) ...[
-                        _CustomerCard(
-                          customer: customer,
+                        )
+                      else
+                        Material(
+                          color: context.colors.surface,
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.card,
+                            side: BorderSide(
+                              color: context.colors.outlineVariant,
+                            ),
+                          ),
+                          child: Column(
+                            children: <Widget>[
+                              for (
+                                int rowIndex = 0;
+                                rowIndex < visible.length;
+                                rowIndex++
+                              ) ...<Widget>[
+                                if (rowIndex > 0)
+                                  Divider(
+                                    height: 1,
+                                    indent: AppSpacing.lg,
+                                    color: context.colors.outlineVariant,
+                                  ),
+                                _CustomerCard(
+                          customer: visible[rowIndex],
                           isBusy: state.busyCustomerId == customer.id,
                           isAnyBusy: state.isBusy,
                           onOpenDetails: () => _pushNamedAndReload(
@@ -212,8 +234,10 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                             customer.id,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
+                              ],
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -299,13 +323,17 @@ class _CustomerCard extends StatelessWidget {
         ? customer.address.trim()
         : '${customer.address.trim()}, $cityLine';
 
-    return Card(
+    // Flat row: the list supplies one shared surface and the hairlines, so the
+    // directory reads as a table rather than a stack of identical boxes. The
+    // row key stays on the tap target.
+    return InkWell(
       key: Key('admin_customer_row_${customer.id}'),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpenDetails,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: onOpenDetails,
+      child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -434,8 +462,7 @@ class _CustomerCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
 

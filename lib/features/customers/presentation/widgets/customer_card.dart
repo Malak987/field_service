@@ -26,97 +26,101 @@ class CustomerCard extends StatelessWidget {
         ? address
         : '$address, $cityLine';
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      customer.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+    // Flat row, not a card: the list around it supplies the surface and the
+    // hairlines, so a long directory reads as one table instead of a stack of
+    // identical boxes.
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    customer.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textStyles.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(width: AppSpacing.sm),
-                  CustomerSyncStatusChip(status: customer.syncStatus),
-                ],
-              ),
-              if (customer.phone?.trim().isNotEmpty == true) ...<Widget>[
-                const SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.phone_outlined,
-                      size: AppDimensions.iconSm,
-                      color: context.colors.outline,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        customer.phone!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.bodyMedium,
-                      ),
-                    ),
-                  ],
                 ),
+                const SizedBox(width: AppSpacing.sm),
+                CustomerSyncStatusChip(status: customer.syncStatus),
               ],
-              if (customer.email?.trim().isNotEmpty == true) ...<Widget>[
-                const SizedBox(height: AppSpacing.xs),
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.email_outlined,
-                      size: AppDimensions.iconSm,
-                      color: context.colors.outline,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Expanded(
-                      child: Text(
-                        customer.email!.trim(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.bodyMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xs),
+            ),
+            if (customer.phone?.trim().isNotEmpty == true) ...<Widget>[
+              const SizedBox(height: AppSpacing.sm),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Icon(
-                      Icons.place_outlined,
-                      size: AppDimensions.iconSm,
-                      color: context.colors.outline,
-                    ),
+                  Icon(
+                    Icons.phone_outlined,
+                    size: AppDimensions.iconSm,
+                    color: context.colors.outline,
                   ),
                   const SizedBox(width: AppSpacing.xs),
                   Expanded(
                     child: Text(
-                      addressLine,
-                      maxLines: 2,
+                      customer.phone!,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.bodySmall,
+                      style: context.textStyles.bodyMedium,
                     ),
                   ),
                 ],
               ),
             ],
-          ),
+            if (customer.email?.trim().isNotEmpty == true) ...<Widget>[
+              const SizedBox(height: AppSpacing.xs),
+              Row(
+                children: <Widget>[
+                  Icon(
+                    Icons.email_outlined,
+                    size: AppDimensions.iconSm,
+                    color: context.colors.outline,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      customer.email!.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AppSpacing.xs),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Icon(
+                    Icons.place_outlined,
+                    size: AppDimensions.iconSm,
+                    color: context.colors.outline,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.xs),
+                Expanded(
+                  child: Text(
+                    addressLine,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textStyles.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
