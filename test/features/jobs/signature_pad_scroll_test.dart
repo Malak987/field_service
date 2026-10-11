@@ -42,6 +42,31 @@ void main() {
     return controller;
   }
 
+  /// Signs with a *realistic* stroke: many small pointer moves, not one jump.
+  ///
+  /// This detail is what makes the test able to fail. A single 180px move
+  /// clears even a pan recognizer's larger `kPanSlop` (~36px) in one event, so
+  /// it would pass against the buggy code too. Real fingers arrive as a stream
+  /// of small moves, and the bug only shows up in the window where the page's
+  /// scroll recognizer has passed `kTouchSlop` (~18px) while a pan recognizer
+  /// has not yet reached 36px. Ten-pixel steps land squarely in that window.
+  Future<void> _stroke(
+    WidgetTester tester,
+    Finder finder,
+    Offset offset, {
+    int steps = 18,
+  }) async {
+    final TestGesture gesture = await tester.startGesture(
+      tester.getCenter(finder),
+    );
+    final Offset step = Offset(offset.dx / steps, offset.dy / steps);
+    for (int i = 0; i < steps; i++) {
+      await gesture.moveBy(step);
+      await tester.pump(const Duration(milliseconds: 8));
+    }
+    await gesture.up();
+  }
+
   testWidgets(
     'a vertical stroke draws ink and leaves the page where it was '
     '(pad gesture recognizers alone, no scroll-freeze backstop)',
@@ -52,7 +77,7 @@ void main() {
       );
       expect(controller.offset, 0);
 
-      await tester.drag(find.byType(SignaturePad), const Offset(0, -180));
+      await _stroke(tester, find.byType(SignaturePad), const Offset(0, -180));
       await tester.pumpAndSettle();
 
       expect(
@@ -77,7 +102,7 @@ void main() {
         freezeWhileDrawing: true,
       );
 
-      await tester.drag(find.byType(SignaturePad), const Offset(0, -180));
+      await _stroke(tester, find.byType(SignaturePad), const Offset(0, -180));
       await tester.pumpAndSettle();
 
       expect(controller.offset, 0);
@@ -94,7 +119,7 @@ void main() {
       freezeWhileDrawing: false,
     );
 
-    await tester.drag(find.byType(SignaturePad), const Offset(140, 0));
+    await _stroke(tester, find.byType(SignaturePad), const Offset(140, 0));
     await tester.pumpAndSettle();
 
     expect(controller.offset, 0);
@@ -113,7 +138,12 @@ void main() {
     );
     expect(controller.offset, 0);
 
-    await tester.drag(find.byKey(const Key('pad_host_filler')), const Offset(0, -150));
+    await _stroke(
+      tester,
+      find.byKey(const Key('pad_host_filler')),
+      const Offset(0, -150),
+      steps: 15,
+    );
     await tester.pumpAndSettle();
 
     expect(

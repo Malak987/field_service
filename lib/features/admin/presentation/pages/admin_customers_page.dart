@@ -67,6 +67,25 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
     await cubit.load();
   }
 
+  /// Builds one row of the directory with its management actions.
+  ///
+  /// Kept as a method rather than inlined in the collection-`for` so the row
+  /// has a real `customer` variable in scope — a Dart collection literal cannot
+  /// declare one, and repeating `visible[rowIndex]` five times is how a rename
+  /// silently leaves stale references behind.
+  Widget _buildCustomerRow(
+    BuildContext context,
+    AdminCustomersState state,
+    ManagedCustomer customer,
+  ) => _CustomerCard(
+    customer: customer,
+    isBusy: state.busyCustomerId == customer.id,
+    isAnyBusy: state.isBusy,
+    onOpenDetails: () =>
+        _pushNamedAndReload(context, 'adminCustomerDetails', customer.id),
+    onEdit: () => _pushNamedAndReload(context, 'adminCustomerEdit', customer.id),
+  );
+
   Future<void> _pushNamedAndReload(
     BuildContext context,
     String name,
@@ -215,21 +234,11 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                                     indent: AppSpacing.lg,
                                     color: context.colors.outlineVariant,
                                   ),
-                                _CustomerCard(
-                          customer: visible[rowIndex],
-                          isBusy: state.busyCustomerId == customer.id,
-                          isAnyBusy: state.isBusy,
-                          onOpenDetails: () => _pushNamedAndReload(
-                            context,
-                            'adminCustomerDetails',
-                            customer.id,
-                          ),
-                          onEdit: () => _pushNamedAndReload(
-                            context,
-                            'adminCustomerEdit',
-                            customer.id,
-                          ),
-                        ),
+                                _buildCustomerRow(
+                                  context,
+                                  state,
+                                  visible[rowIndex],
+                                ),
                               ],
                             ],
                           ),
