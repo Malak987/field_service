@@ -105,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                   title: l10n.loginWelcomeTitle,
                   subtitle: l10n.loginWelcomeSubtitle,
                 ),
-                const SizedBox(height: AppSpacing.xxxl),
+                const SizedBox(height: AppSpacing.xl),
                 BlocBuilder<AuthenticationCubit, AuthenticationState>(
                   buildWhen:
                       (

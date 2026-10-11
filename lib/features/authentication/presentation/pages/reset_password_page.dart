@@ -80,7 +80,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   title: l10n.resetPasswordTitle,
                   subtitle: l10n.resetPasswordSubtitle,
                 ),
-                const SizedBox(height: AppSpacing.xxxl),
+                const SizedBox(height: AppSpacing.xl),
                 AuthSuccessMessage(message: l10n.successPasswordUpdated),
                 const SizedBox(height: AppSpacing.xl),
                 AuthPrimaryButton(
@@ -102,7 +102,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                   title: l10n.resetPasswordTitle,
                   subtitle: l10n.resetPasswordSubtitle,
                 ),
-                const SizedBox(height: AppSpacing.xxxl),
+                const SizedBox(height: AppSpacing.xl),
                 BlocBuilder<AuthenticationCubit, AuthenticationState>(
                   buildWhen:
                       (

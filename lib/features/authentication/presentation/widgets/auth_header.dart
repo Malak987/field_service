@@ -55,7 +55,7 @@ class _AuthHeaderState extends State<AuthHeader>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const AuthLogo(),
-            const SizedBox(height: AppSpacing.xxxl),
+            const SizedBox(height: AppSpacing.xl),
             Text(
               widget.title,
               textAlign: TextAlign.center,
