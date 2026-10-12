@@ -99,6 +99,13 @@
   "jobsTitle": "Jobs",
   "myJobsTitle": "My Jobs",
   "jobDetailsTitle": "Job Details",
+  "jobActivityTitle": "Activity",
+  "activityAssigned": "Job assigned",
+  "activityStarted": "Work started",
+  "activityBeforePhoto": "Before photo captured",
+  "activityAfterPhoto": "After photo captured",
+  "activitySignature": "Signature captured",
+  "activityCompleted": "Work completed",
   "workflowProgressTitle": "Workflow progress",
   "workflowProgressLabel": "{completed} of {total} steps complete",
   "@workflowProgressLabel": {

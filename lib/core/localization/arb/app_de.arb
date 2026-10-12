@@ -99,6 +99,13 @@
   "jobsTitle": "Aufträge",
   "myJobsTitle": "Meine Aufträge",
   "jobDetailsTitle": "Auftragsdetails",
+  "jobActivityTitle": "Verlauf",
+  "activityAssigned": "Auftrag zugewiesen",
+  "activityStarted": "Arbeit begonnen",
+  "activityBeforePhoto": "Vorher-Foto aufgenommen",
+  "activityAfterPhoto": "Nachher-Foto aufgenommen",
+  "activitySignature": "Unterschrift aufgenommen",
+  "activityCompleted": "Arbeit abgeschlossen",
   "workflowProgressTitle": "Arbeitsfortschritt",
   "workflowProgressLabel": "{completed} von {total} Schritten abgeschlossen",
   "@workflowProgressLabel": {

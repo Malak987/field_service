@@ -159,6 +159,14 @@ abstract class AppLocalizations {
   String get jobsTitle;
   String get myJobsTitle;
   String get jobDetailsTitle;
+
+  String get jobActivityTitle;
+  String get activityAssigned;
+  String get activityStarted;
+  String get activityBeforePhoto;
+  String get activityAfterPhoto;
+  String get activitySignature;
+  String get activityCompleted;
   String get workflowProgressTitle;
   String workflowProgressLabel(int completed, int total);
   String get currentStepLabel;
@@ -779,6 +787,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jobDetailsTitle => 'Job Details';
+
+  @override
+  String get jobActivityTitle => 'Activity';
+  @override
+  String get activityAssigned => 'Job assigned';
+  @override
+  String get activityStarted => 'Work started';
+  @override
+  String get activityBeforePhoto => 'Before photo captured';
+  @override
+  String get activityAfterPhoto => 'After photo captured';
+  @override
+  String get activitySignature => 'Signature captured';
+  @override
+  String get activityCompleted => 'Work completed';
 
   @override
   String get workflowProgressTitle => 'Workflow progress';
@@ -1914,6 +1937,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get jobDetailsTitle => 'Auftragsdetails';
+
+  @override
+  String get jobActivityTitle => 'Verlauf';
+  @override
+  String get activityAssigned => 'Auftrag zugewiesen';
+  @override
+  String get activityStarted => 'Arbeit begonnen';
+  @override
+  String get activityBeforePhoto => 'Vorher-Foto aufgenommen';
+  @override
+  String get activityAfterPhoto => 'Nachher-Foto aufgenommen';
+  @override
+  String get activitySignature => 'Unterschrift aufgenommen';
+  @override
+  String get activityCompleted => 'Arbeit abgeschlossen';
 
   @override
   String get workflowProgressTitle => 'Arbeitsfortschritt';
