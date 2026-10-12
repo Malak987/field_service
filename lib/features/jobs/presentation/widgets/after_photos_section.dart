@@ -5,19 +5,16 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
-import 'package:field_service/features/jobs/presentation/widgets/before_photo_tile.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_photo_grid.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_step_empty_note.dart';
 import 'package:flutter/material.dart';
 
-/// The "After Photos" section of the Job Details page.
+/// The **After Photos** step of the Job Details page.
 ///
-/// The finished-site counterpart of `BeforePhotosSection` — same presentational
-/// contract, same tile/loading/badge patterns (the photo tile is file-type
-/// generic and reused): it shows the job's after photos as a grid, each tile
-/// carrying its sync badge (pending / synced / failed), offers
-/// **Add After Photo** while [canAdd] is true (assigned technician, job
-/// `in_progress`), and a Retry action while any upload sits in the queue's
-/// failed state. All photo business logic lives in the cubit/repository —
-/// this widget only reports taps.
+/// The mirror image of the before-photos step: the same [JobPhotoGrid] of the
+/// app's existing job-file tiles, with this step's own copy and keys. Purely
+/// presentational — the cubit/repository own the capture, the local write and
+/// the queue.
 class AfterPhotosSection extends StatelessWidget {
   const AfterPhotosSection({
     super.key,
@@ -36,8 +33,7 @@ class AfterPhotosSection extends StatelessWidget {
   /// Ids of photos whose upload is currently `failed` in the sync queue.
   final Set<String> failedIds;
 
-  /// Whether new after photos may be captured (assigned technician, job
-  /// `in_progress`). Admins and closed jobs view read-only.
+  /// Whether new after photos may be captured (job is `in_progress`).
   final bool canAdd;
 
   /// A photo is currently being registered locally — disables the button.
@@ -86,7 +82,7 @@ class AfterPhotosSection extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(
-                        Icons.photo_camera_rounded,
+                        Icons.add_a_photo_rounded,
                         size: AppDimensions.iconMd,
                       ),
                 label: Text(
@@ -112,29 +108,18 @@ class AfterPhotosSection extends StatelessWidget {
         ],
         const SizedBox(height: AppSpacing.lg),
         if (photos.isEmpty)
-          Text(l10n.noAfterPhotosYet, style: context.textStyles.bodyMedium)
+          JobStepEmptyNote(
+            icon: Icons.add_a_photo_outlined,
+            title: l10n.noAfterPhotosYet,
+            message: l10n.afterPhotosRequiredHint,
+          )
         else
-          GridView.count(
-            key: const Key('after_photos_grid'),
-            // Two columns → clearly larger thumbnails; the tap preview on
-            // each tile keeps full detail one gesture away.
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: AppSpacing.md,
-            crossAxisSpacing: AppSpacing.md,
-            childAspectRatio: 1,
-            children: <Widget>[
-              for (final JobFile photo in photos)
-                // The tile is file-type generic — the same widget renders
-                // before and after photos alike.
-                BeforePhotoTile(
-                  key: Key('after_photo_tile_${photo.id}'),
-                  file: photo,
-                  isFailed: failedIds.contains(photo.id),
-                  loadBytes: loadBytes,
-                ),
-            ],
+          JobPhotoGrid(
+            gridKey: const Key('after_photos_grid'),
+            tileKeyPrefix: 'after',
+            photos: photos,
+            failedIds: failedIds,
+            loadBytes: loadBytes,
           ),
       ],
     );

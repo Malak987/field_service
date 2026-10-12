@@ -159,6 +159,14 @@ abstract class AppLocalizations {
   String get jobsTitle;
   String get myJobsTitle;
   String get jobDetailsTitle;
+
+  String get jobActivityTitle;
+  String get activityAssigned;
+  String get activityStarted;
+  String get activityBeforePhoto;
+  String get activityAfterPhoto;
+  String get activitySignature;
+  String get activityCompleted;
   String get workflowProgressTitle;
   String workflowProgressLabel(int completed, int total);
   String get currentStepLabel;
@@ -188,6 +196,10 @@ abstract class AppLocalizations {
   String get takePhotoButton;
   String get chooseFromGalleryButton;
   String get noBeforePhotosYet;
+
+  /// One line of guidance under the empty before-photos state, saying WHY the
+  /// step matters instead of only that it is empty.
+  String get beforePhotosRequiredHint;
   String get uploadingLabel;
   String get uploadFailedLabel;
   String get photoSyncedLabel;
@@ -200,6 +212,9 @@ abstract class AppLocalizations {
   String get afterPhotosTitle;
   String get addAfterPhotoButton;
   String get noAfterPhotosYet;
+
+  /// One line of guidance under the empty after-photos state.
+  String get afterPhotosRequiredHint;
   String get addAfterPhotoFailedError;
   // --- Customer Signature -------------------------------------------------
   String get customerSignatureTitle;
@@ -211,6 +226,10 @@ abstract class AppLocalizations {
   String get signatureSaveFailedMessage;
   String get noSignatureYet;
   String get signatureHelper;
+
+  /// What the customer's signature MEANS: the confirmation of the finished
+  /// work, which is also why it is required before a job can be completed.
+  String get signatureConfirmsWorkHint;
   String get replaceSignatureButton;
   String stepLabel(int step);
   String get customerRequestLabel;
@@ -220,6 +239,10 @@ abstract class AppLocalizations {
   String get workDescriptionTitle;
   String get workDescriptionHint;
   String get workDescriptionNoneYet;
+
+  /// One line of guidance under the work description field, saying that the
+  /// description is part of completing the job.
+  String get workDescriptionRequiredHint;
   String get workDescriptionEmptyError;
   String workDescriptionTooLongError(int max);
   String get workDescriptionSavedMessage;
@@ -235,10 +258,14 @@ abstract class AppLocalizations {
   String get missingAfterPhotoError;
   String get missingSignatureError;
   String get internetRequiredToCompleteJob;
+  String get requirementDoneLabel;
+  String get requirementOpenLabel;
   String get unableToCompleteJobError;
   String get waitingForFileSync;
   String get jobsEmptyTitle;
   String get jobsEmptySubtitle;
+
+  String get createFirstJobButton;
   String get jobsErrorTitle;
   String get jobsErrorSubtitle;
   String get jobsLoadingLabel;
@@ -313,6 +340,7 @@ abstract class AppLocalizations {
   String get customerLinkedJobsError;
   String deleteCustomerConfirmation(String name);
   String get offlineLabel;
+  String get syncStatusTitle;
   String get syncingLabel;
   String get pendingSyncLabel;
   String get syncedLabel;
@@ -779,6 +807,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get jobDetailsTitle => 'Job Details';
 
   @override
+  String get jobActivityTitle => 'Activity';
+  @override
+  String get activityAssigned => 'Job assigned';
+  @override
+  String get activityStarted => 'Work started';
+  @override
+  String get activityBeforePhoto => 'Before photo captured';
+  @override
+  String get activityAfterPhoto => 'After photo captured';
+  @override
+  String get activitySignature => 'Signature captured';
+  @override
+  String get activityCompleted => 'Work completed';
+
+  @override
   String get workflowProgressTitle => 'Workflow progress';
 
   @override
@@ -866,6 +909,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noBeforePhotosYet => 'No before photos yet';
 
   @override
+  String get beforePhotosRequiredHint =>
+      'Photograph the site before you start — at least one before photo is required to complete the job.';
+
+  @override
   String get uploadingLabel => 'Uploading';
 
   @override
@@ -902,6 +949,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noAfterPhotosYet => 'No after photos yet';
 
   @override
+  String get afterPhotosRequiredHint =>
+      'Photograph the finished work — at least one after photo is required to complete the job.';
+
+  @override
   String get addAfterPhotoFailedError => 'Unable to add the after photo.';
 
   // --- Customer Signature ---------------------------------------------------
@@ -934,6 +985,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The customer signs with a finger inside the box.';
 
   @override
+  String get signatureConfirmsWorkHint =>
+      'The signature confirms that the finished work is accepted.';
+
+  @override
   String get replaceSignatureButton => 'Replace Signature';
 
   @override
@@ -959,6 +1014,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workDescriptionNoneYet => 'No work description yet.';
 
   @override
+  String get workDescriptionRequiredHint =>
+      'The work description is required to complete the job.';
+
+  @override
   String get workDescriptionEmptyError => 'Work description cannot be empty.';
 
   @override
@@ -980,6 +1039,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get completionRequirementsTitle => 'Completion Requirements';
+
+  @override
+  String get requirementDoneLabel => 'Done';
+
+  @override
+  String get requirementOpenLabel => 'Open';
 
   @override
   String get jobCompletedMessage => 'Job completed';
@@ -1011,6 +1076,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jobsEmptySubtitle => 'New jobs will appear here.';
+
+  @override
+  String get createFirstJobButton => 'Create the first job';
 
   @override
   String get jobsErrorTitle => 'Something went wrong';
@@ -1241,6 +1309,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offlineLabel => 'Offline';
+
+  @override
+  String get syncStatusTitle => 'Sync & connection';
 
   @override
   String get syncingLabel => 'Syncing…';
@@ -1911,6 +1982,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get jobDetailsTitle => 'Auftragsdetails';
 
   @override
+  String get jobActivityTitle => 'Verlauf';
+  @override
+  String get activityAssigned => 'Auftrag zugewiesen';
+  @override
+  String get activityStarted => 'Arbeit begonnen';
+  @override
+  String get activityBeforePhoto => 'Vorher-Foto aufgenommen';
+  @override
+  String get activityAfterPhoto => 'Nachher-Foto aufgenommen';
+  @override
+  String get activitySignature => 'Unterschrift aufgenommen';
+  @override
+  String get activityCompleted => 'Arbeit abgeschlossen';
+
+  @override
   String get workflowProgressTitle => 'Arbeitsfortschritt';
 
   @override
@@ -1998,6 +2084,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noBeforePhotosYet => 'Noch keine Vorher-Fotos';
 
   @override
+  String get beforePhotosRequiredHint =>
+      'Fotografieren Sie die Baustelle vor Arbeitsbeginn — mindestens ein Vorher-Foto ist zum Abschließen des Auftrags erforderlich.';
+
+  @override
   String get uploadingLabel => 'Wird hochgeladen';
 
   @override
@@ -2036,6 +2126,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noAfterPhotosYet => 'Noch keine Nachher-Fotos';
 
   @override
+  String get afterPhotosRequiredHint =>
+      'Fotografieren Sie die fertige Arbeit — mindestens ein Nachher-Foto ist zum Abschließen des Auftrags erforderlich.';
+
+  @override
   String get addAfterPhotoFailedError =>
       'Das Nachher-Foto konnte nicht hinzugefügt werden.';
 
@@ -2070,6 +2164,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Kunde unterschreibt mit dem Finger im Feld.';
 
   @override
+  String get signatureConfirmsWorkHint =>
+      'Mit der Unterschrift bestätigt der Kunde die fertiggestellte Arbeit.';
+
+  @override
   String get replaceSignatureButton => 'Unterschrift ersetzen';
 
   @override
@@ -2097,6 +2195,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine Arbeitsbeschreibung vorhanden.';
 
   @override
+  String get workDescriptionRequiredHint =>
+      'Die Arbeitsbeschreibung ist zum Abschließen des Auftrags erforderlich.';
+
+  @override
   String get workDescriptionEmptyError =>
       'Die Arbeitsbeschreibung darf nicht leer sein.';
 
@@ -2119,6 +2221,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get completionRequirementsTitle => 'Abschlussvoraussetzungen';
+
+  @override
+  String get requirementDoneLabel => 'Erledigt';
+
+  @override
+  String get requirementOpenLabel => 'Offen';
 
   @override
   String get jobCompletedMessage => 'Auftrag abgeschlossen';
@@ -2152,6 +2260,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get jobsEmptySubtitle => 'Neue Aufträge erscheinen hier.';
+
+  @override
+  String get createFirstJobButton => 'Ersten Auftrag anlegen';
 
   @override
   String get jobsErrorTitle => 'Etwas ist schiefgelaufen';
@@ -2383,6 +2494,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get offlineLabel => 'Offline';
+
+  @override
+  String get syncStatusTitle => 'Synchronisierung & Verbindung';
 
   @override
   String get syncingLabel => 'Synchronisiere…';

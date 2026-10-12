@@ -73,6 +73,17 @@ class CompleteJobSection extends StatelessWidget {
   bool get _allMet =>
       hasBeforePhoto && hasWorkDescription && hasAfterPhoto && hasSignature;
 
+  /// The requirements the client knows are still open, in checklist order, as
+  /// the existing "missing …" labels. The button's disabled state is explained
+  /// instead of only applied — and the explanation is derived from the same
+  /// facts the checklist above it renders.
+  List<String> _missingRequirements(AppLocalizations l10n) => <String>[
+    if (!hasBeforePhoto) l10n.missingBeforePhotoError,
+    if (!hasWorkDescription) l10n.missingWorkDescriptionError,
+    if (!hasAfterPhoto) l10n.missingAfterPhotoError,
+    if (!hasSignature) l10n.missingSignatureError,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -85,7 +96,7 @@ class CompleteJobSection extends StatelessWidget {
         Text(
           l10n.completionRequirementsTitle,
           style: context.textStyles.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -146,14 +157,14 @@ class CompleteJobSection extends StatelessWidget {
                 // animate forever while uploads are pending.
                 Icons.cloud_upload_rounded,
                 size: AppDimensions.iconMd,
-                color: AppColors.textSecondary,
+                color: AppColors.warning,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l10n.waitingForFileSync,
                   style: context.textStyles.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.colors.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -187,12 +198,45 @@ class CompleteJobSection extends StatelessWidget {
             isCompleting ? l10n.uploadingLabel : l10n.completeJobButton,
           ),
         ),
+        // Why the button cannot be used yet — the same facts as the checklist,
+        // spelled out, so a disabled control never leaves the technician
+        // guessing. Files that are merely unsynced are reported ABOVE the
+        // button instead, and exactly once: repeating "Waiting for files to
+        // finish uploading…" twice on one screen made the state look like two
+        // different problems.
+        if (!_allMet) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                Icons.info_outline_rounded,
+                size: AppDimensions.iconSm,
+                color: context.colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  _missingRequirements(l10n).join(' · '),
+                  style: context.textStyles.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
 }
 
 /// One line of the completion checklist: ✓ requirement met, ○ still open.
+///
+/// The label is combined with the state word (`Before Photos · Done`), so the
+/// requirement's own name stays on the step that owns it: a checklist that
+/// repeated the step titles verbatim would read out the same string twice on
+/// one screen — the reason the words are joined here instead of duplicated.
 class _RequirementLine extends StatelessWidget {
   const _RequirementLine({super.key, required this.label, required this.met});
 
@@ -201,6 +245,11 @@ class _RequirementLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final String state = met
+        ? l10n.requirementDoneLabel
+        : l10n.requirementOpenLabel;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
@@ -210,14 +259,14 @@ class _RequirementLine extends StatelessWidget {
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             size: AppDimensions.iconMd,
-            color: met ? AppColors.success : AppColors.textSecondary,
+            color: met ? AppColors.success : context.colors.onSurfaceVariant,
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              label,
+              '$label · $state',
               style: context.textStyles.bodyMedium?.copyWith(
-                color: met ? null : AppColors.textSecondary,
+                color: met ? null : context.colors.onSurfaceVariant,
               ),
             ),
           ),

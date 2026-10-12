@@ -12,6 +12,7 @@ import 'package:field_service/core/widgets/app_dashboard_header.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/widgets/app_section_header.dart';
 import 'package:field_service/core/widgets/app_state_views.dart';
+import 'package:field_service/core/widgets/app_surface_panel.dart';
 import 'package:field_service/core/widgets/app_stat_tile.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
@@ -64,16 +65,22 @@ class TechnicianHomePage extends StatelessWidget {
     final bool isLoading = context.select<AuthenticationCubit, bool>(
       (AuthenticationCubit cubit) => cubit.state.isLoading,
     );
+    // One number drives both the width cap and the arrangement, exactly as on
+    // the administrator's dashboard, so the two can never disagree at the
+    // breakpoint.
+    final bool isWide =
+        MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
 
     return BlocProvider<JobsCubit>(
       create: (_) => sl<JobsCubit>()..loadJobs(),
       child: AppPageBody(
+        wide: isWide,
         appBar: AppBar(
           title: Text(l10n.technicianHomeTitle),
           actions: <Widget>[
             // Account & settings beside sign-out, as on the admin dashboard:
-            // language and password are reached from there, not buried a tab
-            // deeper.
+            // identity, language and the sync state are one tap away from
+            // wherever the technician is, not two screens deep.
             IconButton(
               key: const Key('nav_account'),
               tooltip: l10n.accountSettingsTooltip,
@@ -96,10 +103,7 @@ class TechnicianHomePage extends StatelessWidget {
             const SizedBox(width: AppSpacing.xs),
           ],
         ),
-        bottomNavigationBar: const AppBottomNav(
-          isAdmin: false,
-          selectedIndex: 0,
-        ),
+        navigation: const AppNavSpec(isAdmin: false, selectedIndex: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
@@ -114,11 +118,37 @@ class TechnicianHomePage extends StatelessWidget {
             // could not be tapped without scrolling.
             const _SecondaryActions(),
             const SizedBox(height: AppSpacing.xxl),
-            const _StatusStrip(),
-            const SizedBox(height: AppSpacing.xxl),
-            const _JobSections(),
-            const SizedBox(height: AppSpacing.xxl),
-            const _CategoryShortcuts(),
+            // Two arrangements, one set of sections: on a phone the queue is
+            // the page and the context follows it; from the desktop breakpoint
+            // up the work takes the wide column and the context sits beside it,
+            // so neither is pushed below the fold on a browser. The sections
+            // themselves are identical.
+            if (isWide)
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(flex: 3, child: _JobSections()),
+                  SizedBox(width: AppSpacing.xxl),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _StatusStrip(),
+                        SizedBox(height: AppSpacing.xxxl),
+                        _CategoryShortcuts(),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            else ...<Widget>[
+              const _StatusStrip(),
+              const SizedBox(height: AppSpacing.xxl),
+              const _JobSections(),
+              const SizedBox(height: AppSpacing.xxl),
+              const _CategoryShortcuts(),
+            ],
           ],
         ),
       ),
@@ -164,6 +194,8 @@ class _StatusStrip extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
 
     return BlocBuilder<JobsCubit, JobsState>(
+      // The figures only change when the loaded queue changes.
+      buildWhen: _jobsSnapshotChanged,
       builder: (BuildContext context, JobsState state) {
         if (state.status != JobsStatus.success) {
           return const SizedBox.shrink();
@@ -241,6 +273,7 @@ class _JobSections extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
 
     return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: _jobsSnapshotChanged,
       builder: (BuildContext context, JobsState state) {
         final JobsCubit cubit = context.read<JobsCubit>();
 
@@ -280,15 +313,20 @@ class _JobSections extends StatelessWidget {
                     title: l10n.myJobsTitle,
                     showRule: false,
                   ),
-                  for (final Job job in assigned) ...<Widget>[
-                    JobsListItem(
-                      job: job,
-                      showAssignedTechnician: false,
-                      showNextAction: true,
-                      onTap: () => _openJob(context, job.id),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
+                  // One surface for the queue: the rows are the same job row
+                  // the jobs list uses, so a job looks the same here.
+                  AppSurfacePanel(
+                    children: <Widget>[
+                      for (final Job job in assigned)
+                        JobsListItem(
+                          key: ValueKey<String>('assigned_job_${job.id}'),
+                          job: job,
+                          showAssignedTechnician: false,
+                          showNextAction: true,
+                          onTap: () => _openJob(context, job.id),
+                        ),
+                    ],
+                  ),
                 ],
               ],
             );
@@ -454,6 +492,8 @@ class _CategoryShortcuts extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
 
     return BlocBuilder<JobsCubit, JobsState>(
+      // Category counts come from the same snapshot as everything else.
+      buildWhen: _jobsSnapshotChanged,
       builder: (BuildContext context, JobsState state) {
         final bool hasData = state.status == JobsStatus.success;
         final List<Job> jobs = hasData ? state.jobs : const <Job>[];
@@ -599,3 +639,12 @@ class _NoAssignedJobs extends StatelessWidget {
     );
   }
 }
+
+/// Whether a new [JobsState] changed the *snapshot* this dashboard renders
+/// (the loaded jobs or the load status). Photo uploads, sync-flag flips and
+/// other background churn therefore never rebuild the figures, the queue or the
+/// category counts — each section only rebuilds when it would show something
+/// different, which keeps a busy sync queue from repainting the whole screen.
+bool _jobsSnapshotChanged(JobsState previous, JobsState current) =>
+    previous.status != current.status ||
+    !identical(previous.jobs, current.jobs);

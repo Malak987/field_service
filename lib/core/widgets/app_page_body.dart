@@ -1,6 +1,95 @@
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:flutter/material.dart';
+
+/// The one place where the role-aware navigation is turned into a layout.
+///
+/// * Below [AppDimensions.desktopBreakpoint] the destinations are a
+///   [NavigationBar] pinned to the bottom, where a thumb reaches on a phone.
+/// * From that breakpoint up the SAME destinations lead the page as a
+///   [NavigationRail], which is what a browser or a tablet expects, and the
+///   page keeps its full height for content.
+///
+/// Screens that scroll on their own (a list that keeps its filters pinned, a
+/// canvas) use this widget directly with their own body; every other screen
+/// wants [AppPageBody], which adds the standard scroll shell around it. Because
+/// the decision lives here, no screen invents a second breakpoint and no two
+/// screens can disagree about when the rail appears.
+class AppNavigationScaffold extends StatelessWidget {
+  const AppNavigationScaffold({
+    required this.child,
+    this.navigation,
+    this.appBar,
+    this.bottomNavigationBar,
+    this.floatingActionButton,
+    super.key,
+  }) : assert(
+         navigation == null || bottomNavigationBar == null,
+         'navigation and bottomNavigationBar are two answers to the same '
+         'question — pass one of them',
+       );
+
+  final Widget child;
+
+  /// The main area this screen belongs to. When `null` the screen is not part
+  /// of the main navigation (a form, a details page, a dialog route).
+  final AppNavSpec? navigation;
+
+  final PreferredSizeWidget? appBar;
+
+  /// Only for screens outside the main navigation that need a bottom bar of
+  /// their own. Mutually exclusive with [navigation].
+  final Widget? bottomNavigationBar;
+
+  final Widget? floatingActionButton;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppNavSpec? navigation = this.navigation;
+
+    if (navigation == null) {
+      return Scaffold(
+        appBar: appBar,
+        bottomNavigationBar: bottomNavigationBar,
+        floatingActionButton: floatingActionButton,
+        body: child,
+      );
+    }
+
+    // One breakpoint for the whole app. See the class doc.
+    final bool useRail =
+        MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
+
+    return Scaffold(
+      appBar: appBar,
+      floatingActionButton: floatingActionButton,
+      bottomNavigationBar: useRail
+          ? null
+          : AppBottomNav(
+              isAdmin: navigation.isAdmin,
+              selectedIndex: navigation.selectedIndex,
+            ),
+      body: useRail
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AppNavigationRail(
+                  isAdmin: navigation.isAdmin,
+                  selectedIndex: navigation.selectedIndex,
+                ),
+                VerticalDivider(
+                  width: AppDimensions.borderWidth,
+                  thickness: AppDimensions.borderWidth,
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+                Expanded(child: child),
+              ],
+            )
+          : child,
+    );
+  }
+}
 
 /// The scroll shell shared by every authenticated screen.
 ///
@@ -16,6 +105,8 @@ import 'package:flutter/material.dart';
 /// * `keyboardDismissBehavior.onDrag` — a technician scrolling a long job list
 ///   with a dirty glove dismisses the keyboard instead of hunting for the
 ///   close button.
+/// * [navigation] — the main area's role-aware navigation, rendered by
+///   [AppNavigationScaffold]. Screens that are not main areas simply omit it.
 ///
 /// Screens that manage their own scrolling (a `CustomScrollView` with a pinned
 /// header, a `NestedScrollView`) keep doing so; this is for the common case.
@@ -27,6 +118,7 @@ class AppPageBody extends StatelessWidget {
     this.padding,
     this.bottomNavigationBar,
     this.floatingActionButton,
+    this.navigation,
     super.key,
   });
 
@@ -45,13 +137,18 @@ class AppPageBody extends StatelessWidget {
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
 
+  /// The role-aware main navigation this screen belongs to, when it is one of
+  /// the main areas.
+  final AppNavSpec? navigation;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AppNavigationScaffold(
       appBar: appBar,
       bottomNavigationBar: bottomNavigationBar,
       floatingActionButton: floatingActionButton,
-      body: SafeArea(
+      navigation: navigation,
+      child: SafeArea(
         child: SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: padding ?? AppSpacing.pagePaddingCompact,

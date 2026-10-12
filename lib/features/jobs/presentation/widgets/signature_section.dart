@@ -6,6 +6,7 @@ import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_step_empty_note.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/widgets/before_photo_tile.dart';
 import 'package:field_service/features/jobs/presentation/widgets/signature_pad.dart';
@@ -167,6 +168,13 @@ class _SignatureSectionState extends State<SignatureSection> {
           ],
         ] else if (showPad) ...<Widget>[
           Text(
+            l10n.signatureConfirmsWorkHint,
+            style: context.textStyles.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(
             l10n.signatureHelper,
             style: context.textStyles.bodySmall?.copyWith(
               color: context.colors.onSurfaceVariant,
@@ -244,7 +252,11 @@ class _SignatureSectionState extends State<SignatureSection> {
             ),
           ],
         ] else
-          Text(l10n.noSignatureYet, style: context.textStyles.bodyMedium),
+          JobStepEmptyNote(
+            icon: Icons.draw_outlined,
+            title: l10n.noSignatureYet,
+            message: l10n.signatureConfirmsWorkHint,
+          ),
       ],
     );
   }

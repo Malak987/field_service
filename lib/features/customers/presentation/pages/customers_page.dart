@@ -2,6 +2,7 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/sync/sync_status.dart';
 import 'package:field_service/core/sync/sync_status_cubit.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
@@ -9,6 +10,7 @@ import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
+import 'package:field_service/core/widgets/app_sync_status_badge.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_cubit.dart';
@@ -16,7 +18,6 @@ import 'package:field_service/features/customers/presentation/cubit/customers_st
 import 'package:field_service/features/customers/presentation/widgets/customer_card.dart';
 import 'package:field_service/features/customers/presentation/widgets/customer_empty_state.dart';
 import 'package:field_service/features/customers/presentation/widgets/customer_search_field.dart';
-import 'package:field_service/features/customers/presentation/widgets/customer_sync_status.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -126,7 +127,12 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                   ),
                 ),
               ),
-              const CustomerSyncStatusBar(),
+              // The shared engine-level indicator, not a customers-only one:
+              // offline, syncing and failed read the same everywhere.
+              BlocBuilder<SyncStatusCubit, SyncHealth>(
+                builder: (BuildContext context, SyncHealth health) =>
+                    AppSyncStatusBadge(health: health),
+              ),
             ],
           ),
         ],
@@ -156,7 +162,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Scaffold(
+    return AppNavigationScaffold(
       appBar: AppBar(
         leading: BackButton(
           onPressed: () =>
@@ -167,9 +173,10 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      bottomNavigationBar: widget.isAdmin
-          ? const AppBottomNav(isAdmin: true, selectedIndex: 2)
-          : null,
+      // Customers is a management area reached from the dashboard, not one of
+      // the four navigation tabs, so this page highlights no tab — and a
+      // technician never gets a navigation at all, matching the router guard.
+      navigation: widget.isAdmin ? const AppNavSpec(isAdmin: true) : null,
       // Admin-only feature (router guard refuses non-admins every
       // `/customers` route); the check stays as defense in depth, and RLS
       // rejects unauthorized writes server-side regardless.
@@ -181,7 +188,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
               child: const Icon(Icons.add, size: AppDimensions.iconLg),
             )
           : null,
-      body: BlocBuilder<CustomersCubit, CustomersState>(
+      child: BlocBuilder<CustomersCubit, CustomersState>(
         builder: (BuildContext context, CustomersState state) {
           final CustomersCubit cubit = context.read<CustomersCubit>();
 

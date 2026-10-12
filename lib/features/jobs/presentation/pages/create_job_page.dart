@@ -4,6 +4,7 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_surface_panel.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/employees/domain/entities/employee.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -227,41 +228,39 @@ class _CreateJobFormState extends State<_CreateJobForm> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Container(
+                        // The shared surface, not a fourth hand-built box: what
+                        // the administrator has chosen reads exactly like every
+                        // other summarizing surface in the app.
+                        AppSurfacePanel(
                           key: const Key('create_job_selection_review'),
+                          divideRows: false,
                           padding: const EdgeInsets.all(AppSpacing.md),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: AppRadius.card,
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: <Widget>[
-                              if (selectedCustomer != null)
-                                _SelectionReview(
-                                  icon: Icons.person_outline,
-                                  text: selectedCustomer.name,
-                                  detail: selectedCustomer.phone,
+                          children: <Widget>[
+                            if (selectedCustomer != null)
+                              _SelectionReview(
+                                icon: Icons.person_outline,
+                                text: selectedCustomer.name,
+                                detail: selectedCustomer.phone,
+                              ),
+                            if (selectedCustomer != null &&
+                                state.selectedCategory != null)
+                              const SizedBox(height: AppSpacing.sm),
+                            if (state.selectedCategory != null)
+                              _SelectionReview(
+                                icon: Icons.home_repair_service_outlined,
+                                text: mapper.jobTypeLabel(
+                                  state.selectedCategory!,
                                 ),
-                              if (selectedCustomer != null &&
-                                  state.selectedCategory != null)
-                                const SizedBox(height: AppSpacing.sm),
-                              if (state.selectedCategory != null)
-                                _SelectionReview(
-                                  icon: Icons.home_repair_service_outlined,
-                                  text: mapper.jobTypeLabel(state.selectedCategory!),
-                                ),
-                              if (selectedTechnician != null) ...<Widget>[
-                                const SizedBox(height: AppSpacing.sm),
-                                _SelectionReview(
-                                  icon: Icons.assignment_ind_outlined,
-                                  text: selectedTechnician.displayName,
-                                  detail: selectedTechnician.employeeCode,
-                                ),
-                              ],
+                              ),
+                            if (selectedTechnician != null) ...<Widget>[
+                              const SizedBox(height: AppSpacing.sm),
+                              _SelectionReview(
+                                icon: Icons.assignment_ind_outlined,
+                                text: selectedTechnician.displayName,
+                                detail: selectedTechnician.employeeCode,
+                              ),
                             ],
-                          ),
+                          ],
                         ),
                       ],
                     ],

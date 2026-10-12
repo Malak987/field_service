@@ -1,6 +1,7 @@
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_cubit.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_state.dart';
@@ -81,40 +82,39 @@ class _EditCustomerForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Scaffold(
+    // Same shell as the create form (see [CreateCustomerPage]): one scroll
+    // behaviour, one content cap, no bottom navigation on a form route.
+    return AppPageBody(
       appBar: AppBar(title: Text(l10n.editCustomer)),
-      body: SafeArea(
-        child: BlocBuilder<CustomersCubit, CustomersState>(
-          buildWhen: (CustomersState a, CustomersState b) =>
-              a.selectedCustomer != b.selectedCustomer ||
-              a.isSaving != b.isSaving ||
-              a.status != b.status,
-          builder: (BuildContext context, CustomersState state) {
-            final Customer? customer = state.selectedCustomer;
+      padding: AppSpacing.pagePadding,
+      child: BlocBuilder<CustomersCubit, CustomersState>(
+        buildWhen: (CustomersState a, CustomersState b) =>
+            a.selectedCustomer != b.selectedCustomer ||
+            a.isSaving != b.isSaving ||
+            a.status != b.status,
+        builder: (BuildContext context, CustomersState state) {
+          final Customer? customer = state.selectedCustomer;
 
-            if (customer == null) {
-              return Center(
-                child: state.status == CustomersStatus.failure
-                    ? Text(l10n.customerNotFoundTitle)
-                    : const CircularProgressIndicator(),
-              );
-            }
-
-            return ListView(
-              padding: AppSpacing.pagePadding,
-              children: <Widget>[
-                CustomerForm(
-                  initial: customer,
-                  submitLabel: l10n.saveButton,
-                  isBusy: state.isSaving,
-                  onSubmit: (CustomerFormData data) =>
-                      _submit(context, customer, data),
-                  onCancel: () => context.pop(),
-                ),
-              ],
+          if (customer == null) {
+            // No shell of its own needed: the page is either a spinner or the
+            // existing "customer not found" message inside the block above.
+            return Padding(
+              padding: const EdgeInsetsDirectional.only(top: AppSpacing.huge),
+              child: state.status == CustomersStatus.failure
+                  ? Text(l10n.customerNotFoundTitle, textAlign: TextAlign.center)
+                  : const Center(child: CircularProgressIndicator()),
             );
-          },
-        ),
+          }
+
+          return CustomerForm(
+            initial: customer,
+            submitLabel: l10n.saveButton,
+            isBusy: state.isSaving,
+            onSubmit: (CustomerFormData data) =>
+                _submit(context, customer, data),
+            onCancel: () => context.pop(),
+          );
+        },
       ),
     );
   }

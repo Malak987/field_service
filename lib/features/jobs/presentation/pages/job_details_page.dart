@@ -16,9 +16,11 @@ import 'package:field_service/features/jobs/presentation/services/photo_picker.d
 import 'package:field_service/features/jobs/presentation/widgets/after_photos_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/before_photos_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/complete_job_section.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_activity_section.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_details_fields.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_details_header.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_section_heading.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_workflow_step.dart';
 import 'package:field_service/features/jobs/presentation/widgets/workflow_progress.dart';
 import 'package:field_service/features/jobs/presentation/widgets/signature_section.dart';
@@ -30,11 +32,26 @@ import 'package:field_service/features/jobs/presentation/widgets/jobs_loading_vi
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Job details (route `/jobs/:id`).
+/// Job details (route `/jobs/:id`) — the field-work hub.
 ///
 /// Presents the data that exists in `public.jobs`, the customer information
 /// belonging to THIS job, and — once the job is `in_progress` — its Before
 /// Photos.
+///
+/// Layout: the job's identity and its workflow progress first, then the
+/// non-step information (job record, customer, customer request), then the
+/// numbered execution steps in their fixed order (2 before photos,
+/// 3 work description, 4 after photos, 5 signature, 6 review and complete),
+/// and finally the activity log. The status pill lives in the app bar so the
+/// current status stays visible at every scroll position, and the page carries
+/// no second title: the header block below IS the title.
+///
+/// Rebuild model: the shell (this file's `build`) only decides WHICH sections
+/// exist — it listens to the load state and the job's status. Every section
+/// then subscribes to its own slice of [JobsState] via `buildWhen`, so a
+/// capture, a description save or an upload-state change rebuilds exactly one
+/// section. Captured bytes stay cached in `BeforePhotoTile`, which reloads only
+/// when the file itself changes — never on a rebuild.
 ///
 /// Customer access model:
 /// * The customer section is fed exclusively by the `get_job_customer`
@@ -101,11 +118,12 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
 
   @override
   Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-    final JobLabelMapper mapper = JobLabelMapper(l10n);
-
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.jobDetailsTitle)),
+      // No page title: this page's identity is the job number in the header
+      // below, and a second heading would only repeat it. The back button
+      // stays, and the status pill lives in the bar so it remains readable
+      // while the technician scrolls the workflow.
+      appBar: const _JobDetailsAppBar(),
       body: BlocListener<JobsCubit, JobsState>(
         // (Re)subscribe the before/after-photos watches whenever this job
         // becomes the loaded one. The cubit guards against duplicate
@@ -119,6 +137,16 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
           context.read<JobsCubit>().watchSignature(widget.jobId);
         },
         child: BlocBuilder<JobsCubit, JobsState>(
+          // The shell decides WHICH sections exist — the load state and the
+          // job's status, nothing else. Each section below listens to its own
+          // slice of the state, so adding a photo, saving a description or an
+          // upload-state change rebuilds that one section instead of the whole
+          // page.
+          buildWhen: (JobsState previous, JobsState current) =>
+              previous.status != current.status ||
+              previous.selectedJob?.id != current.selectedJob?.id ||
+              previous.selectedJob?.status.value !=
+                  current.selectedJob?.status.value,
           builder: (BuildContext context, JobsState state) {
             final JobsCubit cubit = context.read<JobsCubit>();
 
@@ -153,49 +181,15 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                   return const JobsEmptyState();
                 }
 
-                // Workflow progress is presentation-only and derived from
-                // the job/file facts already loaded by the existing Cubit.
-                final bool isAssigned =
-                    job.status.value == JobStatus.assigned;
+                final bool isAssigned = job.status.value == JobStatus.assigned;
                 final bool isActive =
                     job.status.value == JobStatus.inProgress ||
                     job.status.value == JobStatus.started;
                 final bool isCompleted =
                     job.status.value == JobStatus.completed;
-                final bool showWorkflowProgress =
-                    isAssigned || isActive || isCompleted;
-                final bool stepStarted = isActive || isCompleted;
-                final bool hasBeforePhoto = state.beforePhotos.isNotEmpty;
-                final bool hasWorkDescription = (job.workDescription ?? '')
-                    .trim()
-                    .isNotEmpty;
-                final bool hasAfterPhoto = state.afterPhotos.isNotEmpty;
-                final bool hasSignature = state.signatureFiles.isNotEmpty;
-                final int completedEvidenceSteps = <bool>[
-                  hasBeforePhoto,
-                  hasWorkDescription,
-                  hasAfterPhoto,
-                  hasSignature,
-                ].where((bool done) => done).length;
-                final int completedWorkflowSteps = isCompleted
-                    ? 2 + completedEvidenceSteps
-                    : isActive
-                    ? 1 + completedEvidenceSteps
-                    : 0;
-                final int currentWorkflowStep = isAssigned
-                    ? 1
-                    : isActive
-                    ? !hasBeforePhoto
-                          ? 2
-                          : !hasWorkDescription
-                          ? 3
-                          : !hasAfterPhoto
-                          ? 4
-                          : !hasSignature
-                          ? 5
-                          : 6
-                    : 0;
 
+                // Every section carries its own top margin inside its body, so
+                // a section that renders nothing leaves no gap behind it.
                 return ListView(
                   // Frozen while a finger draws on the signature pad: every
                   // touch INSIDE the pad becomes ink, never page movement;
@@ -206,253 +200,63 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       : null,
                   padding: AppSpacing.pagePadding,
                   children: <Widget>[
-                    JobDetailsHeader(job: job, mapper: mapper, state: state),
-                    if (showWorkflowProgress) ...<Widget>[
-                      const SizedBox(height: AppSpacing.md),
-                      WorkflowProgress(
-                        completed: completedWorkflowSteps,
-                        total: 6,
-                        label: l10n.workflowProgressLabel(
-                          completedWorkflowSteps,
-                          6,
-                        ),
-                        title: l10n.workflowProgressTitle,
-                      ),
-                    ],
+                    const _JobSummary(),
                     // Step 1: only the technician receives the Start Job
                     // action. Other roles see a read-only state; after start,
                     // the authoritative server timestamp replaces the button.
                     if (isAssigned ||
                         (isActive && job.startedAt != null) ||
-                        isCompleted) ...<Widget>[
-                      const SizedBox(height: AppSpacing.lg),
-                      JobWorkflowStep(
-                        step: 1,
-                        done: stepStarted,
-                        current: isAssigned,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            if (isTechnician)
-                              JobStartButton(
-                                job: job,
-                                isStarting: state.startingJobIds.contains(
-                                  job.id,
-                                ),
-                                onPressed: () =>
-                                    _onStartJob(context, cubit, job.id),
-                              ),
-                            if (isAssigned && !isTechnician)
-                              Text(
-                                l10n.statusAssigned,
-                                style: context.textStyles.bodyMedium,
-                              ),
-                            if ((isActive || isCompleted) &&
-                                job.startedAt != null)
-                              StartedAtLine(startedAt: job.startedAt!)
-                            else if (isCompleted)
-                              Text(
-                                l10n.statusStarted,
-                                style: context.textStyles.bodyMedium,
-                              ),
-                          ],
-                        ),
+                        isCompleted)
+                      _StartStep(
+                        isTechnician: isTechnician,
+                        onStart: () => _onStartJob(context, cubit, job.id),
                       ),
-                    ],
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            JobSectionHeading(
-                              icon: Icons.assignment_outlined,
-                              title: l10n.jobInformationTitle,
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            JobDetailsFields(job: job, mapper: mapper),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Customer Request — the admin's job description, in
-                    // its OWN card: visually separated from the technician's
-                    // Work Description step below. The two never share a
-                    // surface.
-                    if ((job.description ?? '').trim().isNotEmpty) ...<Widget>[
-                      const SizedBox(height: AppSpacing.lg),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.lg),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              JobSectionHeading(
-                                icon: Icons.chat_bubble_outline_rounded,
-                                title: l10n.customerRequestLabel,
-                              ),
-                              const SizedBox(height: AppSpacing.md),
-                              Text(
-                                job.description!,
-                                style: context.textStyles.bodyMedium,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: AppSpacing.lg),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(AppSpacing.lg),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            JobSectionHeading(
-                              icon: Icons.person_outline_rounded,
-                              title: l10n.customerLabel,
-                            ),
-                            const SizedBox(height: AppSpacing.lg),
-                            JobCustomerFields(state: state),
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Before Photos: visible once the job has been started.
+                    const _JobInformationCard(),
+                    const _CustomerCard(),
+                    const _CustomerRequestCard(),
+                    // Execution steps: visible once the job has been started.
                     // Capture is offered only while `in_progress`; afterwards
-                    // the captured photos stay visible read-only. `assigned`
-                    // jobs get no photo surface at all.
+                    // the captured evidence stays visible read-only, and an
+                    // `assigned` job shows no execution section at all rather
+                    // than an empty one.
                     if (job.status.value != JobStatus.assigned) ...<Widget>[
-                      const SizedBox(height: AppSpacing.lg),
-                      JobWorkflowStep(
-                        step: 2,
-                        done: hasBeforePhoto,
-                        current: currentWorkflowStep == 2,
-                        child: BeforePhotosSection(
-                          photos: state.beforePhotos,
-                          failedIds: state.beforePhotoFailedIds,
-                          // Capture is a technician execution action; admins
-                          // view the photos read-only (monitoring).
-                          canAdd:
-                              isTechnician &&
-                              job.status.value == JobStatus.inProgress,
-                          isAdding: state.isAddingBeforePhoto,
-                          onAdd: () =>
-                              _onAddBeforePhoto(context, cubit, job.id),
-                          onRetry: cubit.retryFailedBeforePhotos,
-                          loadBytes: cubit.readPhotoBytes,
+                      _BeforePhotosStep(
+                        isTechnician: isTechnician,
+                        onAdd: () =>
+                            _onAddBeforePhoto(context, cubit, job.id),
+                        onRetry: cubit.retryFailedBeforePhotos,
+                        loadBytes: cubit.readPhotoBytes,
+                      ),
+                      _WorkDescriptionStep(
+                        isTechnician: isTechnician,
+                        onSave: (String text) => _onSaveWorkDescription(
+                          context,
+                          cubit,
+                          job.id,
+                          text,
                         ),
                       ),
-                      // Work Description: the technician's record of the work
-                      // actually performed — separate from the admin's
-                      // customer request (Job Information card above).
-                      // Editable ONLY by the assigned technician while the job
-                      // is `in_progress`; admins and closed jobs get the
-                      // read-only view (the server enforces the same rule).
-                      const SizedBox(height: AppSpacing.lg),
-                      JobWorkflowStep(
-                        step: 3,
-                        done: hasWorkDescription,
-                        current: currentWorkflowStep == 3,
-                        child: WorkDescriptionSection(
-                          initialText: job.workDescription ?? '',
-                          canEdit:
-                              isTechnician &&
-                              job.status.value == JobStatus.inProgress,
-                          isSaving: state.isSavingWorkDescription,
-                          error: state.workDescriptionError,
-                          onSave: (String text) => _onSaveWorkDescription(
-                            context,
-                            cubit,
-                            job.id,
-                            text,
-                          ),
-                        ),
+                      _AfterPhotosStep(
+                        isTechnician: isTechnician,
+                        onAdd: () => _onAddAfterPhoto(context, cubit, job.id),
+                        onRetry: cubit.retryFailedAfterPhotos,
+                        loadBytes: cubit.readPhotoBytes,
                       ),
-                      // After Photos: the finished-site record. Visible once
-                      // the job has been started; capture is offered only
-                      // while `in_progress` (assigned technician). Admins and
-                      // closed jobs view the captured photos read-only; the
-                      // server refuses any write outside that window.
-                      const SizedBox(height: AppSpacing.lg),
-                      JobWorkflowStep(
-                        step: 4,
-                        done: hasAfterPhoto,
-                        current: currentWorkflowStep == 4,
-                        child: AfterPhotosSection(
-                          photos: state.afterPhotos,
-                          failedIds: state.afterPhotoFailedIds,
-                          // Capture is a technician execution action; admins
-                          // view the photos read-only (monitoring).
-                          canAdd:
-                              isTechnician &&
-                              job.status.value == JobStatus.inProgress,
-                          isAdding: state.isAddingAfterPhoto,
-                          onAdd: () => _onAddAfterPhoto(context, cubit, job.id),
-                          onRetry: cubit.retryFailedAfterPhotos,
-                          loadBytes: cubit.readPhotoBytes,
+                      _SignatureStep(
+                        isTechnician: isTechnician,
+                        onCapture: (Uint8List pngBytes) => _onCaptureSignature(
+                          context,
+                          cubit,
+                          job.id,
+                          pngBytes,
                         ),
-                      ),
-                      // Customer Signature: captured ONLY by the assigned
-                      // technician while `in_progress` (the server enforces
-                      // the same rule); everyone else — admins monitoring,
-                      // closed jobs — sees the captured signature (or the
-                      // "nothing yet" note) read-only.
-                      const SizedBox(height: AppSpacing.lg),
-                      JobWorkflowStep(
-                        step: 5,
-                        done: hasSignature,
-                        current: currentWorkflowStep == 5,
-                        child: SignatureSection(
-                          signature: state.signatureFiles.isEmpty
-                              ? null
-                              : state.signatureFiles.last,
-                          failedIds: state.signatureFailedIds,
-                          canCapture:
-                              isTechnician &&
-                              job.status.value == JobStatus.inProgress,
-                          isCapturing: state.isCapturingSignature,
-                          error: state.signatureError,
-                          onCapture: (Uint8List pngBytes) =>
-                              _onCaptureSignature(
-                                context,
-                                cubit,
-                                job.id,
-                                pngBytes,
-                              ),
-                          onRetry: cubit.retryFailedSignature,
-                          loadBytes: cubit.readPhotoBytes,
-                          // Freeze the page scroll while the customer
-                          // draws; normal scrolling resumes on lift.
-                          onDrawingChanged: (bool drawing) {
-                            if (drawing == _signatureDrawing) {
-                              return;
-                            }
-                            setState(() => _signatureDrawing = drawing);
-                          },
-                        ),
+                        onRetry: cubit.retryFailedSignature,
+                        loadBytes: cubit.readPhotoBytes,
+                        onDrawingChanged: _onSignatureDrawingChanged,
                       ),
                       // Closed jobs retain a read-only Step 6 marker so the
                       // completed workflow remains a visible six-stage path.
-                      if (isCompleted) ...<Widget>[
-                        const SizedBox(height: AppSpacing.lg),
-                        JobWorkflowStep(
-                          step: 6,
-                          done: true,
-                          current: false,
-                          child: Text(
-                            job.completedAt == null
-                                ? l10n.statusCompleted
-                                : l10n.jobCompletedAt(
-                                    formatJobDateTime(
-                                      job.completedAt!,
-                                      context,
-                                    ),
-                                  ),
-                            style: context.textStyles.bodyMedium,
-                          ),
-                        ),
-                      ],
+                      if (isCompleted) const _CompletionMarkerStep(),
                       // Complete Job — the FINAL workflow step: shown only
                       // to the assigned technician while `in_progress` (the
                       // `complete_job` RPC enforces exactly the same rules).
@@ -462,38 +266,17 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                       // success the authoritative row flips this screen to
                       // the completed read-only state.
                       if (isTechnician &&
-                          job.status.value == JobStatus.inProgress) ...<Widget>[
-                        const SizedBox(height: AppSpacing.lg),
-                        JobWorkflowStep(
-                          step: 6,
-                          done: isCompleted,
-                          current: currentWorkflowStep == 6,
-                          // Sync-readiness gate: a local file alone does
-                          // not satisfy the server — every required file
-                          // must be `synced` (registered server-side)
-                          // before completion is offered. Both facts come
-                          // from the EXISTING sync plumbing: the files'
-                          // `syncState` plus the failed-ids set.
-                          child: CompleteJobSection(
-                            hasBeforePhoto: state.beforePhotos.isNotEmpty,
-                            hasWorkDescription: (job.workDescription ?? '')
-                                .trim()
-                                .isNotEmpty,
-                            hasAfterPhoto: state.afterPhotos.isNotEmpty,
-                            hasSignature: state.signatureFiles.isNotEmpty,
-                            hasPendingUploads: _requiredFilePending(state),
-                            hasFailedUploads: _requiredFileFailed(state),
-                            isCompleting: state.isCompletingJob,
-                            onComplete: () =>
-                                _onCompleteJob(context, cubit, job.id),
-                            // All three retry actions share the single
-                            // `retryFailedSyncs` mechanism — any one of
-                            // them retries every failed upload.
-                            onRetry: cubit.retryFailedBeforePhotos,
-                          ),
+                          job.status.value == JobStatus.inProgress)
+                        _CompletionStep(
+                          onComplete: () =>
+                              _onCompleteJob(context, cubit, job.id),
+                          // All three retry actions share the single
+                          // `retryFailedSyncs` mechanism — any one of them
+                          // retries every failed upload.
+                          onRetry: cubit.retryFailedBeforePhotos,
                         ),
-                      ],
                     ],
+                    const _ActivityCard(),
                   ],
                 );
             }
@@ -503,8 +286,16 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
     );
   }
 
-  /// Compact, high-contrast job identity card with the real status and any
-  /// customer name returned by the job/customer read paths.
+  /// Freezes the page scroll for exactly the window in which a finger draws on
+  /// the signature pad. Two state flips per drawing session (down, up) — never
+  /// one per stroke — so the pad never rebuilds the page while it is drawn on.
+  void _onSignatureDrawingChanged(bool drawing) {
+    if (drawing == _signatureDrawing) {
+      return;
+    }
+    setState(() => _signatureDrawing = drawing);
+  }
+
   /// Submits the Start Job action and reports the outcome once.
   ///
   /// `l10n` and the messenger are captured before the await so the async gap
@@ -725,37 +516,6 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
     }
   }
 
-  /// A required file (before/after photo, signature) exists locally but
-  /// its upload has NOT been confirmed yet (`syncState` still `pending`,
-  /// which covers queued and in-flight queue operations) and its id is not
-  /// in the failed set — completion must wait for the shared sync engine.
-  static bool _requiredFilePending(JobsState state) {
-    return <JobFile>[
-      ...state.beforePhotos,
-      ...state.afterPhotos,
-      ...state.signatureFiles,
-    ].any(
-      (JobFile file) =>
-          file.syncState != JobFileSyncState.synced &&
-          !state.beforePhotoFailedIds.contains(file.id),
-    );
-  }
-
-  /// A required file's upload sits in the queue's `failed` state (existing
-  /// failed-ids plumbing): completion stays disabled until the shared Retry
-  /// succeeds.
-  static bool _requiredFileFailed(JobsState state) {
-    return <JobFile>[
-      ...state.beforePhotos,
-      ...state.afterPhotos,
-      ...state.signatureFiles,
-    ].any(
-      (JobFile file) =>
-          file.syncState != JobFileSyncState.synced &&
-          state.beforePhotoFailedIds.contains(file.id),
-    );
-  }
-
   /// Localized explanation of a server-side completion refusal.
   String _completionErrorMessage(
     AppLocalizations l10n,
@@ -823,6 +583,756 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
     };
   }
 
-  /// Builds the ordered, role-independent job fields. Fields whose value is
-  /// not yet available (null in the database) are simply omitted.
 }
+
+/// The status pill in the app bar — the one page-level fact that stays useful
+/// while the technician scrolls the steps below.
+///
+/// It subscribes to the loaded job only, so the bar never rebuilds for a photo
+/// upload or a description save.
+class _JobDetailsAppBar extends StatelessWidget
+    implements PreferredSizeWidget {
+  const _JobDetailsAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      // Only the status pill changes up here: the bar must never rebuild for a
+      // photo upload, a description save or a capture.
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob?.id != current.selectedJob?.id ||
+          previous.selectedJob?.status.value !=
+              current.selectedJob?.status.value,
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+
+        return AppBar(
+          actions: <Widget>[
+            if (job != null) ...<Widget>[
+              JobStatusBadge(
+                label: JobLabelMapper(context.l10n).statusLabel(job.status),
+                status: job.status,
+              ),
+              const SizedBox(width: AppSpacing.lg),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Header plus workflow progress: the two blocks that read the job identity and
+/// the four evidence facts, and that must therefore change together.
+///
+/// They share one builder on purpose — two builders reading the same facts
+/// would only double the subscriptions without isolating anything.
+class _JobSummary extends StatelessWidget {
+  const _JobSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob != current.selectedJob ||
+          previous.selectedJobCustomer != current.selectedJobCustomer ||
+          previous.beforePhotos.isNotEmpty !=
+              current.beforePhotos.isNotEmpty ||
+          previous.afterPhotos.isNotEmpty != current.afterPhotos.isNotEmpty ||
+          previous.signatureFiles.isNotEmpty !=
+              current.signatureFiles.isNotEmpty,
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        // Workflow progress is presentation-only and derived from the
+        // job/file facts already loaded by the existing Cubit.
+        final String status = job.status.value;
+        final bool showProgress =
+            status == JobStatus.assigned ||
+            status == JobStatus.inProgress ||
+            status == JobStatus.started ||
+            status == JobStatus.completed;
+        final int completed = _completedSteps(state);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            JobDetailsHeader(
+              job: job,
+              mapper: JobLabelMapper(l10n),
+              state: state,
+            ),
+            if (showProgress) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              WorkflowProgress(
+                completed: completed,
+                total: 6,
+                label: l10n.workflowProgressLabel(completed, 6),
+                title: l10n.workflowProgressTitle,
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The job's own record — rebuilt only when the job row itself changes.
+class _JobInformationCard extends StatelessWidget {
+  const _JobInformationCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob != current.selectedJob,
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        return _SectionBody(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  JobSectionHeading(
+                    icon: Icons.assignment_outlined,
+                    title: context.l10n.jobInformationTitle,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  JobDetailsFields(
+                    job: job,
+                    mapper: JobLabelMapper(context.l10n),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The customer belonging to THIS job — the only customer surface a technician
+/// has. Rebuilt only when the customer payload (or its fallback name) changes.
+class _CustomerCard extends StatelessWidget {
+  const _CustomerCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJobCustomer != current.selectedJobCustomer ||
+          previous.selectedJob?.customerName !=
+              current.selectedJob?.customerName,
+      builder: (BuildContext context, JobsState state) {
+        return _SectionBody(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  JobSectionHeading(
+                    icon: Icons.person_outline_rounded,
+                    title: context.l10n.customerLabel,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  JobCustomerFields(state: state),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The admin's request, in its own card: the written job that leads into the
+/// execution steps below. An absent request renders nothing at all rather than
+/// an empty box, and editing a work description never rebuilds this card.
+class _CustomerRequestCard extends StatelessWidget {
+  const _CustomerRequestCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob?.description != current.selectedJob?.description,
+      builder: (BuildContext context, JobsState state) {
+        final String? description = state.selectedJob?.description;
+        if (description == null || description.trim().isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return _SectionBody(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  JobSectionHeading(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    title: context.l10n.customerRequestLabel,
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Text(description, style: context.textStyles.bodyMedium),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 1 — Start Job for the assigned technician, and the server timestamp
+/// with which that step ends for everyone else.
+class _StartStep extends StatelessWidget {
+  const _StartStep({required this.isTechnician, required this.onStart});
+
+  final bool isTechnician;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob != current.selectedJob ||
+          previous.startingJobIds != current.startingJobIds,
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        final String status = job.status.value;
+        final bool isAssigned = status == JobStatus.assigned;
+        final bool isActive =
+            status == JobStatus.inProgress || status == JobStatus.started;
+        final bool isCompleted = status == JobStatus.completed;
+        final bool stepDone = isActive || isCompleted;
+
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 1,
+            done: stepDone,
+            current: isAssigned,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (isTechnician)
+                  JobStartButton(
+                    job: job,
+                    isStarting: state.startingJobIds.contains(job.id),
+                    onPressed: onStart,
+                  ),
+                if (isAssigned && !isTechnician)
+                  Text(
+                    l10n.statusAssigned,
+                    style: context.textStyles.bodyMedium,
+                  ),
+                if ((isActive || isCompleted) && job.startedAt != null)
+                  StartedAtLine(startedAt: job.startedAt!)
+                else if (isCompleted)
+                  Text(
+                    l10n.statusStarted,
+                    style: context.textStyles.bodyMedium,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 2 — Before Photos: the site's state before the work, captured while the
+/// job is `in_progress`. Rebuilt only by its own facts: the photo list, its
+/// failed ids, the add-in-flight flag, the job status (capture permission) and
+/// the current-step marker.
+class _BeforePhotosStep extends StatelessWidget {
+  const _BeforePhotosStep({
+    required this.isTechnician,
+    required this.onAdd,
+    required this.onRetry,
+    required this.loadBytes,
+  });
+
+  final bool isTechnician;
+  final VoidCallback onAdd;
+  final VoidCallback onRetry;
+  final Future<Uint8List?> Function(JobFile file) loadBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          !identical(previous.beforePhotos, current.beforePhotos) ||
+          previous.beforePhotoFailedIds != current.beforePhotoFailedIds ||
+          previous.isAddingBeforePhoto != current.isAddingBeforePhoto ||
+          previous.selectedJob?.status.value !=
+              current.selectedJob?.status.value ||
+          _currentStep(previous) != _currentStep(current),
+      builder: (BuildContext context, JobsState state) {
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 2,
+            done: state.beforePhotos.isNotEmpty,
+            current: _currentStep(state) == 2,
+            child: BeforePhotosSection(
+              photos: state.beforePhotos,
+              failedIds: state.beforePhotoFailedIds,
+              // Capture is a technician execution action; admins view the
+              // photos read-only (monitoring).
+              canAdd:
+                  isTechnician &&
+                  state.selectedJob?.status.value == JobStatus.inProgress,
+              isAdding: state.isAddingBeforePhoto,
+              onAdd: onAdd,
+              onRetry: onRetry,
+              loadBytes: loadBytes,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 3 — the technician's record of the work actually performed, separate
+/// from the admin's Customer Request card above.
+class _WorkDescriptionStep extends StatelessWidget {
+  const _WorkDescriptionStep({
+    required this.isTechnician,
+    required this.onSave,
+  });
+
+  final bool isTechnician;
+  final ValueChanged<String> onSave;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob?.workDescription !=
+              current.selectedJob?.workDescription ||
+          previous.isSavingWorkDescription != current.isSavingWorkDescription ||
+          previous.workDescriptionError != current.workDescriptionError ||
+          previous.selectedJob?.status.value !=
+              current.selectedJob?.status.value ||
+          _currentStep(previous) != _currentStep(current),
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 3,
+            done: (job.workDescription ?? '').trim().isNotEmpty,
+            current: _currentStep(state) == 3,
+            child: WorkDescriptionSection(
+              initialText: job.workDescription ?? '',
+              // Editable ONLY by the assigned technician while the job is
+              // `in_progress`; admins and closed jobs get the read-only view
+              // (the server enforces the same rule).
+              canEdit:
+                  isTechnician && job.status.value == JobStatus.inProgress,
+              isSaving: state.isSavingWorkDescription,
+              error: state.workDescriptionError,
+              onSave: onSave,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 4 — After Photos: the finished site, captured while the job is
+/// `in_progress` and read-only afterwards.
+class _AfterPhotosStep extends StatelessWidget {
+  const _AfterPhotosStep({
+    required this.isTechnician,
+    required this.onAdd,
+    required this.onRetry,
+    required this.loadBytes,
+  });
+
+  final bool isTechnician;
+  final VoidCallback onAdd;
+  final VoidCallback onRetry;
+  final Future<Uint8List?> Function(JobFile file) loadBytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          !identical(previous.afterPhotos, current.afterPhotos) ||
+          previous.afterPhotoFailedIds != current.afterPhotoFailedIds ||
+          previous.isAddingAfterPhoto != current.isAddingAfterPhoto ||
+          previous.selectedJob?.status.value !=
+              current.selectedJob?.status.value ||
+          _currentStep(previous) != _currentStep(current),
+      builder: (BuildContext context, JobsState state) {
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 4,
+            done: state.afterPhotos.isNotEmpty,
+            current: _currentStep(state) == 4,
+            child: AfterPhotosSection(
+              photos: state.afterPhotos,
+              failedIds: state.afterPhotoFailedIds,
+              // Capture is a technician execution action; admins view the
+              // photos read-only (monitoring).
+              canAdd:
+                  isTechnician &&
+                  state.selectedJob?.status.value == JobStatus.inProgress,
+              isAdding: state.isAddingAfterPhoto,
+              onAdd: onAdd,
+              onRetry: onRetry,
+              loadBytes: loadBytes,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 5 — the customer's signature, captured by the assigned technician while
+/// the job is `in_progress` and read-only for everyone else afterwards.
+class _SignatureStep extends StatelessWidget {
+  const _SignatureStep({
+    required this.isTechnician,
+    required this.onCapture,
+    required this.onRetry,
+    required this.loadBytes,
+    required this.onDrawingChanged,
+  });
+
+  final bool isTechnician;
+  final Future<void> Function(Uint8List pngBytes) onCapture;
+  final VoidCallback onRetry;
+  final Future<Uint8List?> Function(JobFile file) loadBytes;
+  final ValueChanged<bool> onDrawingChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          !identical(previous.signatureFiles, current.signatureFiles) ||
+          previous.signatureFailedIds != current.signatureFailedIds ||
+          previous.isCapturingSignature != current.isCapturingSignature ||
+          previous.signatureError != current.signatureError ||
+          previous.selectedJob?.status.value !=
+              current.selectedJob?.status.value ||
+          _currentStep(previous) != _currentStep(current),
+      builder: (BuildContext context, JobsState state) {
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 5,
+            done: state.signatureFiles.isNotEmpty,
+            current: _currentStep(state) == 5,
+            child: SignatureSection(
+              signature: state.signatureFiles.isEmpty
+                  ? null
+                  : state.signatureFiles.last,
+              failedIds: state.signatureFailedIds,
+              canCapture:
+                  isTechnician &&
+                  state.selectedJob?.status.value == JobStatus.inProgress,
+              isCapturing: state.isCapturingSignature,
+              error: state.signatureError,
+              onCapture: onCapture,
+              onRetry: onRetry,
+              loadBytes: loadBytes,
+              // Freeze the page scroll while the customer draws; normal
+              // scrolling resumes on lift.
+              onDrawingChanged: onDrawingChanged,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 6 marker for a closed job: the workflow keeps its six visible stages
+/// after completion, with the authoritative completion timestamp.
+class _CompletionMarkerStep extends StatelessWidget {
+  const _CompletionMarkerStep();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob?.completedAt != current.selectedJob?.completedAt,
+      builder: (BuildContext context, JobsState state) {
+        final DateTime? completedAt = state.selectedJob?.completedAt;
+
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 6,
+            done: true,
+            current: false,
+            child: Text(
+              completedAt == null
+                  ? l10n.statusCompleted
+                  : l10n.jobCompletedAt(
+                      formatJobDateTime(completedAt, context),
+                    ),
+              style: context.textStyles.bodyMedium,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Step 6 — the final action, with the completion checklist fed by the real
+/// data states (never by the presence of a widget or of a local file).
+class _CompletionStep extends StatelessWidget {
+  const _CompletionStep({required this.onComplete, required this.onRetry});
+
+  final VoidCallback onComplete;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.isCompletingJob != current.isCompletingJob ||
+          previous.completionError != current.completionError ||
+          previous.selectedJob?.workDescription !=
+              current.selectedJob?.workDescription ||
+          _currentStep(previous) != _currentStep(current) ||
+          _completionGate(previous) != _completionGate(current),
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        return _SectionBody(
+          child: JobWorkflowStep(
+            step: 6,
+            done: false,
+            current: _currentStep(state) == 6,
+            // Sync-readiness gate: a local file alone does not satisfy the
+            // server — every required file must be `synced` (registered
+            // server-side) before completion is offered. Both facts come from
+            // the EXISTING sync plumbing: the files' `syncState` plus the
+            // failed-ids set.
+            child: CompleteJobSection(
+              hasBeforePhoto: state.beforePhotos.isNotEmpty,
+              hasWorkDescription: (job.workDescription ?? '')
+                  .trim()
+                  .isNotEmpty,
+              hasAfterPhoto: state.afterPhotos.isNotEmpty,
+              hasSignature: state.signatureFiles.isNotEmpty,
+              hasPendingUploads: _requiredFilePending(state),
+              hasFailedUploads: _requiredFileFailed(state),
+              isCompleting: state.isCompletingJob,
+              onComplete: onComplete,
+              onRetry: onRetry,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The job's activity log — the last block on the page, built from the
+/// lifecycle timestamps and the captured files' own capture times and sync
+/// states. It renders nothing when there is no event yet.
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<JobsCubit, JobsState>(
+      buildWhen: (JobsState previous, JobsState current) =>
+          previous.selectedJob != current.selectedJob ||
+          !identical(previous.beforePhotos, current.beforePhotos) ||
+          !identical(previous.afterPhotos, current.afterPhotos) ||
+          !identical(previous.signatureFiles, current.signatureFiles) ||
+          previous.beforePhotoFailedIds != current.beforePhotoFailedIds ||
+          previous.afterPhotoFailedIds != current.afterPhotoFailedIds ||
+          previous.signatureFailedIds != current.signatureFailedIds,
+      builder: (BuildContext context, JobsState state) {
+        final Job? job = state.selectedJob;
+        if (job == null) {
+          return const SizedBox.shrink();
+        }
+
+        // Nothing to log yet — no lifecycle timestamp and no captured file.
+        // The frame is skipped entirely so the page never ends on an empty gap.
+        final bool hasEvent =
+            job.assignedAt != null ||
+            job.startedAt != null ||
+            job.completedAt != null ||
+            state.beforePhotos.isNotEmpty ||
+            state.afterPhotos.isNotEmpty ||
+            state.signatureFiles.isNotEmpty;
+        if (!hasEvent) {
+          return const SizedBox.shrink();
+        }
+
+        return _SectionBody(
+          child: JobActivitySection(
+            job: job,
+            beforePhotos: state.beforePhotos,
+            afterPhotos: state.afterPhotos,
+            signatureFiles: state.signatureFiles,
+            failedIds: <String>{
+              ...state.beforePhotoFailedIds,
+              ...state.afterPhotoFailedIds,
+              ...state.signatureFailedIds,
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The top margin every section of this page carries — inside the section, so a
+/// section that renders nothing leaves no gap behind it.
+class _SectionBody extends StatelessWidget {
+  const _SectionBody({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: AppSpacing.lg),
+    child: child,
+  );
+}
+
+/// The step the technician is expected to do next, derived from the facts this
+/// page already holds. Presentation-only: it enables nothing and disables
+/// nothing — the workflow rules live in the cubit and are re-checked by the
+/// server on every write.
+int _currentStep(JobsState state) {
+  final Job? job = state.selectedJob;
+  if (job == null) {
+    return 0;
+  }
+  final String status = job.status.value;
+  final bool isActive =
+      status == JobStatus.inProgress || status == JobStatus.started;
+
+  if (status == JobStatus.assigned) {
+    return 1;
+  }
+  if (!isActive) {
+    return 0;
+  }
+  if (state.beforePhotos.isEmpty) {
+    return 2;
+  }
+  if ((job.workDescription ?? '').trim().isEmpty) {
+    return 3;
+  }
+  if (state.afterPhotos.isEmpty) {
+    return 4;
+  }
+  if (state.signatureFiles.isEmpty) {
+    return 5;
+  }
+  return 6;
+}
+
+/// How many of the six stages are complete, from the same facts the frames
+/// show.
+int _completedSteps(JobsState state) {
+  final Job? job = state.selectedJob;
+  if (job == null) {
+    return 0;
+  }
+  final int evidence = <bool>[
+    state.beforePhotos.isNotEmpty,
+    (job.workDescription ?? '').trim().isNotEmpty,
+    state.afterPhotos.isNotEmpty,
+    state.signatureFiles.isNotEmpty,
+  ].where((bool done) => done).length;
+  final String status = job.status.value;
+
+  if (status == JobStatus.completed) {
+    return 2 + evidence;
+  }
+  if (status == JobStatus.inProgress || status == JobStatus.started) {
+    return 1 + evidence;
+  }
+  return 0;
+}
+
+/// A required file (before/after photo, signature) exists locally but its
+/// upload has NOT been confirmed yet (`syncState` still `pending`, which covers
+/// queued and in-flight queue operations) and its id is not in the failed set —
+/// completion must wait for the shared sync engine.
+bool _requiredFilePending(JobsState state) {
+  return <JobFile>[
+    ...state.beforePhotos,
+    ...state.afterPhotos,
+    ...state.signatureFiles,
+  ].any(
+    (JobFile file) =>
+        file.syncState != JobFileSyncState.synced &&
+        !state.beforePhotoFailedIds.contains(file.id),
+  );
+}
+
+/// A required file's upload sits in the queue's `failed` state (existing
+/// failed-ids plumbing): completion stays disabled until the shared Retry
+/// succeeds.
+bool _requiredFileFailed(JobsState state) {
+  return <JobFile>[
+    ...state.beforePhotos,
+    ...state.afterPhotos,
+    ...state.signatureFiles,
+  ].any(
+    (JobFile file) =>
+        file.syncState != JobFileSyncState.synced &&
+        state.beforePhotoFailedIds.contains(file.id),
+  );
+}
+
+/// A comparable fingerprint of everything the completion checklist reads, so
+/// the checklist rebuilds when one of its own inputs changes and stays put for
+/// anything else.
+(String, String, String, String, String) _completionGate(JobsState state) => (
+  state.beforePhotos.isEmpty ? '-' : '+',
+  state.afterPhotos.isEmpty ? '-' : '+',
+  state.signatureFiles.isEmpty ? '-' : '+',
+  (state.selectedJob?.workDescription ?? '').trim().isEmpty ? '-' : '+',
+  '${_requiredFilePending(state)}/${_requiredFileFailed(state)}',
+);
