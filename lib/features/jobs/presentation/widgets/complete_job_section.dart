@@ -73,6 +73,17 @@ class CompleteJobSection extends StatelessWidget {
   bool get _allMet =>
       hasBeforePhoto && hasWorkDescription && hasAfterPhoto && hasSignature;
 
+  /// The requirements the client knows are still open, in checklist order, as
+  /// the existing "missing …" labels. The button's disabled state is explained
+  /// instead of only applied — and the explanation is derived from the same
+  /// facts the checklist above it renders.
+  List<String> _missingRequirements(AppLocalizations l10n) => <String>[
+    if (!hasBeforePhoto) l10n.missingBeforePhotoError,
+    if (!hasWorkDescription) l10n.missingWorkDescriptionError,
+    if (!hasAfterPhoto) l10n.missingAfterPhotoError,
+    if (!hasSignature) l10n.missingSignatureError,
+  ];
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -85,7 +96,7 @@ class CompleteJobSection extends StatelessWidget {
         Text(
           l10n.completionRequirementsTitle,
           style: context.textStyles.bodyMedium?.copyWith(
-            color: AppColors.textSecondary,
+            color: context.colors.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -146,14 +157,14 @@ class CompleteJobSection extends StatelessWidget {
                 // animate forever while uploads are pending.
                 Icons.cloud_upload_rounded,
                 size: AppDimensions.iconMd,
-                color: AppColors.textSecondary,
+                color: AppColors.warning,
               ),
               const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Text(
                   l10n.waitingForFileSync,
                   style: context.textStyles.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.colors.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -187,6 +198,54 @@ class CompleteJobSection extends StatelessWidget {
             isCompleting ? l10n.uploadingLabel : l10n.completeJobButton,
           ),
         ),
+        // Why the button cannot be used yet — the same facts as the checklist,
+        // spelled out, so a disabled control never leaves the technician
+        // guessing. Files that are merely unsynced are reported above instead.
+        if (!_allMet) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                Icons.info_outline_rounded,
+                size: AppDimensions.iconSm,
+                color: context.colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  _missingRequirements(l10n).join(' · '),
+                  style: context.textStyles.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ] else if (hasPendingUploads || hasFailedUploads) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(
+                Icons.cloud_sync_outlined,
+                size: AppDimensions.iconSm,
+                color: context.colors.onSurfaceVariant,
+              ),
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  hasFailedUploads
+                      ? l10n.uploadFailedLabel
+                      : l10n.waitingForFileSync,
+                  style: context.textStyles.bodySmall?.copyWith(
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
@@ -217,7 +276,7 @@ class _RequirementLine extends StatelessWidget {
             child: Text(
               label,
               style: context.textStyles.bodyMedium?.copyWith(
-                color: met ? null : AppColors.textSecondary,
+                color: met ? null : context.colors.onSurfaceVariant,
               ),
             ),
           ),

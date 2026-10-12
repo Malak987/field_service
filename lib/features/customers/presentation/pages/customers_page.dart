@@ -162,7 +162,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Scaffold(
+    return AppNavigationScaffold(
       appBar: AppBar(
         leading: BackButton(
           onPressed: () =>
@@ -174,10 +174,9 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
         ],
       ),
       // Customers is a management area reached from the dashboard, not one of
-      // the four navigation tabs, so this page highlights no tab.
-      bottomNavigationBar: widget.isAdmin
-          ? const AppBottomNav(isAdmin: true, selectedIndex: null)
-          : null,
+      // the four navigation tabs, so this page highlights no tab — and a
+      // technician never gets a navigation at all, matching the router guard.
+      navigation: widget.isAdmin ? const AppNavSpec(isAdmin: true) : null,
       // Admin-only feature (router guard refuses non-admins every
       // `/customers` route); the check stays as defense in depth, and RLS
       // rejects unauthorized writes server-side regardless.
@@ -189,7 +188,7 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
               child: const Icon(Icons.add, size: AppDimensions.iconLg),
             )
           : null,
-      body: BlocBuilder<CustomersCubit, CustomersState>(
+      child: BlocBuilder<CustomersCubit, CustomersState>(
         builder: (BuildContext context, CustomersState state) {
           final CustomersCubit cubit = context.read<CustomersCubit>();
 

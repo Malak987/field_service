@@ -4,6 +4,7 @@ import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_step_empty_note.dart';
 import 'package:flutter/material.dart';
 
 /// The "Work Description" section of the Job Details page.
@@ -11,6 +12,12 @@ import 'package:flutter/material.dart';
 /// The technician's record of the work ACTUALLY performed — strictly
 /// separate from the admin's customer request (`jobs.description`, shown in
 /// the Job Information card).
+///
+/// The technician writes what they actually did here — in the customer's home,
+/// on a phone, usually with one hand. The field is therefore deliberately roomy,
+/// the save button reports the real state (busy → saving, then confirmed or
+/// rejected by the cubit), and nothing is presented as saved before the cubit
+/// confirms it.
 ///
 /// Purely presentational, like the other Job Details sections:
 /// * [canEdit] true (assigned technician, job `in_progress`) → multiline
@@ -91,14 +98,26 @@ class _WorkDescriptionSectionState extends State<WorkDescriptionSection> {
         ),
         const SizedBox(height: AppSpacing.md),
         if (widget.canEdit) ...<Widget>[
+          Text(
+            l10n.workDescriptionRequiredHint,
+            style: context.textStyles.bodySmall?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           TextField(
             key: const Key('work_description_field'),
             controller: _controller,
-            minLines: 3,
-            maxLines: 8,
+            // Room enough for a real report, and the label sits with the first
+            // line instead of floating in the middle of the field.
+            minLines: 4,
+            maxLines: 10,
+            keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.newline,
+            textCapitalization: TextCapitalization.sentences,
             decoration: InputDecoration(
               hintText: l10n.workDescriptionHint,
+              alignLabelWithHint: true,
               border: const OutlineInputBorder(),
               errorText: _errorText(l10n),
             ),
@@ -126,12 +145,21 @@ class _WorkDescriptionSectionState extends State<WorkDescriptionSection> {
             ),
           ),
         ] else if (widget.initialText.trim().isEmpty)
-          Text(
-            l10n.workDescriptionNoneYet,
-            style: context.textStyles.bodyMedium,
+          JobStepEmptyNote(
+            icon: Icons.edit_note_outlined,
+            title: l10n.workDescriptionNoneYet,
+            message: l10n.workDescriptionRequiredHint,
           )
         else
-          Text(widget.initialText, style: context.textStyles.bodyMedium),
+          // What the technician recorded, in the same quiet block the rest of
+          // the read-only fields use.
+          Text(
+            widget.initialText,
+            style: context.textStyles.bodyMedium?.copyWith(
+              color: context.colors.onSurface,
+              height: 1.45,
+            ),
+          ),
       ],
     );
   }

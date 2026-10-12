@@ -196,6 +196,10 @@ abstract class AppLocalizations {
   String get takePhotoButton;
   String get chooseFromGalleryButton;
   String get noBeforePhotosYet;
+
+  /// One line of guidance under the empty before-photos state, saying WHY the
+  /// step matters instead of only that it is empty.
+  String get beforePhotosRequiredHint;
   String get uploadingLabel;
   String get uploadFailedLabel;
   String get photoSyncedLabel;
@@ -208,6 +212,9 @@ abstract class AppLocalizations {
   String get afterPhotosTitle;
   String get addAfterPhotoButton;
   String get noAfterPhotosYet;
+
+  /// One line of guidance under the empty after-photos state.
+  String get afterPhotosRequiredHint;
   String get addAfterPhotoFailedError;
   // --- Customer Signature -------------------------------------------------
   String get customerSignatureTitle;
@@ -219,6 +226,10 @@ abstract class AppLocalizations {
   String get signatureSaveFailedMessage;
   String get noSignatureYet;
   String get signatureHelper;
+
+  /// What the customer's signature MEANS: the confirmation of the finished
+  /// work, which is also why it is required before a job can be completed.
+  String get signatureConfirmsWorkHint;
   String get replaceSignatureButton;
   String stepLabel(int step);
   String get customerRequestLabel;
@@ -228,6 +239,10 @@ abstract class AppLocalizations {
   String get workDescriptionTitle;
   String get workDescriptionHint;
   String get workDescriptionNoneYet;
+
+  /// One line of guidance under the work description field, saying that the
+  /// description is part of completing the job.
+  String get workDescriptionRequiredHint;
   String get workDescriptionEmptyError;
   String workDescriptionTooLongError(int max);
   String get workDescriptionSavedMessage;
@@ -892,6 +907,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noBeforePhotosYet => 'No before photos yet';
 
   @override
+  String get beforePhotosRequiredHint =>
+      'Photograph the site before you start — at least one before photo is required to complete the job.';
+
+  @override
   String get uploadingLabel => 'Uploading';
 
   @override
@@ -928,6 +947,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noAfterPhotosYet => 'No after photos yet';
 
   @override
+  String get afterPhotosRequiredHint =>
+      'Photograph the finished work — at least one after photo is required to complete the job.';
+
+  @override
   String get addAfterPhotoFailedError => 'Unable to add the after photo.';
 
   // --- Customer Signature ---------------------------------------------------
@@ -960,6 +983,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The customer signs with a finger inside the box.';
 
   @override
+  String get signatureConfirmsWorkHint =>
+      'The signature confirms that the finished work is accepted.';
+
+  @override
   String get replaceSignatureButton => 'Replace Signature';
 
   @override
@@ -983,6 +1010,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workDescriptionNoneYet => 'No work description yet.';
+
+  @override
+  String get workDescriptionRequiredHint =>
+      'The work description is required to complete the job.';
 
   @override
   String get workDescriptionEmptyError => 'Work description cannot be empty.';
@@ -2045,6 +2076,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noBeforePhotosYet => 'Noch keine Vorher-Fotos';
 
   @override
+  String get beforePhotosRequiredHint =>
+      'Fotografieren Sie die Baustelle vor Arbeitsbeginn — mindestens ein Vorher-Foto ist zum Abschließen des Auftrags erforderlich.';
+
+  @override
   String get uploadingLabel => 'Wird hochgeladen';
 
   @override
@@ -2083,6 +2118,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noAfterPhotosYet => 'Noch keine Nachher-Fotos';
 
   @override
+  String get afterPhotosRequiredHint =>
+      'Fotografieren Sie die fertige Arbeit — mindestens ein Nachher-Foto ist zum Abschließen des Auftrags erforderlich.';
+
+  @override
   String get addAfterPhotoFailedError =>
       'Das Nachher-Foto konnte nicht hinzugefügt werden.';
 
@@ -2117,6 +2156,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Kunde unterschreibt mit dem Finger im Feld.';
 
   @override
+  String get signatureConfirmsWorkHint =>
+      'Mit der Unterschrift bestätigt der Kunde die fertiggestellte Arbeit.';
+
+  @override
   String get replaceSignatureButton => 'Unterschrift ersetzen';
 
   @override
@@ -2142,6 +2185,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get workDescriptionNoneYet =>
       'Noch keine Arbeitsbeschreibung vorhanden.';
+
+  @override
+  String get workDescriptionRequiredHint =>
+      'Die Arbeitsbeschreibung ist zum Abschließen des Auftrags erforderlich.';
 
   @override
   String get workDescriptionEmptyError =>
