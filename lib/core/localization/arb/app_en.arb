@@ -283,6 +283,7 @@
     }
   },
   "offlineLabel": "Offline",
+  "syncStatusTitle": "Sync & connection",
   "syncingLabel": "Syncing…",
   "pendingSyncLabel": "Pending sync",
   "syncedLabel": "Synced",

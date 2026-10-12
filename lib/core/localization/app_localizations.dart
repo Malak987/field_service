@@ -323,6 +323,7 @@ abstract class AppLocalizations {
   String get customerLinkedJobsError;
   String deleteCustomerConfirmation(String name);
   String get offlineLabel;
+  String get syncStatusTitle;
   String get syncingLabel;
   String get pendingSyncLabel;
   String get syncedLabel;
@@ -1269,6 +1270,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offlineLabel => 'Offline';
+
+  @override
+  String get syncStatusTitle => 'Sync & connection';
 
   @override
   String get syncingLabel => 'Syncing…';
@@ -2429,6 +2433,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get offlineLabel => 'Offline';
+
+  @override
+  String get syncStatusTitle => 'Synchronisierung & Verbindung';
 
   @override
   String get syncingLabel => 'Synchronisiere…';

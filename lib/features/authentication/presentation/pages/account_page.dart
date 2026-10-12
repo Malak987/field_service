@@ -1,5 +1,8 @@
+import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/sync/sync_status.dart';
+import 'package:field_service/core/sync/sync_status_cubit.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
@@ -7,6 +10,8 @@ import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/widgets/app_section_header.dart';
+import 'package:field_service/core/widgets/app_surface_panel.dart';
+import 'package:field_service/core/widgets/app_sync_status_badge.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
@@ -33,18 +38,21 @@ class AccountPage extends StatelessWidget {
       (AuthenticationCubit cubit) => cubit.state.isLoading,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.accountTitle)),
-      bottomNavigationBar: AppBottomNav(
-        isAdmin: isAdmin,
-        selectedIndex: isAdmin ? 3 : 2,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppSpacing.pagePadding,
-          child: AppContentWidth(
-            maxWidth: AppDimensions.contentMaxWidth,
-            child: Column(
+    return BlocProvider<SyncStatusCubit>(
+      // The offline engine's own state — the app has one sync indicator and
+      // this screen shows the same one the customers list does.
+      create: (_) => sl<SyncStatusCubit>(),
+      child: AppPageBody(
+        appBar: AppBar(title: Text(l10n.accountTitle)),
+        padding: AppSpacing.pagePadding,
+        // Account is one of the main areas, so it keeps the same role-aware
+        // navigation as the two dashboards — bottom bar on a phone, rail on a
+        // wide layout — with the account destination current.
+        navigation: AppNavSpec(
+          isAdmin: isAdmin,
+          selectedIndex: AppNavDestinations.accountIndex(isAdmin: isAdmin),
+        ),
+        child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
               _IdentityBlock(user: user),
@@ -52,24 +60,41 @@ class AccountPage extends StatelessWidget {
               // This is the ONE home for the language choice inside the signed-in
               // app: a labelled row, not a panel with a heading inside it.
               AppSectionHeader(title: l10n.selectLanguage),
-              Container(
-                decoration: BoxDecoration(
-                  color: context.colors.surface,
-                  borderRadius: AppRadius.card,
-                  border: Border.all(color: context.colors.outlineVariant),
-                ),
+              AppSurfacePanel(
+                divideRows: false,
                 padding: const EdgeInsetsDirectional.only(
                   start: AppSpacing.lg,
                   end: AppSpacing.sm,
                   top: AppSpacing.xs,
                   bottom: AppSpacing.xs,
                 ),
-                child: const Row(
-                  children: <Widget>[
-                    Expanded(child: SizedBox.shrink()),
-                    LanguageSwitcher(),
-                  ],
+                children: <Widget>[
+                  const Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: LanguageSwitcher(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              // Connection and sync queue, in the app's one indicator: it is
+              // the same fact the customers header reports, so an offline
+              // technician sees one consistent answer everywhere. Nothing here
+              // is invented — the badge reads the shared engine state.
+              AppSectionHeader(title: l10n.syncStatusTitle),
+              AppSurfacePanel(
+                divideRows: false,
+                padding: const EdgeInsetsDirectional.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
                 ),
+                children: <Widget>[
+                  BlocBuilder<SyncStatusCubit, SyncHealth>(
+                    builder: (BuildContext context, SyncHealth health) => Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: AppSyncStatusBadge(health: health, filled: true),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppSpacing.xxl),
               FilledButton.icon(
@@ -84,8 +109,6 @@ class AccountPage extends StatelessWidget {
                 label: Text(l10n.logoutButton),
               ),
             ],
-            ),
-          ),
         ),
       ),
     );

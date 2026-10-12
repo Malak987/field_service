@@ -283,6 +283,7 @@
     }
   },
   "offlineLabel": "Offline",
+  "syncStatusTitle": "Synchronisierung & Verbindung",
   "syncingLabel": "Synchronisiere…",
   "pendingSyncLabel": "Synchronisierung ausstehend",
   "syncedLabel": "Synchronisiert",
