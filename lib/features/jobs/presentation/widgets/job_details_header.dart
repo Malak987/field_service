@@ -132,10 +132,7 @@ class JobDetailsHeader extends StatelessWidget {
               ),
             _HeaderMeta(
               icon: Icons.event_outlined,
-              label: formatJobDateTime(
-                job.assignedAt ?? job.createdAt,
-                context,
-              ),
+              label: formatJobDate(job.assignedAt ?? job.createdAt, context),
             ),
           ],
         ),

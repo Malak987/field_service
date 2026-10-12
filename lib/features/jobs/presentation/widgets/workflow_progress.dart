@@ -61,9 +61,11 @@ class WorkflowProgress extends StatelessWidget {
 }
 
 /// The workflow-state line shown in place of the Start Job button once the job
-/// is `in_progress`: "Started: `<server timestamp>`". Purely presentational —
-/// the value comes from `jobs.started_at` (database-generated), formatted with
-/// the project's existing date convention.
+/// is `in_progress`: "Started: `<server date>`". Purely presentational — the
+/// value comes from `jobs.started_at` (database-generated), formatted with
+/// `formatJobDate`, i.e. with the SAME convention as the "Start Date" field of
+/// the Job Information card. (The activity log keeps date AND time, because
+/// there the timeline — not the date — is the point.)
 class StartedAtLine extends StatelessWidget {
   const StartedAtLine({super.key, required this.startedAt});
 
@@ -79,7 +81,7 @@ class StartedAtLine extends StatelessWidget {
         const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: Text(
-            l10n.jobStartedAt(formatJobDateTime(startedAt, context)),
+            l10n.jobStartedAt(formatJobDate(startedAt, context)),
             style: context.textStyles.bodyMedium,
           ),
         ),

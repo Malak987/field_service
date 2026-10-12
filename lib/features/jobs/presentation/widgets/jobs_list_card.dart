@@ -34,6 +34,9 @@ class JobsListCard extends StatelessWidget {
     job: job,
     showAssignedTechnician: isAdmin,
     showNextAction: !isAdmin,
+    // This list's category filter chips spell out both categories right above
+    // the rows, so the rows do not repeat them (see [JobsListItem]).
+    showCategory: false,
     onTap: onTap,
   );
 }
