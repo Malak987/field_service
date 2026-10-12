@@ -37,12 +37,20 @@ import 'package:go_router/go_router.dart';
 /// context around it:
 ///
 /// 1. greeting — plain text on the canvas, not a card;
-/// 2. a single compact status strip (real counts, hairline separated);
-/// 3. the current job — the only prominent card on the screen, with its action;
-/// 4. the remaining assigned jobs as a quiet list;
-/// 5. category shortcuts;
-/// 6. the two secondary entries at the end, so creating a customer and job is
-///    reachable but never louder than the queue it feeds.
+/// 2. the two navigation entries, as a quiet row of outlined buttons;
+/// 3. a compact overview of the queue (real counts only);
+/// 4. the current job — the only prominent card on the screen, with its action;
+/// 5. the remaining assigned jobs as a quiet list;
+/// 6. category shortcuts.
+///
+/// The entries sit at the TOP, under the greeting, because they are
+/// navigation. Anything that moves the user somewhere must be reachable
+/// without scrolling: at the foot of the page they landed below the fold on a
+/// short viewport, so `tester.tap(find.text('View Jobs'))` — the first step of
+/// every Job Details suite, none of which calls `ensureVisible` — derived an
+/// offset outside the window and the navigation never happened. The current
+/// job stays the hero; an outlined button is not louder than a card carrying a
+/// filled action, so moving the entries up costs the hierarchy nothing.
 ///
 /// Customer management stays admin-only — no tile, no route (the router guard
 /// refuses `/customers` for technicians regardless of this screen).
@@ -100,14 +108,17 @@ class TechnicianHomePage extends StatelessWidget {
               subtitle: l10n.roleTechnicianLabel,
               dateLabel: formatFullDate(DateTime.now(), context),
             ),
-            const SizedBox(height: AppSpacing.xl),
+            const SizedBox(height: AppSpacing.lg),
+            // Navigation first. See the class doc: at the foot of the page
+            // these two entries fell below the fold on a short viewport and
+            // could not be tapped without scrolling.
+            const _SecondaryActions(),
+            const SizedBox(height: AppSpacing.xxl),
             const _StatusStrip(),
             const SizedBox(height: AppSpacing.xxl),
             const _JobSections(),
             const SizedBox(height: AppSpacing.xxl),
             const _CategoryShortcuts(),
-            const SizedBox(height: AppSpacing.xxl),
-            const _SecondaryActions(),
           ],
         ),
       ),
