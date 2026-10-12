@@ -1,3 +1,4 @@
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -111,7 +112,7 @@ class _AccessDeniedGateView extends StatelessWidget {
           Icon(
             Icons.gpp_bad_outlined,
             size: AppDimensions.iconXl,
-            color: Theme.of(context).colorScheme.error,
+            color: context.colors.error,
           ),
           const SizedBox(height: AppSpacing.lg),
           AuthErrorMessage(message: message),

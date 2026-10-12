@@ -1,4 +1,5 @@
 import 'package:field_service/core/constants/app_constants.dart';
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:flutter/material.dart';
 
 /// Development placeholder for the application entry route (`/`).
@@ -15,7 +16,7 @@ class AppRootPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final ThemeData theme = context.theme;
 
     return Scaffold(
       body: Center(

@@ -1,5 +1,6 @@
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
+import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -12,8 +13,6 @@ import 'package:field_service/features/jobs/presentation/utils/job_label_mapper.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-import '../../../../core/localization/app_localizations.dart';
 
 /// Admin Create Job screen. Creation and assignment remain one existing
 /// server-authorized `create_job` operation; technicians execute assigned jobs.
@@ -222,7 +221,7 @@ class _CreateJobFormState extends State<_CreateJobForm> {
                         const SizedBox(height: AppSpacing.xl),
                         Text(
                           l10n.createJobReviewTitle,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: context.textStyles.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: AppColors.primaryDark,
                           ),
@@ -328,7 +327,7 @@ class _CustomerPickerState extends State<_CustomerPicker> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Text(l10n.selectCustomerLabel, style: Theme.of(context).textTheme.titleLarge),
+            Text(l10n.selectCustomerLabel, style: context.textStyles.titleLarge),
             const SizedBox(height: AppSpacing.md),
             TextField(
               key: const Key('create_job_customer_search'),
@@ -388,9 +387,9 @@ class _IntroCard extends StatelessWidget {
       const CircleAvatar(backgroundColor: AppColors.surface, child: Icon(Icons.assignment_outlined, color: AppColors.primary)),
       const SizedBox(width: AppSpacing.md),
       Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: <Widget>[
-        Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
+        Text(title, style: context.textStyles.titleMedium?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w700)),
         const SizedBox(height: AppSpacing.xs),
-        Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+        Text(subtitle, style: context.textStyles.bodySmall?.copyWith(color: AppColors.textSecondary)),
       ])),
     ]),
   );
@@ -404,9 +403,9 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: <Widget>[
     Container(width: 28, height: 28, alignment: Alignment.center,
       decoration: const BoxDecoration(color: AppColors.goldSurface, shape: BoxShape.circle),
-      child: Text(number, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold))),
+      child: Text(number, style: context.textStyles.labelLarge?.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.bold))),
     const SizedBox(width: AppSpacing.sm),
-    Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
+    Expanded(child: Text(title, style: context.textStyles.titleSmall?.copyWith(fontWeight: FontWeight.w700))),
   ]);
 }
 
@@ -430,8 +429,8 @@ class _CustomerSelectionTile extends StatelessWidget {
           const Icon(Icons.person_search_outlined, color: AppColors.primary),
           const SizedBox(width: AppSpacing.md),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-            Text(customer?.name ?? context.l10n.selectCustomerLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: customer == null ? FontWeight.normal : FontWeight.w600)),
-            if (customer != null) Text((customer!.phone?.trim().isNotEmpty ?? false) ? customer!.phone! : customer!.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            Text(customer?.name ?? context.l10n.selectCustomerLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textStyles.bodyLarge?.copyWith(fontWeight: customer == null ? FontWeight.normal : FontWeight.w600)),
+            if (customer != null) Text((customer!.phone?.trim().isNotEmpty ?? false) ? customer!.phone! : customer!.address, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textStyles.bodySmall?.copyWith(color: AppColors.textSecondary)),
           ])),
           const Icon(Icons.expand_more_rounded, color: AppColors.textSecondary),
         ]),
@@ -452,7 +451,7 @@ class _SelectionReview extends StatelessWidget {
     child: Row(children: <Widget>[
       Icon(icon, color: AppColors.goldDeep),
       const SizedBox(width: AppSpacing.sm),
-      Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
+      Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: context.textStyles.bodyMedium?.copyWith(fontWeight: FontWeight.w600))),
       if (detail != null && detail!.trim().isNotEmpty)
         Flexible(
           child: Padding(
@@ -461,7 +460,7 @@ class _SelectionReview extends StatelessWidget {
               detail!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              style: context.textStyles.bodySmall?.copyWith(
                 color: AppColors.textSecondary,
               ),
             ),
@@ -491,7 +490,7 @@ class _OptionError extends StatelessWidget {
     child: Row(children: <Widget>[
       const Icon(Icons.error_outline, color: AppColors.error),
       const SizedBox(width: AppSpacing.sm),
-      Expanded(child: Text(message, style: Theme.of(context).textTheme.bodySmall)),
+      Expanded(child: Text(message, style: context.textStyles.bodySmall)),
       IconButton(onPressed: onRetry, tooltip: context.l10n.retryButton, icon: const Icon(Icons.refresh)),
     ]),
   );
@@ -507,7 +506,7 @@ class _OptionEmpty extends StatelessWidget {
     child: Row(children: <Widget>[
       const Icon(Icons.info_outline, color: AppColors.textSecondary),
       const SizedBox(width: AppSpacing.sm),
-      Expanded(child: Text(message, style: Theme.of(context).textTheme.bodyMedium)),
+      Expanded(child: Text(message, style: context.textStyles.bodyMedium)),
     ]),
   );
 }
@@ -518,7 +517,7 @@ class _FieldError extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsetsDirectional.only(start: AppSpacing.md, top: AppSpacing.xs),
-    child: Text(message, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error)),
+    child: Text(message, style: context.textStyles.bodySmall?.copyWith(color: AppColors.error)),
   );
 }
 

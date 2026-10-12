@@ -1,3 +1,4 @@
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
@@ -75,7 +76,7 @@ class DashboardCategoryCard extends StatelessWidget {
                           title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: context.textStyles.titleSmall?.copyWith(
                                 color: AppColors.textPrimary,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -86,7 +87,7 @@ class DashboardCategoryCard extends StatelessWidget {
                             countLabel(jobCount!),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            style: context.textStyles.bodySmall?.copyWith(
                                   color: AppColors.textSecondary,
                                 ),
                           ),

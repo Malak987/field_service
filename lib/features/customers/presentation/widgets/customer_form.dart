@@ -1,3 +1,4 @@
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -134,8 +135,8 @@ class _CustomerFormState extends State<CustomerForm> {
           children: <Widget>[
             Text(
               l10n.customerRequiredFieldsHint,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              style: context.textStyles.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -260,9 +261,9 @@ class _CustomerFormState extends State<CustomerForm> {
     padding: const EdgeInsetsDirectional.only(start: AppSpacing.xs),
     child: Text(
       title,
-      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+      style: context.textStyles.titleSmall?.copyWith(
         fontWeight: FontWeight.w700,
-        color: Theme.of(context).colorScheme.primary,
+        color: context.colors.primary,
       ),
     ),
   );

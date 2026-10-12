@@ -313,7 +313,7 @@ class TechnicianJobFormSection extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                style: context.textStyles.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),

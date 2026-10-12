@@ -1,3 +1,4 @@
+import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
@@ -32,7 +33,7 @@ class JobsLoadingView extends StatelessWidget {
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     l10n.jobsLoadingLabel,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    style: context.textStyles.bodyMedium?.copyWith(
                       color: AppColors.textSecondary,
                     ),
                   ),
