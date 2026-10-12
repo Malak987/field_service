@@ -16,5 +16,8 @@ void registerAppModule(GetIt sl) {
 
   // Factory: one cubit instance owned by the root widget; features read it
   // from the widget tree (LanguageSwitcher), not from the locator.
-  sl.registerFactory<LocaleCubit>(LocaleCubit.new);
+  // Singleton: the language choice is app-wide state. A factory would hand
+  // any second `sl<LocaleCubit>()` a fresh instance that silently falls
+  // back to the default locale instead of the saved one.
+  sl.registerLazySingleton<LocaleCubit>(LocaleCubit.new);
 }

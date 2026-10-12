@@ -63,6 +63,12 @@ abstract final class AppRoutes {
   /// Declared before [jobDetails] so the static segment wins over `:id`.
   static const String jobCreate = '/jobs/create';
 
+  /// "Create Customer & Job" — technician-only (the router refuses this route
+  /// for non-technician roles; the `technician_create_customer_and_job` RPC
+  /// re-enforces it server-side and always assigns the job to the caller).
+  /// Declared before [jobDetails] so the static segment wins over `:id`.
+  static const String jobTechnicianCreate = '/jobs/technician-create';
+
   /// Job details; requires a `:id` path parameter.
   static const String jobDetails = '/jobs/:id';
 

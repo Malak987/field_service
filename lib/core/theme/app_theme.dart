@@ -60,14 +60,32 @@ abstract final class AppTheme {
       textTheme: _textTheme(),
 
       // --- App bar ---------------------------------------------------------
+      // A light chrome bar on the cream canvas: white surface, near-black
+      // title, hairline rule instead of a shadow. The previous dark-burgundy
+      // bar set `foregroundColor` to the dark text colour, which put dark text
+      // on a dark background. Brand colour now marks *content* (actions,
+      // selection, key figures) rather than the window frame.
       appBarTheme: AppBarThemeData(
         centerTitle: false,
         elevation: 0,
-        scrolledUnderElevation: 1,
-        backgroundColor: AppColors.primaryDark,
+        scrolledUnderElevation: 0,
+        backgroundColor: cardSurface,
         foregroundColor: onSurfaceColor,
         surfaceTintColor: Colors.transparent,
-        titleTextStyle: _textTheme().titleLarge,
+        titleTextStyle: _textTheme().titleLarge?.copyWith(
+          color: onSurfaceColor,
+        ),
+        iconTheme: IconThemeData(
+          size: AppDimensions.iconLg,
+          color: onSurfaceColor,
+        ),
+        actionsIconTheme: IconThemeData(
+          size: AppDimensions.iconLg,
+          color: onSurfaceColor,
+        ),
+        shape: const Border(
+          bottom: BorderSide(color: AppColors.borderStrong),
+        ),
       ),
 
       // --- Cards and containers -------------------------------------------
@@ -115,11 +133,14 @@ abstract final class AppTheme {
 
       // --- Bottom navigation (role shells) ----------------------------------
       navigationBarTheme: NavigationBarThemeData(
-        height: 68,
+        height: 64,
         elevation: 0,
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.primarySurface,
+        indicatorColor: AppColors.brandContainer,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (Set<WidgetState> states) => AppTextStyles.bodySmall.copyWith(
             fontWeight: states.contains(WidgetState.selected)
@@ -169,10 +190,7 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationThemeData(
         filled: true,
         fillColor: cardSurface,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
-        ),
+        contentPadding: AppSpacing.inputContentPadding,
         labelStyle: AppTextStyles.bodyLarge.copyWith(
           color: onSurfaceVariantColor,
         ),
@@ -272,6 +290,64 @@ abstract final class AppTheme {
           minimumSize: const Size.square(AppDimensions.buttonHeightCompact),
           iconSize: AppDimensions.iconMd,
           foregroundColor: onSurfaceColor,
+        ),
+      ),
+
+      // --- Filter chips ------------------------------------------------------
+      // The only pill in the system besides status badges: a filter row reads
+      // as a set of switches, not as a set of cards.
+      chipTheme: ChipThemeData(
+        backgroundColor: cardSurface,
+        selectedColor: AppColors.brandContainer,
+        disabledColor: AppColors.surfaceMuted,
+        side: const BorderSide(color: borderColor),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
+        labelStyle: AppTextStyles.bodySmall.copyWith(
+          fontWeight: FontWeight.w600,
+          color: onSurfaceColor,
+        ),
+        secondaryLabelStyle: AppTextStyles.bodySmall.copyWith(
+          fontWeight: FontWeight.w700,
+          color: brand,
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs + 2,
+        ),
+        showCheckmark: false,
+      ),
+
+      // --- List rows ---------------------------------------------------------
+      // Management lists and detail screens are built from rows separated by
+      // hairlines, not from a stack of cards.
+      listTileTheme: ListTileThemeData(
+        minVerticalPadding: AppSpacing.md,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.xs,
+        ),
+        iconColor: onSurfaceVariantColor,
+        titleTextStyle: AppTextStyles.titleMedium.copyWith(
+          color: onSurfaceColor,
+        ),
+        subtitleTextStyle: AppTextStyles.bodySmall.copyWith(
+          color: onSurfaceVariantColor,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+        ),
+      ),
+
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          foregroundColor: onSurfaceVariantColor,
+          selectedForegroundColor: brand,
+          selectedBackgroundColor: AppColors.brandContainer,
+          side: const BorderSide(color: borderColor),
+          textStyle: AppTextStyles.linkLabel,
+          minimumSize: const Size(0, AppDimensions.buttonHeightCompact),
         ),
       ),
     );

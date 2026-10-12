@@ -19,6 +19,7 @@ import 'package:field_service/features/customers/presentation/pages/edit_custome
 import 'package:field_service/features/jobs/presentation/pages/create_job_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/job_details_page.dart';
 import 'package:field_service/features/jobs/presentation/pages/jobs_page.dart';
+import 'package:field_service/features/jobs/presentation/pages/technician_create_customer_job_page.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -168,6 +169,14 @@ class AppRouter {
           builder: (BuildContext context, GoRouterState state) =>
               const CreateJobPage(),
         ),
+        // The technician's "Create Customer & Job" form — also declared
+        // before `:id`.
+        GoRoute(
+          path: 'technician-create',
+          name: 'jobTechnicianCreate',
+          builder: (BuildContext context, GoRouterState state) =>
+              const TechnicianCreateCustomerJobPage(),
+        ),
         GoRoute(
           path: ':id',
           name: 'jobDetails',
@@ -267,6 +276,18 @@ class AppRouter {
     // page builds (survives typed URLs / deep links); the `create_job` RPC
     // re-enforces the rule server-side regardless.
     if (path == AppRoutes.jobCreate && !user.isAdmin) {
+      return AppRoutes.root;
+    }
+
+    // "Create Customer & Job" is the TECHNICIAN's workflow: it registers a
+    // customer on site and creates a job assigned to the caller. Admins keep
+    // their own Create & Assign screen (`/jobs/create`) and the management
+    // area, so this route is refused for them too — one page per role, no
+    // shared form that could imply cross-role rights. The
+    // `technician_create_customer_and_job` RPC re-enforces the rule
+    // server-side and always assigns the job to the caller's own employee
+    // row, whatever a client sends.
+    if (path == AppRoutes.jobTechnicianCreate && !user.isTechnician) {
       return AppRoutes.root;
     }
 

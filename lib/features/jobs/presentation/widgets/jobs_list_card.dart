@@ -1,6 +1,5 @@
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
-import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
@@ -11,7 +10,16 @@ import 'package:field_service/features/jobs/presentation/utils/jobs_date_format.
 import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:flutter/material.dart';
 
-/// Jobs-list-specific card. Leaves the dashboard's existing job card unchanged.
+/// One row of the jobs list.
+///
+/// Built for scanning, not for decoration: the job number and the status are
+/// the first things the eye lands on, the customer is the second, and
+/// everything else is metadata on a single quiet line. There is no card, no
+/// elevation and no chevron — the whole row is the tap target and the list
+/// around it supplies the hairlines.
+///
+/// Status still travels twice (badge text *and* colour) so it never depends on
+/// colour alone.
 class JobsListCard extends StatelessWidget {
   const JobsListCard({
     super.key,
@@ -34,149 +42,127 @@ class JobsListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final JobLabelMapper mapper = JobLabelMapper(l10n);
-    final (Color statusColor, _) = JobStatusBadge.styleFor(context, job.status);
     final String? nextAction = isAdmin ? null : _nextAction(l10n);
+    final String customerName = job.customerName?.trim() ?? '';
+    final String technicianName = job.assignedEmployeeName?.trim() ?? '';
+    final String description = job.description?.trim() ?? '';
+
+    // Field names live in the semantics tree; on screen the icon carries them.
+    // Repeating "Assigned Technician:" on every row of a long list is noise.
     final List<String> semanticParts = <String>[
       '${l10n.jobNumberLabel} ${job.jobNumber}',
-      if (job.customerName?.trim().isNotEmpty ?? false) job.customerName!.trim(),
+      if (customerName.isNotEmpty) customerName,
       mapper.jobTypeLabel(job.jobType),
       mapper.statusLabel(job.status),
-      if (isAdmin && (job.assignedEmployeeName?.trim().isNotEmpty ?? false))
-        '${l10n.assignedTechnicianLabel}: ${job.assignedEmployeeName!.trim()}',
+      if (isAdmin && technicianName.isNotEmpty)
+        '${l10n.assignedTechnicianLabel}: $technicianName',
+      if (job.assignedAt != null)
+        '${l10n.assignedDateLabel}: ${formatJobDate(job.assignedAt!, context)}',
+      if (nextAction != null) l10n.nextActionLabel(nextAction),
     ];
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Semantics(
-        container: true,
-        button: true,
-        label: semanticParts.join(', '),
-        onTap: onTap,
-        child: ExcludeSemantics(
-          child: InkWell(
-            onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 112),
-              decoration: BoxDecoration(
-                border: BorderDirectional(
-                  start: BorderSide(color: statusColor, width: 4),
-                ),
-              ),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.xs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: <Widget>[
-                      Text(
+    return Semantics(
+      container: true,
+      button: true,
+      label: semanticParts.join(', '),
+      onTap: onTap,
+      child: ExcludeSemantics(
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
                         '#${job.jobNumber}',
-                        style: context.textStyles.titleMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      JobStatusBadge(
-                        label: mapper.statusLabel(job.status),
-                        status: job.status,
-                      ),
-                    ],
-                  ),
-                  if (job.customerName?.trim().isNotEmpty ?? false) ...<Widget>[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      job.customerName!.trim(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textStyles.titleMedium,
                       ),
                     ),
+                    const SizedBox(width: AppSpacing.sm),
+                    JobStatusBadge(
+                      label: mapper.statusLabel(job.status),
+                      status: job.status,
+                    ),
                   ],
+                ),
+                if (customerName.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    customerName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textStyles.bodyLarge,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.xxs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    _Meta(
+                      icon: job.jobType == JobCategory.kitchenRenovation
+                          ? Icons.kitchen_outlined
+                          : Icons.house_siding_outlined,
+                      text: mapper.jobTypeLabel(job.jobType),
+                    ),
+                    if (isAdmin && technicianName.isNotEmpty)
+                      _Meta(
+                        icon: Icons.person_outline_rounded,
+                        text: technicianName,
+                      ),
+                    if (job.assignedAt != null)
+                      _Meta(
+                        icon: Icons.event_outlined,
+                        text: formatJobDate(job.assignedAt!, context),
+                      ),
+                  ],
+                ),
+                if (description.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: AppSpacing.xxs),
+                  Text(
+                    description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.textStyles.bodySmall?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                if (nextAction != null) ...<Widget>[
                   const SizedBox(height: AppSpacing.sm),
                   Row(
                     children: <Widget>[
                       Icon(
-                        job.jobType == JobCategory.kitchenRenovation
-                            ? Icons.kitchen_outlined
-                            : Icons.house_siding_outlined,
-                        size: AppDimensions.iconMd,
-                        color: AppColors.primary,
+                        Icons.arrow_forward_rounded,
+                        size: AppDimensions.iconSm,
+                        color: context.colors.primary,
                       ),
                       const SizedBox(width: AppSpacing.xs),
-                      Expanded(
+                      Flexible(
                         child: Text(
-                          mapper.jobTypeLabel(job.jobType),
-                          maxLines: 2,
+                          l10n.nextActionLabel(nextAction),
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: context.textStyles.bodyMedium?.copyWith(
-                            color: AppColors.textSecondary,
+                          style: context.textStyles.bodySmall?.copyWith(
+                            color: context.colors.primary,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  if (isAdmin &&
-                      (job.assignedEmployeeName?.trim().isNotEmpty ?? false))
-                    _DetailLine(
-                      icon: Icons.person_outline_rounded,
-                      text:
-                          '${l10n.assignedTechnicianLabel}: ${job.assignedEmployeeName!.trim()}',
-                    ),
-                  if (job.assignedAt != null)
-                    _DetailLine(
-                      icon: Icons.calendar_today_outlined,
-                      text:
-                          '${l10n.assignedDateLabel}: ${formatJobDate(job.assignedAt!, context)}',
-                    ),
-                  if (job.description?.trim().isNotEmpty ?? false) ...<Widget>[
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      job.description!.trim(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.bodySmall?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                  if (nextAction != null) ...<Widget>[
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          size: AppDimensions.iconMd,
-                          color: AppColors.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Flexible(
-                          child: Text(
-                            l10n.nextActionLabel(nextAction),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.textStyles.bodySmall?.copyWith(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.xs),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      size: AppDimensions.iconLg,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -185,30 +171,29 @@ class JobsListCard extends StatelessWidget {
   }
 }
 
-class _DetailLine extends StatelessWidget {
-  const _DetailLine({required this.icon, required this.text});
+/// A small icon + text pair on the metadata line.
+class _Meta extends StatelessWidget {
+  const _Meta({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: AppSpacing.xs),
-    child: Row(
+  Widget build(BuildContext context) {
+    final Color color = context.colors.onSurfaceVariant;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Icon(icon, size: AppDimensions.iconSm, color: AppColors.textSecondary),
-        const SizedBox(width: AppSpacing.xs),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: context.textStyles.bodySmall?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
+        Icon(icon, size: AppDimensions.iconSm, color: color),
+        const SizedBox(width: AppSpacing.xxs),
+        Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.textStyles.bodySmall?.copyWith(color: color),
         ),
       ],
-    ),
-  );
+    );
+  }
 }

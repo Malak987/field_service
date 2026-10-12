@@ -33,8 +33,10 @@ abstract class AppLocalizations {
 
   /// Supported locales of the application.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
+    // German first: it is the default locale, so an unmatched platform locale
+    // resolves here rather than to English.
     Locale('de'),
+    Locale('en'),
   ];
 
   // --- General & Language Switcher -----------------------------------------
@@ -129,6 +131,8 @@ abstract class AppLocalizations {
   String get technicianHomeTitle;
   String get welcomeTechnician;
   String get pageNotFoundTitle;
+  String get pageNotFoundSubtitle;
+  String get pageNotFoundAction;
   String get viewJobsButton;
 
   // --- Home Dashboard, Navigation & Account ---------------------------------
@@ -342,10 +346,10 @@ abstract class AppLocalizations {
   String get adminDeletedTechnicianNotice;
   String get adminOwnAccountNotice;
   String get adminAdministratorNotice;
-  String adminAccountsCountLabel(String count);
-  String adminAssignedJobsLabel(String count);
-  String adminCompletedJobsLabel(String count);
-  String adminCustomerJobsCountLabel(String count);
+  String adminAccountsCountLabel(int count);
+  String adminAssignedJobsLabel(int count);
+  String adminCompletedJobsLabel(int count);
+  String adminCustomerJobsCountLabel(int count);
   String adminBlockedOnLabel(String date);
   String adminDeletedOnLabel(String date);
   String get adminBlockTechnicianConfirmTitle;
@@ -375,6 +379,34 @@ abstract class AppLocalizations {
   String get adminErrorCustomerBlocked;
   String get adminErrorNetwork;
   String get adminErrorUnknown;
+
+  // --- Technician: create customer & job -----------------------------------
+  String get technicianCreateJobTitle;
+  String get technicianCreateJobSubtitle;
+  String get technicianCreateJobButton;
+  String get technicianCreateJobEntryTitle;
+  String get technicianCreateJobEntrySubtitle;
+  String get technicianJobCustomerSection;
+  String get technicianJobDetailsSection;
+  String get technicianJobCustomerModeNew;
+  String get technicianJobCustomerModeExisting;
+  String get technicianSelectExistingCustomerTitle;
+  String get technicianAccessibleCustomersEmptySubtitle;
+  String get technicianAccessibleCustomersError;
+  String get technicianJobDescriptionHint;
+  String get technicianJobAssignedToLabel;
+  String get technicianJobAssignedToHint;
+  String technicianCreateJobSuccess(int jobNumber);
+  String get technicianCreateJobQueued;
+  String get technicianCreateJobFailed;
+  String get technicianCreateJobErrorUnauthorized;
+  String get technicianCreateJobErrorCustomerNotFound;
+  String get technicianCreateJobErrorCustomerBlocked;
+  String get technicianCreateJobErrorInvalidInput;
+  String get technicianCreateJobErrorNotAuthenticated;
+  String get technicianCreateJobErrorUnknown;
+  String validationFieldTooLong(int count);
+  String get validationPhoneInvalid;
 }
 
 class _AppLocalizationsDelegate
@@ -659,6 +691,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pageNotFoundTitle => 'Page not found';
+
+  @override
+  String get pageNotFoundSubtitle =>
+      'This link does not lead anywhere. It may be outdated or incomplete.';
+
+  @override
+  String get pageNotFoundAction => 'Back to start';
 
   @override
   String get viewJobsButton => 'View Jobs';
@@ -1285,16 +1324,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminAdministratorNotice => "Administrator account — technician management does not apply to it.";
 
   @override
-  String adminAccountsCountLabel(String count) => '$count accounts';
+  String adminAccountsCountLabel(int count) => '$count accounts';
 
   @override
-  String adminAssignedJobsLabel(String count) => '$count assigned';
+  String adminAssignedJobsLabel(int count) => '$count assigned';
 
   @override
-  String adminCompletedJobsLabel(String count) => '$count completed';
+  String adminCompletedJobsLabel(int count) => '$count completed';
 
   @override
-  String adminCustomerJobsCountLabel(String count) => '$count jobs';
+  String adminCustomerJobsCountLabel(int count) => '$count jobs';
 
   @override
   String adminBlockedOnLabel(String date) => 'Blocked on $date';
@@ -1383,6 +1422,105 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get adminErrorUnknown => "The action failed. Please try again.";
 
+  // --- Technician: create customer & job -----------------------------------
+
+  @override
+  String get technicianCreateJobTitle => 'Create Customer & Job';
+
+  @override
+  String get technicianCreateJobSubtitle =>
+      'Register a customer on site and create their job in one step. The job '
+      'is always assigned to you.';
+
+  @override
+  String get technicianCreateJobButton => 'Create Customer & Job';
+
+  @override
+  String get technicianCreateJobEntryTitle => 'New customer & job';
+
+  @override
+  String get technicianCreateJobEntrySubtitle =>
+      'Register a customer and create their job.';
+
+  @override
+  String get technicianJobCustomerSection => 'Customer';
+
+  @override
+  String get technicianJobDetailsSection => 'Job details';
+
+  @override
+  String get technicianJobCustomerModeNew => 'New customer';
+
+  @override
+  String get technicianJobCustomerModeExisting => 'Existing customer';
+
+  @override
+  String get technicianSelectExistingCustomerTitle =>
+      'Select a customer you work for';
+
+  @override
+  String get technicianAccessibleCustomersEmptySubtitle =>
+      'You can create a job for a customer you already work for. For anybody '
+      'else, register a new customer.';
+
+  @override
+  String get technicianAccessibleCustomersError =>
+      'Your customers could not be loaded. You can still register a new '
+      'customer.';
+
+  @override
+  String get technicianJobDescriptionHint => 'What the customer asked for';
+
+  @override
+  String get technicianJobAssignedToLabel => 'Assigned technician';
+
+  @override
+  String get technicianJobAssignedToHint =>
+      'Jobs you create are always assigned to you.';
+
+  @override
+  String technicianCreateJobSuccess(int jobNumber) =>
+      'Job #$jobNumber created.';
+
+  @override
+  String get technicianCreateJobQueued =>
+      'Saved on this device — it will be sent to the server as soon as you '
+      'are online.';
+
+  @override
+  String get technicianCreateJobFailed =>
+      'The job could not be created. Please try again.';
+
+  @override
+  String get technicianCreateJobErrorUnauthorized =>
+      'You are not allowed to create this job.';
+
+  @override
+  String get technicianCreateJobErrorCustomerNotFound =>
+      'This customer no longer exists.';
+
+  @override
+  String get technicianCreateJobErrorCustomerBlocked =>
+      'This customer is blocked or deleted and cannot receive a new job.';
+
+  @override
+  String get technicianCreateJobErrorInvalidInput =>
+      'Please check the form and try again.';
+
+  @override
+  String get technicianCreateJobErrorNotAuthenticated =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get technicianCreateJobErrorUnknown =>
+      'The server refused the request. Please try again.';
+
+  @override
+  String validationFieldTooLong(int count) =>
+      'Use at most $count characters.';
+
+  @override
+  String get validationPhoneInvalid => 'Please enter a valid phone number.';
 }
 
 /// German (`de`) translations — natural, idiomatic German for professional field service use.
@@ -1644,6 +1782,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pageNotFoundTitle => 'Seite nicht gefunden';
+
+  @override
+  String get pageNotFoundSubtitle =>
+      'Dieser Link führt ins Leere. Er ist möglicherweise veraltet oder '
+      'unvollständig.';
+
+  @override
+  String get pageNotFoundAction => 'Zur Startseite';
 
   @override
   String get viewJobsButton => 'Aufträge anzeigen';
@@ -2281,16 +2427,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get adminAdministratorNotice => "Administrator-Konto — die Technikerverwaltung greift hier nicht.";
 
   @override
-  String adminAccountsCountLabel(String count) => '$count Konten';
+  String adminAccountsCountLabel(int count) => '$count Konten';
 
   @override
-  String adminAssignedJobsLabel(String count) => '$count zugewiesen';
+  String adminAssignedJobsLabel(int count) => '$count zugewiesen';
 
   @override
-  String adminCompletedJobsLabel(String count) => '$count abgeschlossen';
+  String adminCompletedJobsLabel(int count) => '$count abgeschlossen';
 
   @override
-  String adminCustomerJobsCountLabel(String count) => '$count Aufträge';
+  String adminCustomerJobsCountLabel(int count) => '$count Aufträge';
 
   @override
   String adminBlockedOnLabel(String date) => 'Gesperrt am $date';
@@ -2379,6 +2525,107 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get adminErrorUnknown => "Die Aktion ist fehlgeschlagen. Bitte erneut versuchen.";
 
+  // --- Technician: create customer & job -----------------------------------
+
+  @override
+  String get technicianCreateJobTitle => 'Kunde & Auftrag anlegen';
+
+  @override
+  String get technicianCreateJobSubtitle =>
+      'Erfasse einen Kunden vor Ort und lege seinen Auftrag in einem Schritt '
+      'an. Der Auftrag wird immer dir zugewiesen.';
+
+  @override
+  String get technicianCreateJobButton => 'Kunde & Auftrag anlegen';
+
+  @override
+  String get technicianCreateJobEntryTitle => 'Neuer Kunde & Auftrag';
+
+  @override
+  String get technicianCreateJobEntrySubtitle =>
+      'Kunden erfassen und Auftrag anlegen.';
+
+  @override
+  String get technicianJobCustomerSection => 'Kunde';
+
+  @override
+  String get technicianJobDetailsSection => 'Auftragsdaten';
+
+  @override
+  String get technicianJobCustomerModeNew => 'Neuer Kunde';
+
+  @override
+  String get technicianJobCustomerModeExisting => 'Bestehender Kunde';
+
+  @override
+  String get technicianSelectExistingCustomerTitle =>
+      'Wähle einen Kunden, für den du arbeitest';
+
+  @override
+  String get technicianAccessibleCustomersEmptySubtitle =>
+      'Du kannst einen Auftrag für Kunden anlegen, für die du bereits '
+      'arbeitest. Für alle anderen erfasse bitte einen neuen Kunden.';
+
+  @override
+  String get technicianAccessibleCustomersError =>
+      'Deine Kunden konnten nicht geladen werden. Du kannst trotzdem einen '
+      'neuen Kunden erfassen.';
+
+  @override
+  String get technicianJobDescriptionHint => 'Was der Kunde benötigt';
+
+  @override
+  String get technicianJobAssignedToLabel => 'Zugewiesener Techniker';
+
+  @override
+  String get technicianJobAssignedToHint =>
+      'Aufträge, die du anlegst, werden immer dir zugewiesen.';
+
+  @override
+  String technicianCreateJobSuccess(int jobNumber) =>
+      'Auftrag #$jobNumber erstellt.';
+
+  @override
+  String get technicianCreateJobQueued =>
+      'Auf diesem Gerät gespeichert — die Übertragung an den Server erfolgt, '
+      'sobald du online bist.';
+
+  @override
+  String get technicianCreateJobFailed =>
+      'Der Auftrag konnte nicht angelegt werden. Bitte erneut versuchen.';
+
+  @override
+  String get technicianCreateJobErrorUnauthorized =>
+      'Du darfst diesen Auftrag nicht anlegen.';
+
+  @override
+  String get technicianCreateJobErrorCustomerNotFound =>
+      'Dieser Kunde existiert nicht mehr.';
+
+  @override
+  String get technicianCreateJobErrorCustomerBlocked =>
+      'Dieser Kunde ist gesperrt oder gelöscht und kann keinen neuen Auftrag '
+      'erhalten.';
+
+  @override
+  String get technicianCreateJobErrorInvalidInput =>
+      'Bitte prüfe das Formular und versuche es erneut.';
+
+  @override
+  String get technicianCreateJobErrorNotAuthenticated =>
+      'Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.';
+
+  @override
+  String get technicianCreateJobErrorUnknown =>
+      'Der Server hat die Anfrage abgelehnt. Bitte erneut versuchen.';
+
+  @override
+  String validationFieldTooLong(int count) =>
+      'Verwende höchstens $count Zeichen.';
+
+  @override
+  String get validationPhoneInvalid =>
+      'Bitte gib eine gültige Telefonnummer ein.';
 }
 
 /// Ergonomic shorthand on [BuildContext] for localized strings.

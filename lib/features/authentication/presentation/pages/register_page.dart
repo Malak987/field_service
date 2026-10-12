@@ -108,7 +108,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     title: l10n.registerTitle,
                     subtitle: l10n.registerSubtitle,
                   ),
-                  const SizedBox(height: AppSpacing.xxxl),
+                  const SizedBox(height: AppSpacing.xl),
                   AuthSuccessMessage(message: l10n.successRegistrationPending),
                   const SizedBox(height: AppSpacing.xl),
                   AuthSecondaryButton(
@@ -131,7 +131,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       title: l10n.registerTitle,
                       subtitle: l10n.registerSubtitle,
                     ),
-                    const SizedBox(height: AppSpacing.xxxl),
+                    const SizedBox(height: AppSpacing.xl),
                     BlocBuilder<AuthenticationCubit, AuthenticationState>(
                       buildWhen:
                           (

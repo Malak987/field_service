@@ -34,13 +34,37 @@ abstract final class AppColors {
   static const Color surface = Color(0xFFFFFFFF);
 
   /// Primary text (headings, body copy, input values).
-  static const Color textPrimary = Color(0xFF2A2522);
+  ///
+  /// A near-black neutral (not a warm brown) so long German body copy stays
+  /// crisp on the cream canvas: contrast against [background] is ~12.4:1 and
+  /// against [surface] ~14.9:1.
+  static const Color textPrimary = Color(0xFF242424);
 
   /// Secondary text (hints, captions, subtitles, helper text).
-  static const Color textSecondary = Color(0xFF514A45);
+  /// Contrast ~7.3:1 on [surface] — still above the AAA body threshold.
+  static const Color textSecondary = Color(0xFF55504B);
+
+  /// Tertiary text: metadata, timestamps, unit suffixes. Only ever used at
+  /// `bodySmall` size or larger, where it still clears 4.5:1 on [surface].
+  static const Color textTertiary = Color(0xFF7A736C);
 
   /// Hairline borders and dividers (warm neutral).
   static const Color border = Color(0xFFE5DDD2);
+
+  /// Stronger border for separating major sections and for the hairline under
+  /// a light app bar, where [border] alone disappears against [background].
+  static const Color borderStrong = Color(0xFFD8CFC2);
+
+  /// Muted surface: table headers, inset panels, disabled field fills. One
+  /// step below [surface] so a section can be inset without a second card.
+  static const Color surfaceMuted = Color(0xFFFBF8F2);
+
+  /// Foreground that always sits on top of [primary] / [primaryDark].
+  static const Color onBrand = Color(0xFFFFFFFF);
+
+  /// Burgundy wash strong enough to carry a selected row or an active filter
+  /// chip without becoming a second card.
+  static const Color brandContainer = Color(0x1F7B1E28);
 
   // --- Semantic colours -----------------------------------------------------
   // Used by job status indicators, sync state and form validation.

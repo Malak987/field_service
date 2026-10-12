@@ -11,7 +11,9 @@ import 'package:field_service/core/sync/sync_queue.dart';
 
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
+import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
+import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
@@ -97,6 +99,28 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
 
   @override
   Future<JobCustomerInfo?> getJobCustomerInfo(String jobId) async => null;
+
+  @override
+  Future<List<AccessibleCustomer>> getTechnicianAccessibleCustomers({
+    String search = '',
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<Job> technicianCreateCustomerAndJob({
+    required String jobId,
+    required String customerId,
+    required NewCustomerDraft customer,
+    required String jobType,
+    String? description,
+  }) async => throw UnimplementedError();
+
+  @override
+  Future<Job> technicianCreateJobForCustomer({
+    required String jobId,
+    required String customerId,
+    required String jobType,
+    String? description,
+  }) async => throw UnimplementedError();
 
   @override
   Future<void> updateJobStatus({

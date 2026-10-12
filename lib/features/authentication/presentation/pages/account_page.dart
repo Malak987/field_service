@@ -5,6 +5,8 @@ import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
+import 'package:field_service/core/widgets/app_section_header.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
@@ -40,28 +42,36 @@ class AccountPage extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppSpacing.pagePadding,
-          child: Column(
+          child: AppContentWidth(
+            maxWidth: AppDimensions.contentMaxWidth,
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _IdentityCard(user: user),
-              const SizedBox(height: AppSpacing.lg),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        l10n.selectLanguage,
-                        style: context.textStyles.titleMedium,
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      const LanguageSwitcher(),
-                    ],
-                  ),
+              _IdentityBlock(user: user),
+              const SizedBox(height: AppSpacing.xxl),
+              // This is the ONE home for the language choice inside the signed-in
+              // app: a labelled row, not a panel with a heading inside it.
+              AppSectionHeader(title: l10n.selectLanguage),
+              Container(
+                decoration: BoxDecoration(
+                  color: context.colors.surface,
+                  borderRadius: AppRadius.card,
+                  border: Border.all(color: context.colors.outlineVariant),
+                ),
+                padding: const EdgeInsetsDirectional.only(
+                  start: AppSpacing.lg,
+                  end: AppSpacing.sm,
+                  top: AppSpacing.xs,
+                  bottom: AppSpacing.xs,
+                ),
+                child: const Row(
+                  children: <Widget>[
+                    Expanded(child: SizedBox.shrink()),
+                    LanguageSwitcher(),
+                  ],
                 ),
               ),
-              const SizedBox(height: AppSpacing.xxxl),
+              const SizedBox(height: AppSpacing.xxl),
               FilledButton.icon(
                 key: const Key('account_sign_out'),
                 onPressed: isSigningOut
@@ -74,6 +84,7 @@ class AccountPage extends StatelessWidget {
                 label: Text(l10n.logoutButton),
               ),
             ],
+            ),
           ),
         ),
       ),
@@ -83,8 +94,8 @@ class AccountPage extends StatelessWidget {
 
 /// The identity card: avatar (initials of the real name or email), name,
 /// e-mail, role badge and the employee code when the backend provides one.
-class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.user});
+class _IdentityBlock extends StatelessWidget {
+  const _IdentityBlock({required this.user});
 
   final AppUser? user;
 
@@ -116,15 +127,14 @@ class _IdentityCard extends StatelessWidget {
     final AppLocalizations l10n = context.l10n;
     final AppUser? user = this.user;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
+    // Open block on the canvas, not a card: this is the page's title, and the
+    // settings surface below it is the only thing that needs a border.
+    return Column(
           children: <Widget>[
             Container(
               key: const Key('account_avatar'),
-              width: 72,
-              height: 72,
+              width: 64,
+              height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.primarySurface,
@@ -132,8 +142,8 @@ class _IdentityCard extends StatelessWidget {
               alignment: Alignment.center,
               child: Text(
                 _initials,
-                style: context.textStyles.headlineMedium?.copyWith(
-                  color: context.colors.primary,
+                style: context.textStyles.titleLarge?.copyWith(
+                  color: AppColors.primary,
                 ),
               ),
             ),
@@ -190,8 +200,6 @@ class _IdentityCard extends StatelessWidget {
               ),
             ],
           ],
-        ),
-      ),
-    );
+        );
   }
 }

@@ -1,7 +1,10 @@
+import 'package:field_service/features/jobs/data/models/accessible_customer_model.dart';
 import 'package:field_service/features/jobs/data/models/job_customer_info_model.dart';
 import 'package:field_service/features/jobs/data/models/job_model.dart';
+import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
+import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -34,6 +37,55 @@ abstract interface class JobsRemoteDataSource {
   /// caller is an active admin). This data source never reads
   /// `public.customers` directly — that table remains admin-only in RLS.
   Future<JobCustomerInfo?> getJobCustomerInfo(String jobId);
+
+  /// Calls the `technician_accessible_customers(p_search)` SECURITY DEFINER
+  /// RPC — the technician's ONLY customer read.
+  ///
+  /// Authorization happens server-side inside the function: it returns zero
+  /// rows unless the caller is an active technician, and then only the
+  /// customers already referenced by a job assigned to that technician.
+  /// `public.customers` stays admin-only in RLS; this data source never
+  /// selects from it directly.
+  Future<List<AccessibleCustomer>> getTechnicianAccessibleCustomers({
+    String search,
+  });
+
+  /// Calls the `technician_create_customer_and_job(...)` SECURITY DEFINER
+  /// RPC — the technician's ONE unit for "new customer + job".
+  ///
+  /// The server verifies that the caller is an ACTIVE TECHNICIAN, that name
+  /// and address are present and that the category is supported. It inserts
+  /// the customer (stable client id, `ON CONFLICT DO NOTHING`) and the job in
+  /// ONE transaction, assigns the job to the CALLER (resolved from
+  /// `auth.uid()` — never from a client value), generates `job_number` from
+  /// the identity column, stamps every timestamp with `now()`, appends the
+  /// `job_created` / `job_assigned` events and returns the job row. A replay
+  /// with the same [jobId] returns the already-created row instead of
+  /// creating a second one.
+  ///
+  /// Throws [TechnicianJobCreationRejectedException] for a refused creation
+  /// (reason mapped from the RPC's SQLSTATE).
+  Future<Job> technicianCreateCustomerAndJob({
+    required String jobId,
+    required String customerId,
+    required NewCustomerDraft customer,
+    required String jobType,
+    String? description,
+  });
+
+  /// Calls the `technician_create_job_for_customer(...)` SECURITY DEFINER
+  /// RPC — a job for an EXISTING customer the technician may work for.
+  ///
+  /// Same server-authoritative contract as
+  /// [technicianCreateCustomerAndJob], plus the access rule: the customer
+  /// must already be linked to one of the caller's own jobs, otherwise the
+  /// RPC refuses with 42501.
+  Future<Job> technicianCreateJobForCustomer({
+    required String jobId,
+    required String customerId,
+    required String jobType,
+    String? description,
+  });
 
   /// Calls the `create_job(...)` SECURITY DEFINER RPC — the ONLY write path
   /// for creating and assigning a job (admin action).
@@ -181,6 +233,126 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
 
     return JobCustomerInfoModel.fromRpcRow(rows.first as Map<String, dynamic>);
   }
+
+  @override
+  Future<List<AccessibleCustomer>> getTechnicianAccessibleCustomers({
+    String search = '',
+  }) async {
+    // The RPC is the authorizer: for a caller who is not an active
+    // technician it returns zero rows (never data, never an error).
+    final List<dynamic> rows = await supabase.rpc(
+      'technician_accessible_customers',
+      params: <String, dynamic>{'p_search': search.trim().isEmpty ? null : search.trim()},
+    );
+
+    return rows
+        .map(
+          (dynamic row) =>
+              AccessibleCustomerModel.fromRpcRow(row as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  @override
+  Future<Job> technicianCreateCustomerAndJob({
+    required String jobId,
+    required String customerId,
+    required NewCustomerDraft customer,
+    required String jobType,
+    String? description,
+  }) {
+    return _technicianCreateJob(
+      function: 'technician_create_customer_and_job',
+      params: <String, dynamic>{
+        'p_customer_id': customerId,
+        'p_job_id': jobId,
+        'p_name': customer.name,
+        'p_address': customer.address,
+        'p_phone': customer.phone,
+        'p_email': customer.email,
+        'p_city': customer.city,
+        'p_postal_code': customer.postalCode,
+        'p_notes': customer.notes,
+        'p_job_type': jobType,
+        'p_description': description,
+      },
+    );
+  }
+
+  @override
+  Future<Job> technicianCreateJobForCustomer({
+    required String jobId,
+    required String customerId,
+    required String jobType,
+    String? description,
+  }) {
+    return _technicianCreateJob(
+      function: 'technician_create_job_for_customer',
+      params: <String, dynamic>{
+        'p_customer_id': customerId,
+        'p_job_id': jobId,
+        'p_job_type': jobType,
+        'p_description': description,
+      },
+    );
+  }
+
+  /// Shared plumbing of both technician creation RPCs: one row in, one
+  /// refusal mapping out. The client sends only the stable ids and the form
+  /// facts — no employee id, no job number, no timestamp.
+  Future<Job> _technicianCreateJob({
+    required String function,
+    required Map<String, dynamic> params,
+  }) async {
+    try {
+      final List<dynamic> rows = await supabase.rpc(function, params: params);
+
+      if (rows.isEmpty) {
+        throw StateError('$function returned no row.');
+      }
+
+      return JobModel.fromMap(rows.first as Map<String, dynamic>);
+    } on PostgrestException catch (error) {
+      // Map the RPC's stable error codes onto the typed domain refusal so
+      // the UI can explain WHY the creation was refused.
+      throw TechnicianJobCreationRejectedException(
+        reason: _technicianRejectReason(error.code),
+        serverMessage: error.message,
+      );
+    }
+  }
+
+  /// Maps the technician RPC error codes (see
+  /// `technician_customer_job_setup.sql`) onto [TechnicianJobRejectReason].
+  /// Unknown codes stay [TechnicianJobRejectReason.unknown] — a refusal is
+  /// never silently treated as success.
+  static TechnicianJobRejectReason _technicianRejectReason(String? code) {
+    return switch (code) {
+      _sqlUnauthorized => TechnicianJobRejectReason.unauthorized,
+      _sqlCustomerNotFound => TechnicianJobRejectReason.customerNotFound,
+      _sqlCustomerBlocked => TechnicianJobRejectReason.customerBlocked,
+      _sqlInvalidInput => TechnicianJobRejectReason.invalidInput,
+      _sqlNotAuthenticated => TechnicianJobRejectReason.notAuthenticated,
+      _ => TechnicianJobRejectReason.unknown,
+    };
+  }
+
+  // The RPCs' refusal codes — one place, mirrored from the SQL migration.
+  /// `insufficient_privilege`: not an active technician, or a customer this
+  /// technician may not work for.
+  static const String _sqlUnauthorized = '42501';
+
+  /// `no_data_found`: the customer row does not exist.
+  static const String _sqlCustomerNotFound = 'P0002';
+
+  /// The project's own code for a blocked / soft deleted customer.
+  static const String _sqlCustomerBlocked = 'F0008';
+
+  /// `raise_exception`: missing name/address, missing ids, bad category.
+  static const String _sqlInvalidInput = 'P0001';
+
+  /// `invalid_authorization_specification`: no auth session.
+  static const String _sqlNotAuthenticated = '28000';
 
   @override
   Future<Job> createJob({
