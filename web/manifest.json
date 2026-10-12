@@ -1,11 +1,11 @@
 {
-    "name": "field_service",
-    "short_name": "field_service",
+    "name": "Heimwerk",
+    "short_name": "Heimwerk",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Heimwerk – field service management for kitchen and home renovations.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "Field Service",
+  "appName": "Heimwerk",
   "languageEnglish": "English",
   "languageGerman": "Deutsch",
   "selectLanguage": "Select language",
@@ -93,6 +93,7 @@
   "jobsCountLabel": "{count, plural, =1{1 job} other{{count} jobs}}",
   "continueJobButton": "Continue Job",
   "currentJobTitle": "Current Job",
+  "nextJobTitle": "Next Job",
   "noAssignedJobsTitle": "No assigned jobs",
   "noAssignedJobsSubtitle": "New jobs assigned to you will appear here.",
   "nextActionLabel": "Next: {action}",

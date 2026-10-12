@@ -151,6 +151,7 @@ abstract class AppLocalizations {
   String jobsCountLabel(int count);
   String get continueJobButton;
   String get currentJobTitle;
+  String get nextJobTitle;
   String get noAssignedJobsTitle;
   String get noAssignedJobsSubtitle;
   String nextActionLabel(String action);
@@ -482,7 +483,7 @@ class AppLocalizationsEn extends AppLocalizations {
   const AppLocalizationsEn() : super('en');
 
   @override
-  String get appName => 'Field Service';
+  String get appName => 'Heimwerk';
 
   @override
   String get languageEnglish => 'English';
@@ -786,6 +787,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currentJobTitle => 'Current Job';
+
+  @override
+  String get nextJobTitle => 'Next Job';
 
   @override
   String get noAssignedJobsTitle => 'No assigned jobs';
@@ -1650,7 +1654,7 @@ class AppLocalizationsDe extends AppLocalizations {
   const AppLocalizationsDe() : super('de');
 
   @override
-  String get appName => 'Field Service';
+  String get appName => 'Heimwerk';
 
   @override
   String get languageEnglish => 'English';
@@ -1961,6 +1965,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get currentJobTitle => 'Aktueller Auftrag';
+
+  @override
+  String get nextJobTitle => 'Nächster Auftrag';
 
   @override
   String get noAssignedJobsTitle => 'Keine zugewiesenen Aufträge';

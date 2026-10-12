@@ -5,7 +5,12 @@
 /// the backend integration phase starts.
 abstract final class AppConstants {
   /// Human readable application name (window title, share sheets, logs).
-  static const String appName = 'Field Service';
+  ///
+  /// This is the product brand the user sees — it matches the platform
+  /// display names (Android label, iOS `CFBundleDisplayName`, Web title) and
+  /// the wordmark of the bundled logo asset. The Dart package / database /
+  /// bundle identifiers intentionally keep their own technical names.
+  static const String appName = 'Heimwerk';
 
   /// Base file name of the local Drift database.
   ///
