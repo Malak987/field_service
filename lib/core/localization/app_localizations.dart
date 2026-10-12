@@ -239,6 +239,8 @@ abstract class AppLocalizations {
   String get waitingForFileSync;
   String get jobsEmptyTitle;
   String get jobsEmptySubtitle;
+
+  String get createFirstJobButton;
   String get jobsErrorTitle;
   String get jobsErrorSubtitle;
   String get jobsLoadingLabel;
@@ -1011,6 +1013,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get jobsEmptySubtitle => 'New jobs will appear here.';
+
+  @override
+  String get createFirstJobButton => 'Create the first job';
 
   @override
   String get jobsErrorTitle => 'Something went wrong';
@@ -2152,6 +2157,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get jobsEmptySubtitle => 'Neue Aufträge erscheinen hier.';
+
+  @override
+  String get createFirstJobButton => 'Ersten Auftrag anlegen';
 
   @override
   String get jobsErrorTitle => 'Etwas ist schiefgelaufen';

@@ -200,6 +200,7 @@
   },
   "jobsEmptyTitle": "No jobs yet",
   "jobsEmptySubtitle": "New jobs will appear here.",
+  "createFirstJobButton": "Create the first job",
   "jobsErrorTitle": "Something went wrong",
   "jobsErrorSubtitle": "Jobs could not be loaded. Please check your connection and try again.",
   "jobsLoadingLabel": "Loading jobs",

@@ -200,6 +200,7 @@
   },
   "jobsEmptyTitle": "Noch keine Aufträge",
   "jobsEmptySubtitle": "Neue Aufträge erscheinen hier.",
+  "createFirstJobButton": "Ersten Auftrag anlegen",
   "jobsErrorTitle": "Etwas ist schiefgelaufen",
   "jobsErrorSubtitle": "Aufträge konnten nicht geladen werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
   "jobsLoadingLabel": "Aufträge werden geladen",

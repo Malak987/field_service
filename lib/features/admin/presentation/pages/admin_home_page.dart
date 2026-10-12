@@ -15,6 +15,7 @@ import 'package:field_service/core/widgets/app_state_views.dart';
 import 'package:field_service/core/widgets/app_stat_tile.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
+import 'package:field_service/features/authentication/presentation/cubit/authentication_state.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
@@ -36,11 +37,18 @@ import 'package:go_router/go_router.dart';
 ///
 /// 1. header — who you are and what day it is;
 /// 2. the overview — four real counts as tiles, comparable at a glance;
-/// 3. the actions — create a job first, then the two places work is reviewed;
+/// 3. the actions — create a job first, then the other things work starts from;
 /// 4. administration — quiet list rows for the two management areas;
 /// 5. categories;
 /// 6. the most recently touched jobs, so "what moved since I last looked" is
 ///    one glance instead of a trip into the list and a scan for dates.
+///
+/// From [AppDimensions.desktopBreakpoint] up the same six blocks are arranged
+/// differently rather than duplicated: the width cap opens to the wide one and
+/// the three short sections pair up, while the overview and the recent jobs —
+/// the two data-dense blocks — keep the full column, because a row of figures
+/// is only comparable when the tiles stay the same size. Phone layouts are
+/// unaffected: one column, the same order.
 ///
 /// Every number comes from the shared [JobsCubit] (the same local mirror the
 /// jobs list reads). On failure the overview shows an error with a retry — it
@@ -51,41 +59,16 @@ class AdminHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final AppUser? user = context.read<AuthenticationCubit?>()?.state.user;
-    final bool isLoading = context.select<AuthenticationCubit, bool>(
-      (AuthenticationCubit cubit) => cubit.state.isLoading,
-    );
+    // One number drives both the width cap and the arrangement, so the two can
+    // never disagree at the breakpoint.
+    final bool isWide =
+        MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
 
     return BlocProvider<JobsCubit>(
       create: (_) => sl<JobsCubit>()..loadJobs(),
       child: AppPageBody(
-        appBar: AppBar(
-          title: Text(l10n.adminDashboardTitle),
-          actions: <Widget>[
-            // Account & settings live next to sign-out rather than buried in a
-            // tab: language, password and profile are all reached from there.
-            IconButton(
-              key: const Key('nav_account'),
-              tooltip: l10n.accountSettingsTooltip,
-              icon: const Icon(
-                Icons.person_outline_rounded,
-                size: AppDimensions.iconMd,
-              ),
-              onPressed: () => context.push(AppRoutes.account),
-            ),
-            IconButton(
-              tooltip: l10n.logoutButton,
-              icon: const Icon(
-                Icons.logout_outlined,
-                size: AppDimensions.iconMd,
-              ),
-              onPressed: isLoading
-                  ? null
-                  : () => context.read<AuthenticationCubit>().signOut(),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-          ],
-        ),
+        wide: isWide,
+        appBar: const _AdminHomeAppBar(),
         bottomNavigationBar: const AppBottomNav(
           isAdmin: true,
           selectedIndex: 0,
@@ -93,11 +76,7 @@ class AdminHomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            AppDashboardHeader(
-              greeting: _greeting(context, user, l10n),
-              subtitle: l10n.roleAdminLabel,
-              dateLabel: formatFullDate(DateTime.now(), context),
-            ),
+            const _DashboardHeader(),
             const SizedBox(height: AppSpacing.xxl),
             AppSectionHeader(
               title: l10n.overviewTitle,
@@ -106,14 +85,34 @@ class AdminHomePage extends StatelessWidget {
             ),
             const _OverviewStats(),
             const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(title: l10n.quickActionsTitle),
-            const _QuickActions(),
-            const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(title: l10n.adminManagementTitle, showRule: false),
-            const _ManagementList(),
-            const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(title: l10n.categoriesTitle, showRule: false),
-            const _CategoryShortcuts(),
+            // Two arrangements, one set of sections. The desktop row is not a
+            // second design: it is the same three blocks side by side.
+            if (isWide)
+              const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _QuickActionsSection(),
+                        SizedBox(height: AppSpacing.xxl),
+                        _ManagementSection(),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: AppSpacing.xxl),
+                  Expanded(flex: 2, child: _CategoriesSection()),
+                ],
+              )
+            else ...<Widget>[
+              const _QuickActionsSection(),
+              const SizedBox(height: AppSpacing.xxl),
+              const _ManagementSection(),
+              const SizedBox(height: AppSpacing.xxl),
+              const _CategoriesSection(),
+            ],
             const SizedBox(height: AppSpacing.xxl),
             // The heading lives inside the section, not above it: while the
             // jobs are loading this section renders nothing at all, and a
@@ -124,14 +123,81 @@ class AdminHomePage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The dashboard's app bar: the screen title, the account entry and sign-out.
+///
+/// It owns the one piece of session state it needs (whether a sign-out is in
+/// flight, which decides if the button is tappable). Because it listens there
+/// instead of in the page, a sign-out no longer rebuilds the figures, the
+/// actions or the job rows.
+class _AdminHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
+  const _AdminHomeAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final bool isLoading = context.select<AuthenticationCubit, bool>(
+      (AuthenticationCubit cubit) => cubit.state.isLoading,
+    );
+
+    return AppBar(
+      title: Text(l10n.adminDashboardTitle),
+      actions: <Widget>[
+        // Account & settings live next to sign-out rather than buried in a
+        // tab: language, password and profile are all reached from there.
+        IconButton(
+          key: const Key('nav_account'),
+          tooltip: l10n.accountSettingsTooltip,
+          icon: const Icon(
+            Icons.person_outline_rounded,
+            size: AppDimensions.iconMd,
+          ),
+          onPressed: () => context.push(AppRoutes.account),
+        ),
+        IconButton(
+          tooltip: l10n.logoutButton,
+          icon: const Icon(Icons.logout_outlined, size: AppDimensions.iconMd),
+          onPressed: isLoading
+              ? null
+              : () => context.read<AuthenticationCubit>().signOut(),
+        ),
+        const SizedBox(width: AppSpacing.xs),
+      ],
+    );
+  }
+}
+
+/// Who is signed in and what day it is.
+///
+/// It reads the session itself and rebuilds only when the signed-in user
+/// changes, so a name that arrives with the employee record updates three lines
+/// of text and leaves the rest of the dashboard untouched.
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return BlocBuilder<AuthenticationCubit, AuthenticationState>(
+      buildWhen: (AuthenticationState previous, AuthenticationState current) =>
+          previous.user != current.user,
+      builder: (BuildContext context, AuthenticationState state) =>
+          AppDashboardHeader(
+            greeting: _greeting(state.user, l10n),
+            subtitle: l10n.roleAdminLabel,
+            dateLabel: formatFullDate(DateTime.now(), context),
+          ),
+    );
+  }
 
   /// The welcome line, using the employee's real name when the directory has
   /// one and falling back to the address only when it does not.
-  static String _greeting(
-    BuildContext context,
-    AppUser? user,
-    AppLocalizations l10n,
-  ) {
+  static String _greeting(AppUser? user, AppLocalizations l10n) {
     final String? name = user?.name;
     if (name != null && name.trim().isNotEmpty) {
       return l10n.welcomeNameLabel(name.trim());
@@ -141,6 +207,61 @@ class AdminHomePage extends StatelessWidget {
       return l10n.welcomeNameLabel(email.trim());
     }
     return l10n.welcomeAdmin;
+  }
+}
+
+/// Quick actions with their heading — one widget so the phone column and the
+/// desktop row render exactly the same section, never two variants of it.
+class _QuickActionsSection extends StatelessWidget {
+  const _QuickActionsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        AppSectionHeader(title: context.l10n.quickActionsTitle),
+        const _QuickActions(),
+      ],
+    );
+  }
+}
+
+/// The two admin-only management areas with their heading.
+class _ManagementSection extends StatelessWidget {
+  const _ManagementSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        AppSectionHeader(
+          title: context.l10n.adminManagementTitle,
+          showRule: false,
+        ),
+        const _ManagementList(),
+      ],
+    );
+  }
+}
+
+/// The two job categories with their heading.
+class _CategoriesSection extends StatelessWidget {
+  const _CategoriesSection();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        AppSectionHeader(
+          title: context.l10n.categoriesTitle,
+          showRule: false,
+        ),
+        const _CategoryShortcuts(),
+      ],
+    );
   }
 }
 
@@ -255,11 +376,13 @@ class _OverviewError extends StatelessWidget {
   }
 }
 
-/// The three frequent destinations.
+/// The frequent destinations: the two things an administrator creates, then
+/// the two places work is reviewed.
 ///
 /// "Create job" is the only filled button on the screen: one primary action per
-/// screen keeps the hierarchy unambiguous. The other two are outlined and wrap
-/// onto their own line on a small phone.
+/// screen keeps the hierarchy unambiguous. The rest are outlined and wrap onto
+/// their own line on a small phone — a `Wrap`, never a fixed row, so a 320px
+/// screen and a 1200px window both get a layout that fits.
 class _QuickActions extends StatelessWidget {
   const _QuickActions();
 
@@ -281,6 +404,25 @@ class _QuickActions extends StatelessWidget {
           ),
           icon: const Icon(Icons.add_task_outlined, size: AppDimensions.iconMd),
           label: Text(l10n.createJobButton),
+        ),
+        // Creating a customer is the other half of the admin's work: a job
+        // needs a customer first. The route is admin-only (router guard + RLS),
+        // and it is the same form the Customers screen opens.
+        OutlinedButton.icon(
+          key: const Key('nav_create_customer'),
+          onPressed: () => context.push(AppRoutes.customerCreate),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(0, AppDimensions.buttonHeight),
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          ),
+          icon: const Icon(
+            Icons.person_add_outlined,
+            size: AppDimensions.iconMd,
+          ),
+          // "Add customer", not "Customers": the bottom-nav tab already reads
+          // "Customers" on this screen, and a second identical label would make
+          // the two indistinguishable both for a reader and for a test.
+          label: Text(l10n.addCustomer),
         ),
         OutlinedButton.icon(
           key: const Key('nav_jobs'),
@@ -435,6 +577,18 @@ class _RecentJobs extends StatelessWidget {
 
   static const int _limit = 5;
 
+  /// Opens the existing Create Job form and reloads this dashboard's copy on
+  /// return, so a job created from the empty state shows up here immediately
+  /// — the same refresh the jobs list performs after the same route, through
+  /// the same cubit. Nothing new is invented for the offline-first path: the
+  /// form writes locally and queues the push exactly as it always did.
+  Future<void> _createJob(BuildContext context, JobsCubit cubit) async {
+    await context.push(AppRoutes.jobCreate);
+    if (context.mounted) {
+      cubit.loadJobs();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -502,6 +656,17 @@ class _RecentJobs extends StatelessWidget {
               icon: Icons.event_note_outlined,
               title: l10n.jobsEmptyTitle,
               message: l10n.jobsEmptySubtitle,
+              // An empty list is the one moment the next step is obvious, so
+              // the step is offered right here instead of leaving the
+              // administrator to find the button above. The label is its own
+              // string: the quick action already says "Create Job", and two
+              // identical buttons on one screen read as a duplicate.
+              action: FilledButton.icon(
+                key: const Key('create_first_job_button'),
+                onPressed: () => _createJob(context, cubit),
+                icon: const Icon(Icons.add_rounded, size: AppDimensions.iconMd),
+                label: Text(l10n.createFirstJobButton),
+              ),
             ),
           );
         }
@@ -537,8 +702,9 @@ class _RecentJobs extends StatelessWidget {
   }
 }
 
-/// One line of [_RecentJobs]: job number, customer, who holds it, when it last
-/// moved, and the status pill. Everything shown already exists on [Job].
+/// One line of [_RecentJobs]: job number, customer, category, who holds it,
+/// when it last moved, and the status pill. Everything shown already exists on
+/// [Job] — no extra read, no extra query.
 class _RecentJobRow extends StatelessWidget {
   const _RecentJobRow({required this.job});
 
@@ -559,6 +725,10 @@ class _RecentJobRow extends StatelessWidget {
         'jobDetails',
         pathParameters: <String, String>{'id': job.id},
       ),
+      // Two context lines under the title: category and technician, then the
+      // date. Putting all three on one line truncated them on a 360px phone,
+      // and the category is the first thing an administrator looks for.
+      isThreeLine: true,
       contentPadding: const EdgeInsetsDirectional.only(
         start: AppSpacing.lg,
         end: AppSpacing.md,
@@ -586,13 +756,28 @@ class _RecentJobRow extends StatelessWidget {
       ),
       subtitle: Padding(
         padding: const EdgeInsetsDirectional.only(top: AppSpacing.xxs),
-        child: Text(
-          '$holder · ${formatJobDate(job.updatedAt, context)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.textStyles.bodySmall?.copyWith(
-            color: context.colors.onSurfaceVariant,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              '${mapper.jobTypeLabel(job.jobType)} · $holder',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textStyles.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xxs),
+            Text(
+              formatJobDate(job.updatedAt, context),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.textStyles.bodySmall?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
       ),
       trailing: JobStatusBadge(
