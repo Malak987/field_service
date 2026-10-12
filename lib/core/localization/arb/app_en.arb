@@ -194,6 +194,8 @@
   "workDescriptionSavingLabel": "Saving…",
   "completeJobButton": "Complete Job",
   "completionRequirementsTitle": "Completion Requirements",
+  "requirementDoneLabel": "Done",
+  "requirementOpenLabel": "Open",
   "jobCompletedMessage": "Job completed",
   "missingBeforePhotoError": "Missing Before Photo",
   "missingWorkDescriptionError": "Missing Work Description",

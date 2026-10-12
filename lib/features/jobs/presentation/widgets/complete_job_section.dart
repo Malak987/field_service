@@ -200,7 +200,10 @@ class CompleteJobSection extends StatelessWidget {
         ),
         // Why the button cannot be used yet — the same facts as the checklist,
         // spelled out, so a disabled control never leaves the technician
-        // guessing. Files that are merely unsynced are reported above instead.
+        // guessing. Files that are merely unsynced are reported ABOVE the
+        // button instead, and exactly once: repeating "Waiting for files to
+        // finish uploading…" twice on one screen made the state look like two
+        // different problems.
         if (!_allMet) ...<Widget>[
           const SizedBox(height: AppSpacing.sm),
           Row(
@@ -222,29 +225,6 @@ class CompleteJobSection extends StatelessWidget {
               ),
             ],
           ),
-        ] else if (hasPendingUploads || hasFailedUploads) ...<Widget>[
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Icon(
-                Icons.cloud_sync_outlined,
-                size: AppDimensions.iconSm,
-                color: context.colors.onSurfaceVariant,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Expanded(
-                child: Text(
-                  hasFailedUploads
-                      ? l10n.uploadFailedLabel
-                      : l10n.waitingForFileSync,
-                  style: context.textStyles.bodySmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
       ],
     );
@@ -252,6 +232,11 @@ class CompleteJobSection extends StatelessWidget {
 }
 
 /// One line of the completion checklist: ✓ requirement met, ○ still open.
+///
+/// The label is combined with the state word (`Before Photos · Done`), so the
+/// requirement's own name stays on the step that owns it: a checklist that
+/// repeated the step titles verbatim would read out the same string twice on
+/// one screen — the reason the words are joined here instead of duplicated.
 class _RequirementLine extends StatelessWidget {
   const _RequirementLine({super.key, required this.label, required this.met});
 
@@ -260,6 +245,11 @@ class _RequirementLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final String state = met
+        ? l10n.requirementDoneLabel
+        : l10n.requirementOpenLabel;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
       child: Row(
@@ -269,12 +259,12 @@ class _RequirementLine extends StatelessWidget {
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded,
             size: AppDimensions.iconMd,
-            color: met ? AppColors.success : AppColors.textSecondary,
+            color: met ? AppColors.success : context.colors.onSurfaceVariant,
           ),
           const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
-              label,
+              '$label · $state',
               style: context.textStyles.bodyMedium?.copyWith(
                 color: met ? null : context.colors.onSurfaceVariant,
               ),

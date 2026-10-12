@@ -194,6 +194,8 @@
   "workDescriptionSavingLabel": "Speichern…",
   "completeJobButton": "Auftrag abschließen",
   "completionRequirementsTitle": "Abschlussvoraussetzungen",
+  "requirementDoneLabel": "Erledigt",
+  "requirementOpenLabel": "Offen",
   "jobCompletedMessage": "Auftrag abgeschlossen",
   "missingBeforePhotoError": "Vorher-Foto fehlt",
   "missingWorkDescriptionError": "Arbeitsbeschreibung fehlt",

@@ -258,6 +258,8 @@ abstract class AppLocalizations {
   String get missingAfterPhotoError;
   String get missingSignatureError;
   String get internetRequiredToCompleteJob;
+  String get requirementDoneLabel;
+  String get requirementOpenLabel;
   String get unableToCompleteJobError;
   String get waitingForFileSync;
   String get jobsEmptyTitle;
@@ -1037,6 +1039,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get completionRequirementsTitle => 'Completion Requirements';
+
+  @override
+  String get requirementDoneLabel => 'Done';
+
+  @override
+  String get requirementOpenLabel => 'Open';
 
   @override
   String get jobCompletedMessage => 'Job completed';
@@ -2213,6 +2221,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get completionRequirementsTitle => 'Abschlussvoraussetzungen';
+
+  @override
+  String get requirementDoneLabel => 'Erledigt';
+
+  @override
+  String get requirementOpenLabel => 'Offen';
 
   @override
   String get jobCompletedMessage => 'Auftrag abgeschlossen';
