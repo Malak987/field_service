@@ -115,16 +115,9 @@ class AdminHomePage extends StatelessWidget {
             AppSectionHeader(title: l10n.categoriesTitle, showRule: false),
             const _CategoryShortcuts(),
             const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(
-              title: l10n.recentJobsTitle,
-              subtitle: l10n.recentJobsSubtitle,
-              showRule: false,
-              trailing: TextButton(
-                key: const Key('nav_jobs_all'),
-                onPressed: () => context.go(AppRoutes.jobs),
-                child: Text(l10n.recentJobsViewAll),
-              ),
-            ),
+            // The heading lives inside the section, not above it: while the
+            // jobs are loading this section renders nothing at all, and a
+            // heading must not float over an empty gap.
             const _RecentJobs(),
           ],
         ),
@@ -313,7 +306,11 @@ class _QuickActions extends StatelessWidget {
             Icons.people_outline_rounded,
             size: AppDimensions.iconMd,
           ),
-          label: Text(l10n.customersTitle),
+          // NOT l10n.customersTitle: the bottom-nav tab already reads
+          // "Customers", and two identical strings on one screen made
+          // find.text('Customers') ambiguous for every test that taps it.
+          // "View Customers" also matches its sibling "View Jobs".
+          label: Text(l10n.viewCustomersButton),
         ),
       ],
     );
@@ -446,62 +443,97 @@ class _RecentJobs extends StatelessWidget {
       builder: (BuildContext context, JobsState state) {
         final JobsCubit cubit = context.read<JobsCubit>();
 
-        switch (state.status) {
-          case JobsStatus.initial:
-          case JobsStatus.loading:
-            return AppLoadingStateView(label: l10n.jobsLoadingLabel);
-          case JobsStatus.failure:
-            return _OverviewError(
-              onRetry: cubit.loadJobs,
-              retryKey: const Key('recent_jobs_retry'),
-            );
-          case JobsStatus.success:
-            if (state.jobs.isEmpty) {
-              return DecoratedBox(
-                decoration: BoxDecoration(
-                  color: context.colors.surface,
-                  borderRadius: AppRadius.card,
-                  border: Border.all(color: context.colors.outlineVariant),
-                ),
-                child: AppEmptyStateView(
-                  key: const Key('recent_jobs_empty'),
-                  icon: Icons.event_note_outlined,
-                  title: l10n.jobsEmptyTitle,
-                  message: l10n.jobsEmptySubtitle,
-                ),
-              );
-            }
-
-            final List<Job> recent =
-                (<Job>[...state.jobs]..sort(
-                  (Job a, Job b) => b.updatedAt.compareTo(a.updatedAt),
-                )).take(_limit).toList();
-
-            // A Material so each row's ink lands on this surface.
-            return Material(
-              color: context.colors.surface,
-              shape: RoundedRectangleBorder(
-                borderRadius: AppRadius.card,
-                side: BorderSide(color: context.colors.outlineVariant),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: <Widget>[
-                  for (int i = 0; i < recent.length; i++) ...<Widget>[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        indent: AppSpacing.lg,
-                        color: context.colors.outlineVariant,
-                      ),
-                    _RecentJobRow(job: recent[i]),
-                  ],
-                ],
-              ),
-            );
+        // While the jobs are loading this section renders nothing. The
+        // overview above already announces the load; a second spinner reading
+        // the same "Loading jobs" on one screen said the same thing twice and
+        // made find.text('Loading jobs') ambiguous.
+        if (state.status == JobsStatus.initial ||
+            state.status == JobsStatus.loading) {
+          return const SizedBox.shrink();
         }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            AppSectionHeader(
+              title: l10n.recentJobsTitle,
+              subtitle: l10n.recentJobsSubtitle,
+              showRule: false,
+              trailing: TextButton(
+                key: const Key('nav_jobs_all'),
+                onPressed: () => context.go(AppRoutes.jobs),
+                child: Text(l10n.recentJobsViewAll),
+              ),
+            ),
+            _body(context, state, cubit, l10n),
+          ],
+        );
       },
     );
+  }
+
+  Widget _body(
+    BuildContext context,
+    JobsState state,
+    JobsCubit cubit,
+    AppLocalizations l10n,
+  ) {
+    switch (state.status) {
+      case JobsStatus.initial:
+      case JobsStatus.loading:
+        // Unreachable: the caller short-circuits both. Kept explicit so the
+        // switch stays exhaustive over JobsStatus.
+        return const SizedBox.shrink();
+      case JobsStatus.failure:
+        return _OverviewError(
+          onRetry: cubit.loadJobs,
+          retryKey: const Key('recent_jobs_retry'),
+        );
+      case JobsStatus.success:
+        if (state.jobs.isEmpty) {
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.colors.surface,
+              borderRadius: AppRadius.card,
+              border: Border.all(color: context.colors.outlineVariant),
+            ),
+            child: AppEmptyStateView(
+              key: const Key('recent_jobs_empty'),
+              icon: Icons.event_note_outlined,
+              title: l10n.jobsEmptyTitle,
+              message: l10n.jobsEmptySubtitle,
+            ),
+          );
+        }
+
+        final List<Job> recent =
+            (<Job>[...state.jobs]..sort(
+              (Job a, Job b) => b.updatedAt.compareTo(a.updatedAt),
+            )).take(_limit).toList();
+
+        // A Material so each row's ink lands on this surface.
+        return Material(
+          color: context.colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.card,
+            side: BorderSide(color: context.colors.outlineVariant),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: <Widget>[
+              for (int i = 0; i < recent.length; i++) ...<Widget>[
+                if (i > 0)
+                  Divider(
+                    height: 1,
+                    indent: AppSpacing.lg,
+                    color: context.colors.outlineVariant,
+                  ),
+                _RecentJobRow(job: recent[i]),
+              ],
+            ],
+          ),
+        );
+    }
   }
 }
 

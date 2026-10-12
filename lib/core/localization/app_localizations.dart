@@ -134,6 +134,7 @@ abstract class AppLocalizations {
   String get pageNotFoundSubtitle;
   String get pageNotFoundAction;
   String get viewJobsButton;
+  String get viewCustomersButton;
 
   // --- Home Dashboard, Navigation & Account ---------------------------------
   String welcomeNameLabel(String name);
@@ -712,6 +713,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewJobsButton => 'View Jobs';
+
+  @override
+  String get viewCustomersButton => 'View Customers';
 
   @override
   String welcomeNameLabel(String name) => 'Welcome, $name';
@@ -1840,6 +1844,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get viewJobsButton => 'Aufträge anzeigen';
+
+  @override
+  String get viewCustomersButton => 'Kunden anzeigen';
 
   @override
   String welcomeNameLabel(String name) => 'Willkommen, $name';

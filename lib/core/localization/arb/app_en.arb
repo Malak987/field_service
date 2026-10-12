@@ -78,6 +78,7 @@
   "pageNotFoundSubtitle": "This link does not lead anywhere. It may be outdated or incomplete.",
   "pageNotFoundAction": "Back to start",
   "viewJobsButton": "View Jobs",
+  "viewCustomersButton": "View Customers",
   "welcomeNameLabel": "Welcome, {name}",
   "roleAdminLabel": "Administrator",
   "roleTechnicianLabel": "Technician",

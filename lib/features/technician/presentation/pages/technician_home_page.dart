@@ -540,17 +540,25 @@ class _SecondaryAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The label is a plain Text, NOT a Flexible. These buttons live in a
+    // Wrap, which hands its children an unbounded width; `OutlinedButton.icon`
+    // lays icon and label out in a `Row(mainAxisSize.min)`, and a Flexible
+    // child there either trips "children have non-zero flex but incoming width
+    // constraints are unbounded" or — on SDKs that already wrap the label in a
+    // Flexible — becomes a ParentDataWidget with no Flex ancestor. Both
+    // crashed the technician home outright. `_QuickActions` on the admin
+    // dashboard has always passed a plain Text for the same reason; a short
+    // localized label sizes itself and the Wrap moves it to the next line.
     return OutlinedButton.icon(
       key: buttonKey,
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         alignment: AlignmentDirectional.centerStart,
+        minimumSize: const Size(0, AppDimensions.buttonHeight),
         padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
       ),
       icon: Icon(icon, size: AppDimensions.iconMd),
-      label: Flexible(
-        child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
+      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 }

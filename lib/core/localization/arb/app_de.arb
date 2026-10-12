@@ -78,6 +78,7 @@
   "pageNotFoundSubtitle": "Dieser Link führt ins Leere. Er ist möglicherweise veraltet oder unvollständig.",
   "pageNotFoundAction": "Zur Startseite",
   "viewJobsButton": "Aufträge anzeigen",
+  "viewCustomersButton": "Kunden anzeigen",
   "welcomeNameLabel": "Willkommen, {name}",
   "roleAdminLabel": "Administrator",
   "roleTechnicianLabel": "Techniker",
