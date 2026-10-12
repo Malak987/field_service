@@ -267,11 +267,15 @@ class _JobsListSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
+    // A Material, not a decorated Container: each row is an InkWell and the
+    // splash it paints lands on the nearest Material ancestor. Behind a plain
+    // Container the highlight was drawn underneath this surface and stayed
+    // invisible; the shape carries the same hairline border and radius.
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: context.colors.outlineVariant),
+        side: BorderSide(color: context.colors.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(

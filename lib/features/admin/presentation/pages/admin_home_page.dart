@@ -364,11 +364,15 @@ class _ManagementList extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
+    // A Material, not a decorated Container: the ink a ListTile paints on tap
+    // lands on the nearest Material ancestor, so behind a plain Container the
+    // splash was drawn underneath this surface and never became visible. The
+    // shape carries the same hairline border and radius the Container had.
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.card,
-        border: Border.all(color: context.colors.outlineVariant),
+        side: BorderSide(color: context.colors.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(

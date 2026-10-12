@@ -343,11 +343,15 @@ class _CurrentJobCard extends StatelessWidget {
       pathParameters: <String, String>{'id': job.id},
     );
 
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.surface,
+    // A Material, not a decorated Container: this card is an InkWell and the
+    // splash lands on the nearest Material ancestor. Behind a plain Container
+    // the highlight was drawn underneath this surface and never showed; the
+    // shape carries the same hairline border and radius.
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.card,
-        border: Border.all(color: context.colors.outlineVariant),
+        side: BorderSide(color: context.colors.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
