@@ -158,7 +158,7 @@ class _ActivityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color muted = context.colors.onSurfaceVariant;
-    final String syncLabel = entry.syncLabel;
+    final String? syncLabel = entry.syncLabel;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

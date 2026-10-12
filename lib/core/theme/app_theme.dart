@@ -4,6 +4,8 @@ import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 
+import 'app_spacing.dart';
+
 /// Builds the single fixed brand [ThemeData] of the application.
 ///
 /// The app deliberately ships ONE theme — a premium, warm "European field
