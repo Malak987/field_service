@@ -462,5 +462,14 @@
       }
     }
   },
-  "validationPhoneInvalid": "Please enter a valid phone number."
+  "validationPhoneInvalid": "Please enter a valid phone number.",
+  "accountSettingsTooltip": "Account & settings",
+  "recentJobsTitle": "Recent jobs",
+  "recentJobsSubtitle": "The most recently updated jobs.",
+  "recentJobsViewAll": "View all",
+  "unassignedLabel": "Unassigned",
+  "adminOverviewSubtitle": "Every job in the system, by state.",
+  "technicianOverviewSubtitle": "Your own jobs, by state.",
+  "dashboardOverviewErrorTitle": "Overview unavailable",
+  "dashboardOverviewErrorMessage": "The job figures could not be loaded. Retry to refresh them."
 }

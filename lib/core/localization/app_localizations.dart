@@ -407,6 +407,17 @@ abstract class AppLocalizations {
   String get technicianCreateJobErrorUnknown;
   String validationFieldTooLong(int count);
   String get validationPhoneInvalid;
+
+  // --- Dashboards --------------------------------------------------------
+  String get accountSettingsTooltip;
+  String get recentJobsTitle;
+  String get recentJobsSubtitle;
+  String get recentJobsViewAll;
+  String get unassignedLabel;
+  String get adminOverviewSubtitle;
+  String get technicianOverviewSubtitle;
+  String get dashboardOverviewErrorTitle;
+  String get dashboardOverviewErrorMessage;
 }
 
 class _AppLocalizationsDelegate
@@ -1521,6 +1532,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validationPhoneInvalid => 'Please enter a valid phone number.';
+
+  @override
+  String get accountSettingsTooltip =>
+      'Account & settings';
+
+  @override
+  String get recentJobsTitle =>
+      'Recent jobs';
+
+  @override
+  String get recentJobsSubtitle =>
+      'The most recently updated jobs.';
+
+  @override
+  String get recentJobsViewAll =>
+      'View all';
+
+  @override
+  String get unassignedLabel =>
+      'Unassigned';
+
+  @override
+  String get adminOverviewSubtitle =>
+      'Every job in the system, by state.';
+
+  @override
+  String get technicianOverviewSubtitle =>
+      'Your own jobs, by state.';
+
+  @override
+  String get dashboardOverviewErrorTitle =>
+      'Overview unavailable';
+
+  @override
+  String get dashboardOverviewErrorMessage =>
+      'The job figures could not be loaded. Retry to refresh them.';
 }
 
 /// German (`de`) translations — natural, idiomatic German for professional field service use.
@@ -2626,6 +2673,42 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get validationPhoneInvalid =>
       'Bitte gib eine gültige Telefonnummer ein.';
+
+  @override
+  String get accountSettingsTooltip =>
+      'Konto & Einstellungen';
+
+  @override
+  String get recentJobsTitle =>
+      'Letzte Aufträge';
+
+  @override
+  String get recentJobsSubtitle =>
+      'Die zuletzt aktualisierten Aufträge.';
+
+  @override
+  String get recentJobsViewAll =>
+      'Alle anzeigen';
+
+  @override
+  String get unassignedLabel =>
+      'Nicht zugewiesen';
+
+  @override
+  String get adminOverviewSubtitle =>
+      'Alle Aufträge im System, nach Status.';
+
+  @override
+  String get technicianOverviewSubtitle =>
+      'Deine eigenen Aufträge, nach Status.';
+
+  @override
+  String get dashboardOverviewErrorTitle =>
+      'Übersicht nicht verfügbar';
+
+  @override
+  String get dashboardOverviewErrorMessage =>
+      'Die Auftragszahlen konnten nicht geladen werden. Versuche es erneut.';
 }
 
 /// Ergonomic shorthand on [BuildContext] for localized strings.

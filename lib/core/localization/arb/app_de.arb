@@ -462,5 +462,14 @@
       }
     }
   },
-  "validationPhoneInvalid": "Bitte gib eine gültige Telefonnummer ein."
+  "validationPhoneInvalid": "Bitte gib eine gültige Telefonnummer ein.",
+  "accountSettingsTooltip": "Konto & Einstellungen",
+  "recentJobsTitle": "Letzte Aufträge",
+  "recentJobsSubtitle": "Die zuletzt aktualisierten Aufträge.",
+  "recentJobsViewAll": "Alle anzeigen",
+  "unassignedLabel": "Nicht zugewiesen",
+  "adminOverviewSubtitle": "Alle Aufträge im System, nach Status.",
+  "technicianOverviewSubtitle": "Deine eigenen Aufträge, nach Status.",
+  "dashboardOverviewErrorTitle": "Übersicht nicht verfügbar",
+  "dashboardOverviewErrorMessage": "Die Auftragszahlen konnten nicht geladen werden. Versuche es erneut."
 }
