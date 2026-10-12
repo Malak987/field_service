@@ -79,8 +79,8 @@ class TechnicianHomePage extends StatelessWidget {
           title: Text(l10n.technicianHomeTitle),
           actions: <Widget>[
             // Account & settings beside sign-out, as on the admin dashboard:
-            // language and password are reached from there, not buried a tab
-            // deeper.
+            // identity, language and the sync state are one tap away from
+            // wherever the technician is, not two screens deep.
             IconButton(
               key: const Key('nav_account'),
               tooltip: l10n.accountSettingsTooltip,

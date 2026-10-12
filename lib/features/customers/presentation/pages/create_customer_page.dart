@@ -1,6 +1,7 @@
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_cubit.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_state.dart';
 import 'package:field_service/features/customers/presentation/widgets/customer_form.dart';
@@ -68,24 +69,20 @@ class _CreateCustomerForm extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Scaffold(
+    // The app's standard scroll shell: system insets, the content cap (so the
+    // form keeps a readable column on a tablet) and keyboard dismissal on drag.
+    // A form is not one of the main areas, so it carries no bottom navigation.
+    return AppPageBody(
       appBar: AppBar(title: Text(l10n.addCustomer)),
-      body: SafeArea(
-        child: ListView(
-          padding: AppSpacing.pagePadding,
-          children: <Widget>[
-            BlocBuilder<CustomersCubit, CustomersState>(
-              buildWhen: (CustomersState a, CustomersState b) =>
-                  a.isSaving != b.isSaving,
-              builder: (BuildContext context, CustomersState state) =>
-                  CustomerForm(
-                    submitLabel: l10n.saveButton,
-                    isBusy: state.isSaving,
-                    onSubmit: (CustomerFormData data) => _submit(context, data),
-                    onCancel: () => context.pop(),
-                  ),
-            ),
-          ],
+      padding: AppSpacing.pagePadding,
+      child: BlocBuilder<CustomersCubit, CustomersState>(
+        buildWhen: (CustomersState a, CustomersState b) =>
+            a.isSaving != b.isSaving,
+        builder: (BuildContext context, CustomersState state) => CustomerForm(
+          submitLabel: l10n.saveButton,
+          isBusy: state.isSaving,
+          onSubmit: (CustomerFormData data) => _submit(context, data),
+          onCancel: () => context.pop(),
         ),
       ),
     );

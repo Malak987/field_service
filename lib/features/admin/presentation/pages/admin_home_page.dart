@@ -147,8 +147,9 @@ class _AdminHomeAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(l10n.adminDashboardTitle),
       actions: <Widget>[
-        // Account & settings live next to sign-out rather than buried in a
-        // tab: language, password and profile are all reached from there.
+        // Account & settings stay one tap away from the dashboard (they are
+        // also a tab of the main navigation): identity, language, the sync
+        // state and sign-out all live on that one screen.
         IconButton(
           key: const Key('nav_account'),
           tooltip: l10n.accountSettingsTooltip,
@@ -419,9 +420,9 @@ class _QuickActions extends StatelessWidget {
             Icons.person_add_outlined,
             size: AppDimensions.iconMd,
           ),
-          // "Add customer", not "Customers": the bottom-nav tab already reads
-          // "Customers" on this screen, and a second identical label would make
-          // the two indistinguishable both for a reader and for a test.
+          // "Add customer" names the ACTION (it opens the create form), while
+          // the neighbouring entry below names the AREA ("Customers"). Two
+          // different jobs, so two different words.
           label: Text(l10n.addCustomer),
         ),
         OutlinedButton.icon(
@@ -448,11 +449,12 @@ class _QuickActions extends StatelessWidget {
             Icons.people_outline_rounded,
             size: AppDimensions.iconMd,
           ),
-          // NOT l10n.customersTitle: the bottom-nav tab already reads
-          // "Customers", and two identical strings on one screen made
-          // find.text('Customers') ambiguous for every test that taps it.
-          // "View Customers" also matches its sibling "View Jobs".
-          label: Text(l10n.viewCustomersButton),
+          // The area's own name — the same word the customers screen carries
+          // in its app bar, so "Customers" means one thing everywhere. The
+          // bottom navigation does not use this label: the admin bar is
+          // Home · Kitchen · Home Renovation · Account, which leaves this the
+          // only "Customers" on the dashboard.
+          label: Text(l10n.customersTitle),
         ),
       ],
     );
