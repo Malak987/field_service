@@ -1,6 +1,6 @@
-# field_service
+# Heimwerk
 
-A new Flutter project.
+Field-service management app for kitchen and home renovations (Flutter, offline-first with Supabase).
 
 ## Getting Started
 

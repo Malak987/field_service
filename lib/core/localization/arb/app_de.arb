@@ -1,6 +1,6 @@
 {
   "@@locale": "de",
-  "appName": "Field Service",
+  "appName": "Heimwerk",
   "languageEnglish": "English",
   "languageGerman": "Deutsch",
   "selectLanguage": "Sprache auswählen",
@@ -93,6 +93,7 @@
   "jobsCountLabel": "{count, plural, =1{1 Auftrag} other{{count} Aufträge}}",
   "continueJobButton": "Auftrag fortsetzen",
   "currentJobTitle": "Aktueller Auftrag",
+  "nextJobTitle": "Nächster Auftrag",
   "noAssignedJobsTitle": "Keine zugewiesenen Aufträge",
   "noAssignedJobsSubtitle": "Neue Aufträge, die Ihnen zugewiesen werden, erscheinen hier.",
   "nextActionLabel": "Als Nächstes: {action}",

@@ -2,6 +2,8 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/sync/sync_status.dart';
+import 'package:field_service/core/sync/sync_status_cubit.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
@@ -11,9 +13,10 @@ import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_dashboard_header.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/widgets/app_section_header.dart';
+import 'package:field_service/core/widgets/app_stat_tile.dart';
 import 'package:field_service/core/widgets/app_state_views.dart';
 import 'package:field_service/core/widgets/app_surface_panel.dart';
-import 'package:field_service/core/widgets/app_stat_tile.dart';
+import 'package:field_service/core/widgets/app_sync_status_badge.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
@@ -71,8 +74,14 @@ class TechnicianHomePage extends StatelessWidget {
     final bool isWide =
         MediaQuery.sizeOf(context).width >= AppDimensions.desktopBreakpoint;
 
-    return BlocProvider<JobsCubit>(
-      create: (_) => sl<JobsCubit>()..loadJobs(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<JobsCubit>(create: (_) => sl<JobsCubit>()..loadJobs()),
+        // The offline engine's own state, provided here so the connection
+        // strip under the greeting reads the same health the customers header
+        // and the account screen report — one indicator for the whole app.
+        BlocProvider<SyncStatusCubit>(create: (_) => sl<SyncStatusCubit>()),
+      ],
       child: AppPageBody(
         wide: isWide,
         appBar: AppBar(
@@ -112,6 +121,11 @@ class TechnicianHomePage extends StatelessWidget {
               subtitle: l10n.roleTechnicianLabel,
               dateLabel: formatFullDate(DateTime.now(), context),
             ),
+            const SizedBox(height: AppSpacing.md),
+            // Connectivity + queue state in the app's one indicator, directly
+            // under the greeting: on a site without internet this is the fact
+            // a technician checks first, so it must not cost a scroll.
+            const _ConnectionStatus(),
             const SizedBox(height: AppSpacing.lg),
             // Navigation first. See the class doc: at the foot of the page
             // these two entries fell below the fold on a short viewport and
@@ -171,6 +185,31 @@ class TechnicianHomePage extends StatelessWidget {
       return l10n.welcomeNameLabel(email.trim());
     }
     return l10n.welcomeTechnician;
+  }
+}
+
+/// Connection and sync queue state — the app's one indicator.
+///
+/// A technician works where the internet drops, so "is my work safe right
+/// now?" is answered above the queue, by the same [AppSyncStatusBadge] the
+/// customers header and the account screen render. The badge reads the shared
+/// [SyncStatusCubit] health (connectivity plus queue counts), which means this
+/// screen adds no second opinion about the connection and no state of its own.
+class _ConnectionStatus extends StatelessWidget {
+  const _ConnectionStatus();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<SyncStatusCubit, SyncHealth>(
+      builder: (BuildContext context, SyncHealth health) => Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: AppSyncStatusBadge(
+          key: const Key('tech_connection_status'),
+          health: health,
+          filled: true,
+        ),
+      ),
+    );
   }
 }
 
@@ -300,15 +339,32 @@ class _JobSections extends StatelessWidget {
                 .where((Job j) => j.status.value == JobStatus.assigned)
                 .toList();
 
+            // The job to act on next. A running job is always the answer; when
+            // nothing is running, the assigned job that has waited the longest
+            // is featured instead of opening the shift with a plain list —
+            // "what do I do next?" then gets one loud answer either way, and
+            // the rest of the queue stays exactly where it was.
+            final List<Job> featured = <Job>[...inProgress];
+            final List<Job> queue = <Job>[...assigned];
+            if (featured.isEmpty && queue.isNotEmpty) {
+              final Job next = queue.reduce(_longerWaiting);
+              queue.remove(next);
+              featured.add(next);
+            }
+
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                for (final Job job in inProgress) ...<Widget>[
-                  AppSectionHeader(title: l10n.currentJobTitle),
+                for (final Job job in featured) ...<Widget>[
+                  AppSectionHeader(
+                    title: job.status.value == JobStatus.assigned
+                        ? l10n.nextJobTitle
+                        : l10n.currentJobTitle,
+                  ),
                   _CurrentJobCard(job: job),
                   const SizedBox(height: AppSpacing.xl),
                 ],
-                if (assigned.isNotEmpty) ...<Widget>[
+                if (queue.isNotEmpty) ...<Widget>[
                   AppSectionHeader(
                     title: l10n.myJobsTitle,
                     showRule: false,
@@ -317,7 +373,7 @@ class _JobSections extends StatelessWidget {
                   // the jobs list uses, so a job looks the same here.
                   AppSurfacePanel(
                     children: <Widget>[
-                      for (final Job job in assigned)
+                      for (final Job job in queue)
                         JobsListItem(
                           key: ValueKey<String>('assigned_job_${job.id}'),
                           job: job,
@@ -461,13 +517,28 @@ class _CurrentJobCard extends StatelessWidget {
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
-                          key: Key('continue_job_${job.id}'),
+                          key: Key(
+                            job.status.value == JobStatus.assigned
+                                ? 'start_job_${job.id}'
+                                : 'continue_job_${job.id}',
+                          ),
                           onPressed: open,
-                          icon: const Icon(
-                            Icons.arrow_forward_rounded,
+                          icon: Icon(
+                            job.status.value == JobStatus.assigned
+                                ? Icons.play_arrow_rounded
+                                : Icons.arrow_forward_rounded,
                             size: AppDimensions.iconMd,
                           ),
-                          label: Text(l10n.continueJobButton),
+                          // The featured card is the one place the dashboard
+                          // names the step the job waits for: a job still
+                          // `assigned` is waiting to be started, a running one
+                          // to be continued. Both only open the job — the
+                          // workflow itself stays on the details screen.
+                          label: Text(
+                            job.status.value == JobStatus.assigned
+                                ? l10n.startJobButton
+                                : l10n.continueJobButton,
+                          ),
                         ),
                       ),
                     ],
@@ -638,6 +709,24 @@ class _NoAssignedJobs extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Which of two assigned jobs has waited longer for pickup.
+///
+/// The earlier assignment wins; a job carrying no assignment timestamp at all
+/// sorts after every dated one, so a half-written row can never jump the queue
+/// of real work. Pure presentation ordering over columns that already exist —
+/// no status rule and no query lives here.
+Job _longerWaiting(Job a, Job b) {
+  final DateTime? assignedA = a.assignedAt;
+  final DateTime? assignedB = b.assignedAt;
+  if (assignedA == null) {
+    return b;
+  }
+  if (assignedB == null) {
+    return a;
+  }
+  return assignedA.isBefore(assignedB) ? a : b;
 }
 
 /// Whether a new [JobsState] changed the *snapshot* this dashboard renders
