@@ -82,7 +82,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   title: l10n.forgotPasswordTitle,
                   subtitle: l10n.forgotPasswordSubtitle,
                 ),
-                const SizedBox(height: AppSpacing.xxxl),
+                const SizedBox(height: AppSpacing.xl),
                 AuthSuccessMessage(message: l10n.successPasswordResetEmailSent),
                 const SizedBox(height: AppSpacing.xl),
                 AuthSecondaryButton(
@@ -104,7 +104,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   title: l10n.forgotPasswordTitle,
                   subtitle: l10n.forgotPasswordSubtitle,
                 ),
-                const SizedBox(height: AppSpacing.xxxl),
+                const SizedBox(height: AppSpacing.xl),
                 BlocBuilder<AuthenticationCubit, AuthenticationState>(
                   buildWhen:
                       (

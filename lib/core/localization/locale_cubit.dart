@@ -11,7 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class LocaleCubit extends Cubit<Locale> {
   LocaleCubit({
     SharedPreferences? preferences,
-    Locale initialLocale = const Locale('en'),
+    // German is the product's primary language: a first launch with no saved
+    // preference must open in German, not English.
+    Locale initialLocale = const Locale('de'),
   }) : _preferences = preferences,
        super(_resolveInitialLocale(preferences, initialLocale));
 

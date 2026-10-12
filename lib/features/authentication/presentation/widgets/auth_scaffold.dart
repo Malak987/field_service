@@ -52,24 +52,29 @@ class AuthScaffold extends StatelessWidget {
                     end: AppSpacing.md,
                     top: AppSpacing.xs,
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      if (onBackPressed != null)
-                        IconButton(
-                          onPressed: onBackPressed,
-                          tooltip: backTooltip,
-                          icon: const Icon(
-                            Icons.arrow_back_outlined,
-                            color: AppColors.primary,
+                  child: SizedBox(
+                    // A real touch target for both the back action and the
+                    // language control, instead of a bare icon row.
+                    height: AppDimensions.minTapTarget,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        if (onBackPressed != null)
+                          IconButton(
+                            onPressed: onBackPressed,
+                            tooltip: backTooltip,
+                            icon: const Icon(
+                              Icons.arrow_back_outlined,
+                              color: AppColors.primary,
+                            ),
+                          )
+                        else
+                          const SizedBox(
+                            width: AppDimensions.buttonHeightCompact,
                           ),
-                        )
-                      else
-                        const SizedBox(
-                          width: AppDimensions.buttonHeightCompact,
-                        ),
-                      if (showLanguageSwitcher) const LanguageSwitcher(),
-                    ],
+                        if (showLanguageSwitcher) const LanguageSwitcher(),
+                      ],
+                    ),
                   ),
                 ),
                 Expanded(
@@ -77,7 +82,7 @@ class AuthScaffold extends StatelessWidget {
                     padding: EdgeInsetsDirectional.only(
                       start: horizontalPadding,
                       end: horizontalPadding,
-                      top: AppSpacing.xxl,
+                      top: AppSpacing.xl,
                       bottom: AppSpacing.xxl,
                     ),
                     keyboardDismissBehavior:

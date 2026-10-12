@@ -20,13 +20,25 @@ import 'package:flutter/rendering.dart';
 ///
 /// ## Drawing inside a scrollable page
 ///
-/// The pad lives inside the scrollable Job Details page. Without help, a
-/// vertical finger movement would race the page's scroll gesture — the page
-/// moves instead of (or while) the customer signs. The pad therefore
-/// reports touch-down/touch-up through [onDrawingChanged]; the hosting page
-/// freezes its own scrolling for exactly that window, so EVERY touch inside
-/// the pad becomes ink and the page only scrolls again once the finger
-/// lifts. Outside the pad nothing changes — normal scrolling stays intact.
+/// The pad lives inside the scrollable Job Details page, so every stroke is
+/// also a candidate scroll gesture. Two independent mechanisms keep the page
+/// still while the customer signs:
+///
+/// 1. **The pad wins the gesture arena.** It uses separate *vertical* and
+///    *horizontal* drag recognizers rather than a pan recognizer. That detail
+///    is the whole fix: a `PanGestureRecognizer` only declares victory after
+///    `kPanSlop` (`kTouchSlop * 2`, ~36 logical px), while the enclosing
+///    `Scrollable`'s `VerticalDragGestureRecognizer` declares after
+///    `kTouchSlop` (~18 px). With a pan recognizer the page therefore won
+///    every vertical stroke — the list scrolled and the ink stopped. A
+///    vertical recognizer crosses the same 18 px threshold, and because the
+///    pad is the innermost recognizer it is first in the arena and wins.
+/// 2. **The page freezes as a backstop.** The pad reports touch-down/touch-up
+///    through [onDrawingChanged] and the hosting page switches its own
+///    physics for exactly that window, so even a fling that outruns the arena
+///    cannot move the list.
+///
+/// Outside the pad nothing changes — normal scrolling stays intact.
 class SignaturePad extends StatefulWidget {
   const SignaturePad({super.key, this.height = 220, this.onDrawingChanged});
 
@@ -95,7 +107,7 @@ class SignaturePadState extends State<SignaturePad> {
     }
   }
 
-  void _panStart(DragStartDetails details) {
+  void _dragStart(DragStartDetails details) {
     // `localPosition` is relative to the gesture detector, which fills the
     // exact same rectangle as the painted canvas — the strokes, the visible
     // painting and the exported PNG all share this coordinate space.
@@ -107,7 +119,7 @@ class SignaturePadState extends State<SignaturePad> {
     });
   }
 
-  void _panUpdate(DragUpdateDetails details) {
+  void _dragUpdate(DragUpdateDetails details) {
     if (_strokes.isEmpty) {
       return;
     }
@@ -182,8 +194,15 @@ class SignaturePadState extends State<SignaturePad> {
                   Positioned.fill(
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
-                      onPanStart: _panStart,
-                      onPanUpdate: _panUpdate,
+                      // Vertical and horizontal recognizers, deliberately NOT
+                      // `onPan*` — see the class docs. A pan recognizer
+                      // surrenders every vertical stroke to the page's scroll
+                      // recognizer because it waits twice as long before
+                      // claiming the pointer.
+                      onVerticalDragStart: _dragStart,
+                      onVerticalDragUpdate: _dragUpdate,
+                      onHorizontalDragStart: _dragStart,
+                      onHorizontalDragUpdate: _dragUpdate,
                     ),
                   ),
                 ],

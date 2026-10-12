@@ -8,7 +8,7 @@ import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
-import 'package:field_service/core/widgets/language_switcher.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/customers/domain/entities/customer.dart';
 import 'package:field_service/features/customers/presentation/cubit/customers_cubit.dart';
@@ -82,9 +82,9 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpacing.xxl,
+        AppSpacing.lg,
         AppSpacing.md,
-        AppSpacing.xxl,
+        AppSpacing.lg,
         AppSpacing.xs,
       ),
       child: Column(
@@ -164,10 +164,6 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
         ),
         title: Text(l10n.customersTitle),
         actions: <Widget>[
-          const Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
-            child: Center(child: LanguageSwitcher()),
-          ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -224,9 +220,9 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                   _buildIntro(context, state.customers.length),
                   Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(
-                      AppSpacing.xxl,
+                      AppSpacing.lg,
                       AppSpacing.sm,
-                      AppSpacing.xxl,
+                      AppSpacing.lg,
                       AppSpacing.sm,
                     ),
                     child: CustomerSearchField(
@@ -253,26 +249,50 @@ class _CustomersPageViewState extends State<_CustomersPageView> {
                                 ),
                               ],
                             )
-                          : ListView.separated(
+                          : ListView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: AppSpacing.pagePadding,
-                              itemCount: visible.length,
-                              separatorBuilder: (
-                                BuildContext context,
-                                int index,
-                              ) => const SizedBox(height: AppSpacing.sm),
-                              itemBuilder: (BuildContext context, int index) {
-                                final Customer customer = visible[index];
-                                return CustomerCard(
-                                  customer: customer,
-                                  onTap: () => context.pushNamed(
-                                    'customerDetails',
-                                    pathParameters: <String, String>{
-                                      'id': customer.id,
-                                    },
+                              children: <Widget>[
+                                // One surface for the whole directory, rows
+                                // separated by hairlines — a stack of identical
+                                // cards made every row shout equally.
+                                AppContentWidth(child: Material(
+                                  color: context.colors.surface,
+                                  clipBehavior: Clip.antiAlias,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: AppRadius.card,
+                                    side: BorderSide(
+                                      color: context.colors.outlineVariant,
+                                    ),
                                   ),
-                                );
-                              },
+                                  child: Column(
+                                    children: <Widget>[
+                                      for (
+                                        int index = 0;
+                                        index < visible.length;
+                                        index++
+                                      ) ...<Widget>[
+                                        if (index > 0)
+                                          Divider(
+                                            height: 1,
+                                            indent: AppSpacing.lg,
+                                            color:
+                                                context.colors.outlineVariant,
+                                          ),
+                                        CustomerCard(
+                                          customer: visible[index],
+                                          onTap: () => context.pushNamed(
+                                            'customerDetails',
+                                            pathParameters: <String, String>{
+                                              'id': visible[index].id,
+                                            },
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                )),
+                              ],
                             ),
                     ),
                   ),

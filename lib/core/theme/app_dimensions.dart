@@ -54,4 +54,23 @@ abstract final class AppDimensions {
 
   /// Breakpoint above which tablet/desktop padding applies (`600px`).
   static const double tabletBreakpoint = 600;
+
+  /// Breakpoint above which a screen may use a two-column or table layout
+  /// (`900px`). Below this, content stays single-column.
+  static const double desktopBreakpoint = 900;
+
+  /// Maximum width of a page's content column (`720px`).
+  ///
+  /// On tablets and desktop a full-bleed form or list becomes unreadable —
+  /// the eye loses the line. Content is centred inside this width while the
+  /// cream canvas continues to the viewport edges.
+  static const double contentMaxWidth = 720;
+
+  /// Maximum width for data-dense admin screens (tables, management lists)
+  /// where more columns are genuinely useful (`1120px`).
+  static const double wideContentMaxWidth = 1120;
+
+  /// Minimum height of any tappable row, tile or chip (`48px`) — a field
+  /// worker taps with a thumb, often with gloves on.
+  static const double minTapTarget = 48;
 }

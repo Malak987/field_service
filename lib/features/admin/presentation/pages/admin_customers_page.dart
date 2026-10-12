@@ -5,8 +5,8 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
-import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/admin/domain/entities/admin_account_status.dart';
 import 'package:field_service/features/admin/domain/entities/admin_failure.dart';
 import 'package:field_service/features/admin/domain/entities/managed_customer.dart';
@@ -67,6 +67,25 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
     await cubit.load();
   }
 
+  /// Builds one row of the directory with its management actions.
+  ///
+  /// Kept as a method rather than inlined in the collection-`for` so the row
+  /// has a real `customer` variable in scope — a Dart collection literal cannot
+  /// declare one, and repeating `visible[rowIndex]` five times is how a rename
+  /// silently leaves stale references behind.
+  Widget _buildCustomerRow(
+    BuildContext context,
+    AdminCustomersState state,
+    ManagedCustomer customer,
+  ) => _CustomerCard(
+    customer: customer,
+    isBusy: state.busyCustomerId == customer.id,
+    isAnyBusy: state.isBusy,
+    onOpenDetails: () =>
+        _pushNamedAndReload(context, 'adminCustomerDetails', customer.id),
+    onEdit: () => _pushNamedAndReload(context, 'adminCustomerEdit', customer.id),
+  );
+
   Future<void> _pushNamedAndReload(
     BuildContext context,
     String name,
@@ -109,10 +128,6 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
         ),
         title: Text(l10n.adminCustomersTitle),
         actions: <Widget>[
-          const Padding(
-            padding: EdgeInsetsDirectional.symmetric(horizontal: AppSpacing.sm),
-            child: Center(child: LanguageSwitcher()),
-          ),
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
@@ -168,9 +183,9 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
             children: <Widget>[
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.xxl,
+                  AppSpacing.lg,
                   AppSpacing.md,
-                  AppSpacing.xxl,
+                  AppSpacing.lg,
                   AppSpacing.sm,
                 ),
                 child: CustomerSearchField(
@@ -195,25 +210,39 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
                             textAlign: TextAlign.center,
                             style: context.textStyles.titleMedium,
                           ),
-                        ),
-                      for (final ManagedCustomer customer in visible) ...[
-                        _CustomerCard(
-                          customer: customer,
-                          isBusy: state.busyCustomerId == customer.id,
-                          isAnyBusy: state.isBusy,
-                          onOpenDetails: () => _pushNamedAndReload(
-                            context,
-                            'adminCustomerDetails',
-                            customer.id,
+                        )
+                      else
+                        AppContentWidth(child: Material(
+                          color: context.colors.surface,
+                          clipBehavior: Clip.antiAlias,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.card,
+                            side: BorderSide(
+                              color: context.colors.outlineVariant,
+                            ),
                           ),
-                          onEdit: () => _pushNamedAndReload(
-                            context,
-                            'adminCustomerEdit',
-                            customer.id,
+                          child: Column(
+                            children: <Widget>[
+                              for (
+                                int rowIndex = 0;
+                                rowIndex < visible.length;
+                                rowIndex++
+                              ) ...<Widget>[
+                                if (rowIndex > 0)
+                                  Divider(
+                                    height: 1,
+                                    indent: AppSpacing.lg,
+                                    color: context.colors.outlineVariant,
+                                  ),
+                                _buildCustomerRow(
+                                  context,
+                                  state,
+                                  visible[rowIndex],
+                                ),
+                              ],
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                      ],
+                        )),
                     ],
                   ),
                 ),
@@ -299,13 +328,17 @@ class _CustomerCard extends StatelessWidget {
         ? customer.address.trim()
         : '${customer.address.trim()}, $cityLine';
 
-    return Card(
+    // Flat row: the list supplies one shared surface and the hairlines, so the
+    // directory reads as a table rather than a stack of identical boxes. The
+    // row key stays on the tap target.
+    return InkWell(
       key: Key('admin_customer_row_${customer.id}'),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpenDetails,
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
+      onTap: onOpenDetails,
+      child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -434,8 +467,7 @@ class _CustomerCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 }
 
