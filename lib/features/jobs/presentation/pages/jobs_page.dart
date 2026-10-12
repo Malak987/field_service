@@ -7,6 +7,7 @@ import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
+import 'package:field_service/core/widgets/app_surface_panel.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -62,10 +63,24 @@ class _JobsPageViewState extends State<_JobsPageView> {
   String _statusFilter = '';
   String _categoryFilter = '';
 
-  int get _navIndex {
-    // The administrator has dedicated Jobs and Customers tabs; category
-    // filtering remains available within the jobs list, not in the app shell.
-    return 1;
+  /// Which tab of the main navigation this page shows.
+  ///
+  /// A technician's jobs list *is* the "My Jobs" tab. An administrator reaches
+  /// the list through the two category tabs, so the highlighted tab follows the
+  /// active category; the unfiltered list (opened from the dashboard's
+  /// "View Jobs" tile) belongs to no tab, and the bar then highlights nothing
+  /// rather than pointing at a page the user is not looking at.
+  int? get _navIndex {
+    if (!widget.isAdmin) {
+      return AppNavDestinations.jobsIndex(isAdmin: false);
+    }
+    return switch (_categoryFilter) {
+      JobCategory.kitchenRenovation => AppNavDestinations.jobsIndex(
+        isAdmin: true,
+      ),
+      JobCategory.homeRenovation => 2,
+      _ => null,
+    };
   }
 
   @override
@@ -129,7 +144,7 @@ class _JobsPageViewState extends State<_JobsPageView> {
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
 
-    return Scaffold(
+    return AppNavigationScaffold(
       appBar: AppBar(
         title: Text(widget.isAdmin ? l10n.jobsTitle : l10n.myJobsTitle),
         actions: <Widget>[
@@ -143,6 +158,13 @@ class _JobsPageViewState extends State<_JobsPageView> {
           ),
           const SizedBox(width: AppSpacing.xs),
         ],
+      ),
+      // The list keeps its filters pinned and scrolls only the rows, so this
+      // screen composes the shared navigation shell itself instead of using
+      // AppPageBody's scroll wrapper.
+      navigation: AppNavSpec(
+        isAdmin: widget.isAdmin,
+        selectedIndex: _navIndex,
       ),
       // Keep the existing admin create/assign workflow and post-create refresh.
       floatingActionButton: widget.isAdmin
@@ -158,11 +180,7 @@ class _JobsPageViewState extends State<_JobsPageView> {
               label: Text(l10n.createJobButton),
             )
           : null,
-      bottomNavigationBar: AppBottomNav(
-        isAdmin: widget.isAdmin,
-        selectedIndex: _navIndex,
-      ),
-      body: BlocBuilder<JobsCubit, JobsState>(
+      child: BlocBuilder<JobsCubit, JobsState>(
         builder: (BuildContext context, JobsState state) {
           final JobsCubit cubit = context.read<JobsCubit>();
           switch (state.status) {
@@ -267,35 +285,20 @@ class _JobsListSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // A Material, not a decorated Container: each row is an InkWell and the
-    // splash it paints lands on the nearest Material ancestor. Behind a plain
-    // Container the highlight was drawn underneath this surface and stayed
-    // invisible; the shape carries the same hairline border and radius.
-    return Material(
-      color: context.colors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: context.colors.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: <Widget>[
-          for (int index = 0; index < jobs.length; index++) ...<Widget>[
-            if (index > 0)
-              Divider(
-                height: 1,
-                indent: AppSpacing.lg,
-                color: context.colors.outlineVariant,
-              ),
-            JobsListCard(
-              key: ValueKey<String>('job_card_${jobs[index].id}'),
-              job: jobs[index],
-              isAdmin: isAdmin,
-              onTap: () => onTap(jobs[index]),
-            ),
-          ],
-        ],
-      ),
+    // One surface for the whole list — the shared panel supplies the white
+    // fill, the hairline and the Material the rows' ink lands on — with the
+    // shared job row inside it. Rows are keyed by job so the list can address
+    // them and the ink-surface test can find them.
+    return AppSurfacePanel(
+      children: <Widget>[
+        for (final Job job in jobs)
+          JobsListCard(
+            key: ValueKey<String>('job_card_${job.id}'),
+            job: job,
+            isAdmin: isAdmin,
+            onTap: () => onTap(job),
+          ),
+      ],
     );
   }
 }
@@ -438,12 +441,94 @@ class _JobsListControls extends StatelessWidget {
                 .toList(),
             onChanged: (String? value) => onStatusChanged(value ?? ''),
           ),
+          // Only the filters that are actually on, each removable on its own.
+          // The category chips above choose a category; this row is the
+          // after-the-fact control that takes a single filter back off without
+          // resetting the others.
+          if (isFiltered) ...<Widget>[
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.xs,
+              runSpacing: AppSpacing.xs,
+              children: <Widget>[
+                if (searchText.trim().isNotEmpty)
+                  _ActiveFilterChip(
+                    chipKey: const Key('jobs_filter_chip_search'),
+                    icon: Icons.search_rounded,
+                    label: searchText.trim(),
+                    removeTooltip: l10n.clearSearchButton,
+                    onRemove: () {
+                      searchController.clear();
+                      onSearchChanged('');
+                    },
+                  ),
+                if (statusFilter.isNotEmpty)
+                  _ActiveFilterChip(
+                    chipKey: const Key('jobs_filter_chip_status'),
+                    icon: Icons.tune_rounded,
+                    label: mapper.statusLabel(_status(statusFilter)),
+                    removeTooltip: l10n.clearFiltersButton,
+                    onRemove: () => onStatusChanged(''),
+                  ),
+                if (categoryFilter.isNotEmpty)
+                  _ActiveFilterChip(
+                    chipKey: const Key('jobs_filter_chip_category'),
+                    icon: Icons.category_outlined,
+                    label: mapper.jobTypeLabel(categoryFilter),
+                    removeTooltip: l10n.clearFiltersButton,
+                    onRemove: () => onCategoryChanged(''),
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
   JobStatus _status(String value) => JobStatus(value);
+}
+
+/// One active filter, removable on its own.
+///
+/// An [InputChip] — deliberately not a [ChoiceChip]: the choice chips above
+/// choose a filter, this one reports the state and takes it back, and the two
+/// must never be confused with each other (by the user or by a test).
+class _ActiveFilterChip extends StatelessWidget {
+  const _ActiveFilterChip({
+    required this.chipKey,
+    required this.icon,
+    required this.label,
+    required this.removeTooltip,
+    required this.onRemove,
+  });
+
+  final Key chipKey;
+  final IconData icon;
+  final String label;
+  final String removeTooltip;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) => InputChip(
+    key: chipKey,
+    avatar: Icon(icon, size: AppDimensions.iconSm, color: AppColors.primaryDark),
+    label: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: context.textStyles.bodySmall?.copyWith(
+        color: AppColors.primaryDark,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+    deleteIcon: const Icon(Icons.close_rounded, size: AppDimensions.iconSm),
+    deleteButtonTooltipMessage: removeTooltip,
+    onDeleted: onRemove,
+    backgroundColor: AppColors.primarySurface,
+    side: const BorderSide(color: AppColors.primary),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+  );
 }
 
 class _CategoryFilterChip extends StatelessWidget {

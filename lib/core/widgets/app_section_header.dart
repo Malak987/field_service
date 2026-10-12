@@ -18,7 +18,13 @@ class AppSectionHeader extends StatelessWidget {
     super.key,
   });
 
-  /// The section label. Kept sentence-case — never all-caps.
+  /// The section label, rendered as an uppercase, slightly tracked eyebrow.
+  ///
+  /// The casing is applied HERE and not in the translation files: "which words
+  /// are capitalised" is typography that has to stay identical in every
+  /// language, while the translations keep the natural sentence case a
+  /// translator writes (`Schnellzugriff`, `Quick Actions`). It also keeps the
+  /// label visually distinct from the card titles it heads.
   final String title;
 
   /// One line of context under [title]. Optional; omit rather than pad.
@@ -45,7 +51,14 @@ class AppSectionHeader extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(title, style: context.textStyles.titleSmall),
+                    Text(
+                      title.toUpperCase(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.titleSmall?.copyWith(
+                        letterSpacing: 0.7,
+                      ),
+                    ),
                     if (subtitle != null) ...<Widget>[
                       const SizedBox(height: AppSpacing.xxs),
                       Text(

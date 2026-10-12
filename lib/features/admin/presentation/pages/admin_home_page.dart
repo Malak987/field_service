@@ -69,10 +69,10 @@ class AdminHomePage extends StatelessWidget {
       child: AppPageBody(
         wide: isWide,
         appBar: const _AdminHomeAppBar(),
-        bottomNavigationBar: const AppBottomNav(
-          isAdmin: true,
-          selectedIndex: 0,
-        ),
+        // Home is the first tab of the administrator's navigation (Home /
+        // Kitchen / Home Renovation / Account); the shell decides whether that
+        // becomes the bottom bar or the wide-layout rail.
+        navigation: const AppNavSpec(isAdmin: true, selectedIndex: 0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
