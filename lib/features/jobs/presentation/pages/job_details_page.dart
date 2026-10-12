@@ -32,11 +32,26 @@ import 'package:field_service/features/jobs/presentation/widgets/jobs_loading_vi
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Job details (route `/jobs/:id`).
+/// Job details (route `/jobs/:id`) — the field-work hub.
 ///
 /// Presents the data that exists in `public.jobs`, the customer information
 /// belonging to THIS job, and — once the job is `in_progress` — its Before
 /// Photos.
+///
+/// Layout: the job's identity and its workflow progress first, then the
+/// non-step information (job record, customer, customer request), then the
+/// numbered execution steps in their fixed order (2 before photos,
+/// 3 work description, 4 after photos, 5 signature, 6 review and complete),
+/// and finally the activity log. The status pill lives in the app bar so the
+/// current status stays visible at every scroll position, and the page carries
+/// no second title: the header block below IS the title.
+///
+/// Rebuild model: the shell (this file's `build`) only decides WHICH sections
+/// exist — it listens to the load state and the job's status. Every section
+/// then subscribes to its own slice of [JobsState] via `buildWhen`, so a
+/// capture, a description save or an upload-state change rebuilds exactly one
+/// section. Captured bytes stay cached in `BeforePhotoTile`, which reloads only
+/// when the file itself changes — never on a rebuild.
 ///
 /// Customer access model:
 /// * The customer section is fed exclusively by the `get_job_customer`
