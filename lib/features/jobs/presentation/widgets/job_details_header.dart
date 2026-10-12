@@ -51,7 +51,7 @@ class JobDetailsHeader extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: AppColors.primarySurface,
-                borderRadius: AppRadius.md,
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               alignment: Alignment.center,
               child: Icon(
