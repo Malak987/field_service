@@ -2,13 +2,17 @@ import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/utils/date_formatter.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
+import 'package:field_service/core/widgets/app_dashboard_header.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/widgets/app_section_header.dart';
 import 'package:field_service/core/widgets/app_state_views.dart';
+import 'package:field_service/core/widgets/app_stat_tile.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
@@ -17,6 +21,7 @@ import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
 import 'package:field_service/features/jobs/presentation/utils/job_label_mapper.dart';
+import 'package:field_service/features/jobs/presentation/utils/jobs_date_format.dart';
 import 'package:field_service/features/jobs/presentation/widgets/dashboard_category_card.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_error_state.dart';
@@ -58,6 +63,18 @@ class TechnicianHomePage extends StatelessWidget {
         appBar: AppBar(
           title: Text(l10n.technicianHomeTitle),
           actions: <Widget>[
+            // Account & settings beside sign-out, as on the admin dashboard:
+            // language and password are reached from there, not buried a tab
+            // deeper.
+            IconButton(
+              key: const Key('nav_account'),
+              tooltip: l10n.accountSettingsTooltip,
+              icon: const Icon(
+                Icons.person_outline_rounded,
+                size: AppDimensions.iconMd,
+              ),
+              onPressed: () => context.push(AppRoutes.account),
+            ),
             IconButton(
               tooltip: l10n.logoutButton,
               icon: const Icon(
@@ -78,7 +95,11 @@ class TechnicianHomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            _Greeting(user: user),
+            AppDashboardHeader(
+              greeting: _greeting(context, user, l10n),
+              subtitle: l10n.roleTechnicianLabel,
+              dateLabel: formatFullDate(DateTime.now(), context),
+            ),
             const SizedBox(height: AppSpacing.xl),
             const _StatusStrip(),
             const SizedBox(height: AppSpacing.xxl),
@@ -92,57 +113,38 @@ class TechnicianHomePage extends StatelessWidget {
       ),
     );
   }
-}
 
-/// The welcome line. Open text on the cream canvas: the previous boxed header
-/// card (avatar + name + a decorative hammer icon) spent 88px of a phone
-/// screen on chrome before showing any work.
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.user});
-
-  final AppUser? user;
-
-  String get _displayName {
+  /// The welcome line, using the employee's real name when the directory has
+  /// one and falling back to the address only when it does not.
+  static String _greeting(
+    BuildContext context,
+    AppUser? user,
+    AppLocalizations l10n,
+  ) {
     final String? name = user?.name;
     if (name != null && name.trim().isNotEmpty) {
-      return name.trim();
+      return l10n.welcomeNameLabel(name.trim());
     }
-    return user?.email ?? '';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final AppLocalizations l10n = context.l10n;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          _displayName.isNotEmpty
-              ? l10n.welcomeNameLabel(_displayName)
-              : l10n.welcomeTechnician,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: context.textStyles.headlineMedium,
-        ),
-        const SizedBox(height: AppSpacing.xxs),
-        Text(
-          l10n.roleTechnicianLabel,
-          style: context.textStyles.bodySmall?.copyWith(
-            color: context.colors.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
+    final String? email = user?.email;
+    if (email != null && email.trim().isNotEmpty) {
+      return l10n.welcomeNameLabel(email.trim());
+    }
+    return l10n.welcomeTechnician;
   }
 }
 
-/// Real counts in one hairline-separated strip.
+/// Real counts, in the same tiles the admin dashboard uses.
 ///
-/// One bordered surface with three vertical rules instead of four tiles: the
-/// numbers stay comparable at a glance and the screen keeps its calm. Nothing
-/// here is invented — every figure is counted from the jobs the existing
-/// RLS-scoped query returned.
+/// One figure per tile instead of four cells squeezed into a single strip: the
+/// two dashboards then read as one product, and the numbers stay comparable at
+/// a glance. Nothing here is invented — every figure is counted from the jobs
+/// the existing RLS-scoped query returned.
+///
+/// While there is no data this section renders nothing. That is deliberate:
+/// [_JobSections] immediately below already owns the loading, failure and empty
+/// states for the work area, so a second spinner or a second error card would
+/// say the same thing twice. A row of confident zeros would be worse still —
+/// it would read as "you have no work" when the truth is "we could not look".
 class _StatusStrip extends StatelessWidget {
   const _StatusStrip();
 
@@ -153,9 +155,6 @@ class _StatusStrip extends StatelessWidget {
     return BlocBuilder<JobsCubit, JobsState>(
       builder: (BuildContext context, JobsState state) {
         if (state.status != JobsStatus.success) {
-          // No data, no numbers. A strip of zeros would be a fabricated
-          // metric, so the strip stays a hairline placeholder until real
-          // counts exist.
           return const SizedBox.shrink();
         }
 
@@ -163,6 +162,8 @@ class _StatusStrip extends StatelessWidget {
         final int assigned = jobs
             .where((Job j) => j.status.value == JobStatus.assigned)
             .length;
+        // `started` and `in_progress` both mean begun-and-not-finished, which
+        // is the only distinction this screen needs.
         final int inProgress = jobs
             .where(
               (Job j) =>
@@ -174,80 +175,48 @@ class _StatusStrip extends StatelessWidget {
             .where((Job j) => j.status.value == JobStatus.completed)
             .length;
 
-        return Container(
-          decoration: BoxDecoration(
-            color: context.colors.surface,
-            borderRadius: AppRadius.card,
-            border: Border.all(color: context.colors.outlineVariant),
-          ),
-          child: IntrinsicHeight(
-            child: Row(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            // The heading lives with the data: while nothing has loaded the
+            // section renders nothing at all, so a heading must not float above
+            // an empty gap.
+            AppSectionHeader(
+              title: l10n.overviewTitle,
+              subtitle: l10n.technicianOverviewSubtitle,
+              showRule: false,
+            ),
+            AppStatGrid(
               children: <Widget>[
-                _StatusCell(label: l10n.totalJobsLabel, value: jobs.length),
-                const _StatusDivider(),
-                _StatusCell(label: l10n.statusAssigned, value: assigned),
-                const _StatusDivider(),
-                _StatusCell(label: l10n.statusInProgress, value: inProgress),
-                const _StatusDivider(),
-                _StatusCell(label: l10n.statusCompleted, value: completed),
+                AppStatTile(
+                  statKey: const Key('tech_overview_total'),
+                  label: l10n.totalJobsLabel,
+                  value: jobs.length,
+                  accent: AppColors.primary,
+                ),
+                AppStatTile(
+                  statKey: const Key('tech_overview_assigned'),
+                  label: l10n.statusAssigned,
+                  value: assigned,
+                  accent: AppColors.info,
+                ),
+                AppStatTile(
+                  statKey: const Key('tech_overview_in_progress'),
+                  label: l10n.statusInProgress,
+                  value: inProgress,
+                  accent: AppColors.warning,
+                ),
+                AppStatTile(
+                  statKey: const Key('tech_overview_completed'),
+                  label: l10n.statusCompleted,
+                  value: completed,
+                  accent: AppColors.success,
+                ),
               ],
             ),
-          ),
+          ],
         );
       },
-    );
-  }
-}
-
-class _StatusDivider extends StatelessWidget {
-  const _StatusDivider();
-
-  @override
-  Widget build(BuildContext context) => VerticalDivider(
-    width: 1,
-    thickness: 1,
-    color: context.colors.outlineVariant,
-  );
-}
-
-class _StatusCell extends StatelessWidget {
-  const _StatusCell({required this.label, required this.value});
-
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        label: '$label: $value',
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.xs,
-            vertical: AppSpacing.md,
-          ),
-          child: Column(
-            children: <Widget>[
-              Text(
-                '$value',
-                style: context.textStyles.titleLarge?.copyWith(
-                  color: context.colors.primary,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                label,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: context.textStyles.bodySmall?.copyWith(
-                  color: context.colors.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -333,6 +302,21 @@ class _CurrentJobCard extends StatelessWidget {
 
   final Job job;
 
+  /// The date worth showing on the featured card, localized, or `null` when the
+  /// job carries no timestamp at all. Reads only columns that already exist:
+  /// `started_at` when the technician has begun, otherwise `assigned_at`.
+  String? _dateOf(BuildContext context) {
+    final DateTime? when = job.startedAt ?? job.assignedAt;
+    if (when == null) {
+      return null;
+    }
+    final AppLocalizations l10n = context.l10n;
+    final String prefix = job.startedAt != null
+        ? l10n.startDateLabel
+        : l10n.assignedDateLabel;
+    return '$prefix: ${formatJobDate(when, context)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
@@ -396,6 +380,34 @@ class _CurrentJobCard extends StatelessWidget {
                           color: context.colors.onSurfaceVariant,
                         ),
                       ),
+                      // When the work is due to be picked up. Only real
+                      // timestamps are shown: a job that has already started
+                      // reports its start, otherwise its assignment — and a
+                      // job with neither shows no date at all rather than a
+                      // placeholder.
+                      if (_dateOf(context) != null) ...<Widget>[
+                        const SizedBox(height: AppSpacing.xs),
+                        Row(
+                          children: <Widget>[
+                            Icon(
+                              Icons.schedule_outlined,
+                              size: AppDimensions.iconSm,
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Expanded(
+                              child: Text(
+                                _dateOf(context)!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: context.textStyles.bodySmall?.copyWith(
+                                  color: context.colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: AppSpacing.md),
                       SizedBox(
                         width: double.infinity,
