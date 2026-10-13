@@ -3,7 +3,10 @@ import 'dart:typed_data';
 import 'package:field_service/app/di/injection.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
@@ -190,23 +193,35 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
 
                 // Every section carries its own top margin inside its body, so
                 // a section that renders nothing leaves no gap behind it.
-                return ListView(
-                  // Frozen while a finger draws on the signature pad: every
-                  // touch INSIDE the pad becomes ink, never page movement;
-                  // the moment the finger lifts, normal scrolling returns
-                  // (wired through SignatureSection -> SignaturePad).
-                  physics: _signatureDrawing
-                      ? const NeverScrollableScrollPhysics()
-                      : null,
-                  padding: AppSpacing.pagePadding,
-                  children: <Widget>[
+                return LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final EdgeInsetsDirectional pagePadding =
+                        AppPageGutter.forWidth(constraints.maxWidth);
+
+                    // Job work is deliberately kept to a readable execution
+                    // column on tablets and wider displays. On a phone the
+                    // column uses the compact gutter, so photo and signature
+                    // actions stay comfortably reachable.
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          maxWidth: AppDimensions.contentMaxWidth,
+                        ),
+                        child: ListView(
+                          // Frozen while a finger draws on the signature pad:
+                          // every touch INSIDE the pad becomes ink, never page
+                          // movement; normal scrolling returns on lift.
+                          physics: _signatureDrawing
+                              ? const NeverScrollableScrollPhysics()
+                              : null,
+                          padding: pagePadding,
+                          children: <Widget>[
                     const _JobSummary(),
                     // Step 1: only the technician receives the Start Job
                     // action. Other roles see a read-only state; after start,
                     // the authoritative server timestamp replaces the button.
-                    if (isAssigned ||
-                        (isActive && job.startedAt != null) ||
-                        isCompleted)
+                    if (isAssigned || isActive || isCompleted)
                       _StartStep(
                         isTechnician: isTechnician,
                         onStart: () => _onStartJob(context, cubit, job.id),
@@ -276,8 +291,12 @@ class _JobDetailsViewState extends State<_JobDetailsView> {
                           onRetry: cubit.retryFailedBeforePhotos,
                         ),
                     ],
-                    const _ActivityCard(),
-                  ],
+                            const _ActivityCard(),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
             }
           },
@@ -702,23 +721,14 @@ class _JobInformationCard extends StatelessWidget {
         }
 
         return _SectionBody(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  JobSectionHeading(
-                    icon: Icons.assignment_outlined,
-                    title: context.l10n.jobInformationTitle,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  JobDetailsFields(
-                    job: job,
-                    mapper: JobLabelMapper(context.l10n),
-                  ),
-                ],
-              ),
+          child: _InformationPanel(
+            heading: JobSectionHeading(
+              icon: Icons.assignment_outlined,
+              title: context.l10n.jobInformationTitle,
+            ),
+            child: JobDetailsFields(
+              job: job,
+              mapper: JobLabelMapper(context.l10n),
             ),
           ),
         );
@@ -741,21 +751,12 @@ class _CustomerCard extends StatelessWidget {
               current.selectedJob?.customerName,
       builder: (BuildContext context, JobsState state) {
         return _SectionBody(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  JobSectionHeading(
-                    icon: Icons.person_outline_rounded,
-                    title: context.l10n.customerLabel,
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  JobCustomerFields(state: state),
-                ],
-              ),
+          child: _InformationPanel(
+            heading: JobSectionHeading(
+              icon: Icons.person_outline_rounded,
+              title: context.l10n.customerLabel,
             ),
+            child: JobCustomerFields(state: state),
           ),
         );
       },
@@ -781,20 +782,14 @@ class _CustomerRequestCard extends StatelessWidget {
         }
 
         return _SectionBody(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  JobSectionHeading(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    title: context.l10n.customerRequestLabel,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(description, style: context.textStyles.bodyMedium),
-                ],
-              ),
+          child: _InformationPanel(
+            heading: JobSectionHeading(
+              icon: Icons.chat_bubble_outline_rounded,
+              title: context.l10n.customerRequestLabel,
+            ),
+            child: Text(
+              description,
+              style: context.textStyles.bodyMedium?.copyWith(height: 1.5),
             ),
           ),
         );
@@ -853,7 +848,7 @@ class _StartStep extends StatelessWidget {
                   ),
                 if ((isActive || isCompleted) && job.startedAt != null)
                   StartedAtLine(startedAt: job.startedAt!)
-                else if (isCompleted)
+                else if (isActive || isCompleted)
                   Text(
                     l10n.statusStarted,
                     style: context.textStyles.bodyMedium,
@@ -1219,6 +1214,43 @@ class _ActivityCard extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// A quiet read-only panel for information that frames the execution workflow.
+///
+/// The summary, customer and request all use the same surface but are visually
+/// lighter than numbered workflow stages. The panel receives its heading and
+/// body from the existing data-specific widgets; it owns no job behaviour.
+class _InformationPanel extends StatelessWidget {
+  const _InformationPanel({required this.heading, required this.child});
+
+  final Widget heading;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            heading,
+            const SizedBox(height: AppSpacing.md),
+            Divider(height: 1, color: context.colors.outlineVariant),
+            const SizedBox(height: AppSpacing.lg),
+            child,
+          ],
+        ),
+      ),
     );
   }
 }

@@ -5,8 +5,10 @@ import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
-import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_page_body.dart';
+import 'package:field_service/core/widgets/app_standard_page_header.dart';
+import 'package:field_service/core/widgets/app_status_badge.dart';
 import 'package:field_service/features/admin/domain/entities/admin_account_status.dart';
 import 'package:field_service/features/admin/domain/entities/admin_failure.dart';
 import 'package:field_service/features/admin/domain/entities/managed_customer.dart';
@@ -14,19 +16,17 @@ import 'package:field_service/features/admin/presentation/cubit/admin_customers_
 import 'package:field_service/features/admin/presentation/utils/admin_management_labels.dart';
 import 'package:field_service/features/admin/presentation/widgets/admin_account_status_badge.dart';
 import 'package:field_service/features/admin/presentation/widgets/admin_confirm_dialog.dart';
+import 'package:field_service/features/authentication/presentation/widgets/auth_logo.dart';
 import 'package:field_service/features/customers/presentation/widgets/customer_search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-/// `إدارة العملاء / Manage Customers` — the admin's customer management list
-/// (route `/admin/customers`, refused to non-admin roles by the router guard and
-/// by the database).
+/// The admin's customer management directory (route `/admin/customers`).
 ///
-/// Shows every customer with its details and its lifecycle state, and offers
-/// add / edit / block / unblock / soft delete. Blocked or soft deleted
-/// customers stay visible on purpose: their historical jobs, photos and
-/// signatures must remain reachable for the roles that could already read them.
+/// The router refuses this screen for non-admin roles and the management RPCs
+/// enforce that same boundary. This widget only presents the already-authorized
+/// customer records and existing management actions.
 class AdminCustomersPage extends StatelessWidget {
   const AdminCustomersPage({super.key, this.cubit});
 
@@ -53,11 +53,9 @@ class _AdminCustomersView extends StatefulWidget {
 class _AdminCustomersViewState extends State<_AdminCustomersView> {
   String _query = '';
 
-  /// Pushes a child screen and reloads the list when it returns.
-  ///
-  /// The management screens own one cubit per page (factory), so a create /
-  /// edit / status change performed on a child page would otherwise leave the
-  /// list stale until the next manual pull-to-refresh.
+  /// Pushes a child screen and reloads the directory on return. Customer forms
+  /// own a separate cubit, so this keeps the visible list current without
+  /// changing any persistence or management behaviour.
   Future<void> _pushAndReload(BuildContext context, String route) async {
     final AdminCustomersCubit cubit = context.read<AdminCustomersCubit>();
     await context.push(route);
@@ -67,24 +65,21 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
     await cubit.load();
   }
 
-  /// Builds one row of the directory with its management actions.
-  ///
-  /// Kept as a method rather than inlined in the collection-`for` so the row
-  /// has a real `customer` variable in scope — a Dart collection literal cannot
-  /// declare one, and repeating `visible[rowIndex]` five times is how a rename
-  /// silently leaves stale references behind.
-  Widget _buildCustomerRow(
+  Widget _buildCustomerCard(
     BuildContext context,
     AdminCustomersState state,
     ManagedCustomer customer,
-  ) => _CustomerCard(
-    customer: customer,
-    isBusy: state.busyCustomerId == customer.id,
-    isAnyBusy: state.isBusy,
-    onOpenDetails: () =>
-        _pushNamedAndReload(context, 'adminCustomerDetails', customer.id),
-    onEdit: () => _pushNamedAndReload(context, 'adminCustomerEdit', customer.id),
-  );
+  ) {
+    return _CustomerCard(
+      customer: customer,
+      isBusy: state.busyCustomerId == customer.id,
+      isAnyBusy: state.isBusy,
+      onOpenDetails: () =>
+          _pushNamedAndReload(context, 'adminCustomerDetails', customer.id),
+      onEdit: () =>
+          _pushNamedAndReload(context, 'adminCustomerEdit', customer.id),
+    );
+  }
 
   Future<void> _pushNamedAndReload(
     BuildContext context,
@@ -92,17 +87,23 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
     String customerId,
   ) async {
     final AdminCustomersCubit cubit = context.read<AdminCustomersCubit>();
-    await context.pushNamed(name, pathParameters: <String, String>{'id': customerId});
+    await context.pushNamed(
+      name,
+      pathParameters: <String, String>{'id': customerId},
+    );
     if (!mounted || cubit.isClosed) {
       return;
     }
     await cubit.load();
   }
 
+  /// Client-side search across exactly the data already supported by the
+  /// existing list: name, phone, email, address, city and postal code.
   List<ManagedCustomer> _applySearch(List<ManagedCustomer> customers) {
     if (_query.isEmpty) {
       return customers;
     }
+
     final String needle = _query.trim().toLowerCase();
     bool matches(ManagedCustomer customer) {
       return customer.name.toLowerCase().contains(needle) ||
@@ -121,141 +122,200 @@ class _AdminCustomersViewState extends State<_AdminCustomersView> {
     final AppLocalizations l10n = context.l10n;
 
     return Scaffold(
+      // The logo-led directory header below is the screen title. The app bar
+      // remains navigation chrome, keeping the back action compact on phones.
       appBar: AppBar(
         leading: BackButton(
           onPressed: () =>
               context.canPop() ? context.pop() : context.go(AppRoutes.root),
         ),
-        title: Text(l10n.adminCustomersTitle),
-        actions: <Widget>[
-          const SizedBox(width: AppSpacing.xs),
-        ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         key: const Key('admin_add_customer_fab'),
         tooltip: l10n.addCustomer,
         onPressed: () =>
             _pushAndReload(context, AppRoutes.adminCustomerCreate),
-        child: const Icon(Icons.add, size: AppDimensions.iconLg),
+        icon: const Icon(Icons.person_add_alt_1_outlined),
+        label: Text(l10n.addCustomer),
       ),
       body: BlocBuilder<AdminCustomersCubit, AdminCustomersState>(
         builder: (BuildContext context, AdminCustomersState state) {
           final AdminCustomersCubit cubit = context.read<AdminCustomersCubit>();
-
-          switch (state.status) {
-            case AdminCustomersStatus.initial:
-            case AdminCustomersStatus.loading:
-              if (state.hasCustomers) {
-                break;
-              }
-              return Center(
-                child: Semantics(
-                  label: l10n.adminCustomersLoadingLabel,
-                  child: const CircularProgressIndicator(),
-                ),
-              );
-
-            case AdminCustomersStatus.failure:
-              if (state.hasCustomers) {
-                break;
-              }
-              return _CustomersError(
-                message: adminFailureMessage(
-                  l10n,
-                  state.loadFailure ?? AdminFailureKind.unknown,
-                ),
-                onRetry: cubit.load,
-              );
-
-            case AdminCustomersStatus.success:
-              if (!state.hasCustomers) {
-                return _NoCustomers(
-                  onCreate: () =>
-                      _pushAndReload(context, AppRoutes.adminCustomerCreate),
-                );
-              }
-              break;
-          }
-
           final List<ManagedCustomer> visible = _applySearch(state.customers);
 
-          return Column(
-            children: <Widget>[
-              Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(
-                  AppSpacing.lg,
-                  AppSpacing.md,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                ),
-                child: CustomerSearchField(
-                  onQueryChanged: (String query) =>
-                      setState(() => _query = query),
-                ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: cubit.load,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: AppSpacing.pagePadding,
-                    children: <Widget>[
-                      if (visible.isEmpty)
+          return LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final double width = constraints.maxWidth;
+              final EdgeInsetsDirectional horizontalPadding =
+                  AppPageGutter.forWidth(width);
+
+              return Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppDimensions.wideContentMaxWidth,
+                  ),
+                  child: SafeArea(
+                    child: Column(
+                      children: <Widget>[
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AppSpacing.xxxl,
-                          ),
-                          child: Text(
-                            l10n.customersNoResultsTitle,
-                            textAlign: TextAlign.center,
-                            style: context.textStyles.titleMedium,
-                          ),
-                        )
-                      else
-                        AppContentWidth(child: Material(
-                          color: context.colors.surface,
-                          clipBehavior: Clip.antiAlias,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.card,
-                            side: BorderSide(
-                              color: context.colors.outlineVariant,
+                          padding: horizontalPadding,
+                          child: _CustomersHeader(
+                            title: l10n.adminCustomersTitle,
+                            subtitle: l10n.adminCustomersTileSubtitle,
+                            countLabel: l10n.customersCountLabel(
+                              state.customers.length,
                             ),
                           ),
-                          child: Column(
-                            children: <Widget>[
-                              for (
-                                int rowIndex = 0;
-                                rowIndex < visible.length;
-                                rowIndex++
-                              ) ...<Widget>[
-                                if (rowIndex > 0)
-                                  Divider(
-                                    height: 1,
-                                    indent: AppSpacing.lg,
-                                    color: context.colors.outlineVariant,
-                                  ),
-                                _buildCustomerRow(
-                                  context,
-                                  state,
-                                  visible[rowIndex],
-                                ),
-                              ],
-                            ],
+                        ),
+                        if (state.hasCustomers)
+                          Padding(
+                            padding: AppPageGutter.withVertical(
+                              width,
+                              top: 0,
+                              bottom: AppSpacing.md,
+                            ),
+                            child: _SearchPanel(
+                              child: CustomerSearchField(
+                                onQueryChanged: (String query) =>
+                                    setState(() => _query = query),
+                              ),
+                            ),
                           ),
-                        )),
-                    ],
+                        Expanded(
+                          child: _buildBody(
+                            context,
+                            state,
+                            visible,
+                            cubit,
+                            horizontalPadding,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              );
+            },
           );
         },
       ),
     );
   }
+
+  Widget _buildBody(
+    BuildContext context,
+    AdminCustomersState state,
+    List<ManagedCustomer> visible,
+    AdminCustomersCubit cubit,
+    EdgeInsetsGeometry padding,
+  ) {
+    final AppLocalizations l10n = context.l10n;
+
+    final bool isInitialLoad =
+        state.status == AdminCustomersStatus.initial ||
+        state.status == AdminCustomersStatus.loading;
+    if (isInitialLoad && !state.hasCustomers) {
+      return Center(
+        child: Semantics(
+          label: l10n.adminCustomersLoadingLabel,
+          child: const CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (state.status == AdminCustomersStatus.failure && !state.hasCustomers) {
+      return _CustomersError(
+        message: adminFailureMessage(
+          l10n,
+          state.loadFailure ?? AdminFailureKind.unknown,
+        ),
+        onRetry: cubit.load,
+      );
+    }
+
+    if (state.status == AdminCustomersStatus.success && !state.hasCustomers) {
+      return _NoCustomers(
+        onCreate: () => _pushAndReload(
+          context,
+          AppRoutes.adminCustomerCreate,
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: cubit.load,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: padding,
+        children: <Widget>[
+          if (state.status == AdminCustomersStatus.loading) ...<Widget>[
+            const LinearProgressIndicator(),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          if (visible.isEmpty)
+            _NoSearchResults()
+          else
+            for (final ManagedCustomer customer in visible) ...<Widget>[
+              _buildCustomerCard(context, state, customer),
+              const SizedBox(height: AppSpacing.md),
+            ],
+          // Keeps the final customer clear of the extended creation FAB.
+          const SizedBox(height: AppSpacing.huge),
+        ],
+      ),
+    );
+  }
 }
 
-/// One customer row: details, state and the management actions.
+class _CustomersHeader extends StatelessWidget {
+  const _CustomersHeader({
+    required this.title,
+    required this.subtitle,
+    required this.countLabel,
+  });
+
+  final String title;
+  final String subtitle;
+  final String countLabel;
+
+  @override
+  Widget build(BuildContext context) => AppStandardPageHeader(
+    logoAssetName: AuthLogo.assetName,
+    title: title,
+    subtitle: subtitle,
+    supporting: AppStatusBadge(
+      icon: Icons.people_outline_rounded,
+      label: countLabel,
+      tone: AppStatusTone.brand,
+    ),
+  );
+}
+
+class _SearchPanel extends StatelessWidget {
+  const _SearchPanel({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xs),
+        child: child,
+      ),
+    );
+  }
+}
+
+/// One administrative customer card. It holds no customer logic: navigation,
+/// status mutation and confirmation callbacks are supplied by the existing
+/// page and Cubit flows.
 class _CustomerCard extends StatelessWidget {
   const _CustomerCard({
     required this.customer,
@@ -268,11 +328,7 @@ class _CustomerCard extends StatelessWidget {
   final ManagedCustomer customer;
   final bool isBusy;
   final bool isAnyBusy;
-
-  /// Opens the details page and refreshes the list on return.
   final VoidCallback onOpenDetails;
-
-  /// Opens the edit form and refreshes the list on return.
   final VoidCallback onEdit;
 
   Future<void> _confirmAndRun(
@@ -323,71 +379,78 @@ class _CustomerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    final String cityLine = customer.cityLine;
-    final String addressLine = cityLine.isEmpty
-        ? customer.address.trim()
-        : '${customer.address.trim()}, $cityLine';
+    final List<_CustomerFact> facts = _facts();
 
-    // Flat row: the list supplies one shared surface and the hairlines, so the
-    // directory reads as a table rather than a stack of identical boxes. The
-    // row key stays on the tap target.
-    return InkWell(
-      key: Key('admin_customer_row_${customer.id}'),
-      onTap: onOpenDetails,
-      child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md,
-          ),
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: Key('admin_customer_row_${customer.id}'),
+        onTap: onOpenDetails,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
+                  _CustomerAvatar(name: customer.name),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
-                    child: Text(
-                      customer.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          customer.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textStyles.titleMedium,
+                        ),
+                        const SizedBox(height: AppSpacing.xxs),
+                        Text(
+                          l10n.adminCustomerJobsCountLabel(customer.jobsCount),
+                          style: context.textStyles.bodySmall?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  AdminAccountStatusBadge(status: customer.status),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: <Widget>[
+                      AdminAccountStatusBadge(status: customer.status),
+                      const SizedBox(height: AppSpacing.xs),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: AppDimensions.iconMd,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              if (addressLine.isNotEmpty) ...<Widget>[
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  addressLine,
-                  style: context.textStyles.bodySmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
+              if (facts.isNotEmpty) ...<Widget>[
+                const SizedBox(height: AppSpacing.md),
+                Divider(height: 1, color: context.colors.outlineVariant),
+                const SizedBox(height: AppSpacing.md),
+                for (final _CustomerFact fact in facts) ...<Widget>[
+                  _CustomerFactLine(fact: fact),
+                  if (fact != facts.last)
+                    const SizedBox(height: AppSpacing.xs),
+                ],
               ],
-              if ((customer.phone ?? '').trim().isNotEmpty) ...<Widget>[
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  customer.phone!.trim(),
-                  style: context.textStyles.bodySmall?.copyWith(
-                    color: context.colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                l10n.adminCustomerJobsCountLabel(customer.jobsCount),
-                style: context.textStyles.bodySmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-              ),
               if (isBusy) ...<Widget>[
                 const SizedBox(height: AppSpacing.md),
                 const LinearProgressIndicator(),
               ],
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: AppSpacing.md),
               Wrap(
                 spacing: AppSpacing.sm,
                 runSpacing: AppSpacing.sm,
@@ -411,9 +474,7 @@ class _CustomerCard extends StatelessWidget {
                               context,
                               AdminAccountStatus.blocked,
                               l10n.adminBlockCustomerConfirmTitle,
-                              l10n.adminBlockCustomerConfirmBody(
-                                customer.name,
-                              ),
+                              l10n.adminBlockCustomerConfirmBody(customer.name),
                               true,
                             ),
                       icon: const Icon(
@@ -467,7 +528,147 @@ class _CustomerCard extends StatelessWidget {
             ],
           ),
         ),
-      );
+      ),
+    );
+  }
+
+  List<_CustomerFact> _facts() {
+    final String address = customer.address.trim();
+    final String city = customer.cityLine;
+    final String addressLine = city.isEmpty ? address : '$address, $city';
+    final String phone = customer.phone?.trim() ?? '';
+    final String email = customer.email?.trim() ?? '';
+
+    return <_CustomerFact>[
+      if (phone.isNotEmpty)
+        _CustomerFact(icon: Icons.phone_outlined, value: phone),
+      if (email.isNotEmpty)
+        _CustomerFact(icon: Icons.mail_outline_rounded, value: email),
+      if (addressLine.isNotEmpty)
+        _CustomerFact(icon: Icons.place_outlined, value: addressLine),
+    ];
+  }
+}
+
+class _CustomerAvatar extends StatelessWidget {
+  const _CustomerAvatar({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final String initials = _initials(name);
+
+    return Semantics(
+      label: name,
+      child: ExcludeSemantics(
+        child: Container(
+          width: AppDimensions.buttonHeightCompact,
+          height: AppDimensions.buttonHeightCompact,
+          decoration: const BoxDecoration(
+            color: AppColors.primarySurface,
+            shape: BoxShape.circle,
+          ),
+          alignment: Alignment.center,
+          child: initials.isEmpty
+              ? const Icon(
+                  Icons.person_outline_rounded,
+                  size: AppDimensions.iconMd,
+                  color: AppColors.primary,
+                )
+              : Text(
+                  initials,
+                  style: context.textStyles.labelMedium?.copyWith(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+
+  String _initials(String value) {
+    final List<String> words = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((String word) => word.isNotEmpty)
+        .toList();
+    if (words.isEmpty) {
+      return '';
+    }
+    return words.take(2).map((String word) => word[0]).join().toUpperCase();
+  }
+}
+
+class _CustomerFact {
+  const _CustomerFact({required this.icon, required this.value});
+
+  final IconData icon;
+  final String value;
+}
+
+class _CustomerFactLine extends StatelessWidget {
+  const _CustomerFactLine({required this.fact});
+
+  final _CustomerFact fact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(
+          fact.icon,
+          size: AppDimensions.iconSm,
+          color: context.colors.onSurfaceVariant,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            fact.value,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: context.textStyles.bodySmall?.copyWith(
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NoSearchResults extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxxl),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: AppColors.surfaceMuted,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.search_off_rounded,
+              size: AppDimensions.iconLg,
+              color: context.colors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            context.l10n.customersNoResultsTitle,
+            textAlign: TextAlign.center,
+            style: context.textStyles.titleMedium,
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -482,14 +683,23 @@ class _NoCustomers extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: AppSpacing.pagePadding,
+        padding: AppPageGutter.forWidth(MediaQuery.sizeOf(context).width),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(
-              Icons.people_outline,
-              size: AppDimensions.iconXl,
-              color: AppColors.goldDeep,
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AppColors.goldSurface,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.people_outline_rounded,
+                size: AppDimensions.iconLg,
+                color: AppColors.goldDeep,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -501,13 +711,15 @@ class _NoCustomers extends StatelessWidget {
             Text(
               l10n.adminCustomersEmptySubtitle,
               textAlign: TextAlign.center,
-              style: context.textStyles.bodyMedium,
+              style: context.textStyles.bodyMedium?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
             FilledButton.icon(
               key: const Key('admin_customers_empty_create'),
               onPressed: onCreate,
-              icon: const Icon(Icons.add, size: AppDimensions.iconMd),
+              icon: const Icon(Icons.person_add_alt_1_outlined),
               label: Text(l10n.addCustomer),
             ),
           ],
@@ -529,14 +741,23 @@ class _CustomersError extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: AppSpacing.pagePadding,
+        padding: AppPageGutter.forWidth(MediaQuery.sizeOf(context).width),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(
-              Icons.error_outline,
-              size: AppDimensions.iconXl,
-              color: context.colors.error,
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: AppColors.errorSurface,
+                shape: BoxShape.circle,
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: AppDimensions.iconLg,
+                color: context.colors.error,
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -548,13 +769,16 @@ class _CustomersError extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: context.textStyles.bodyMedium,
+              style: context.textStyles.bodyMedium?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            FilledButton(
+            FilledButton.icon(
               key: const Key('admin_list_retry'),
               onPressed: () => onRetry(),
-              child: Text(l10n.tryAgainButton),
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(l10n.tryAgainButton),
             ),
           ],
         ),

@@ -4,36 +4,37 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
+import 'package:field_service/core/widgets/app_standard_page_header.dart';
+import 'package:field_service/core/widgets/app_state_views.dart';
+import 'package:field_service/core/widgets/app_status_badge.dart';
 import 'package:field_service/core/widgets/app_surface_panel.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
+import 'package:field_service/features/authentication/presentation/widgets/auth_logo.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/jobs_state.dart';
 import 'package:field_service/features/jobs/presentation/utils/job_label_mapper.dart';
-import 'package:field_service/features/jobs/presentation/widgets/jobs_empty_state.dart';
-import 'package:field_service/features/jobs/presentation/widgets/jobs_error_state.dart';
+import 'package:field_service/features/jobs/presentation/widgets/job_status_badge.dart';
 import 'package:field_service/features/jobs/presentation/widgets/jobs_list_card.dart';
-import 'package:field_service/features/jobs/presentation/widgets/jobs_loading_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-/// Jobs list for both roles. Role visibility remains governed by existing RLS;
-/// this page only filters the jobs already loaded into presentation state.
+/// The jobs index for both roles.
 ///
-/// Layout: the search and the filters stay pinned above the list so they never
-/// scroll out of reach, then a result line, then the rows themselves inside one
-/// hairline-separated surface. Language switching lives on the Account screen,
-/// not here.
+/// Role visibility remains entirely in the existing JobsCubit/query/RLS path.
+/// This page only provides a responsive way to search, filter and open jobs
+/// already available in the presentation state.
 class JobsPage extends StatelessWidget {
   const JobsPage({super.key, this.categoryFilter});
 
-  /// Existing optional `?category=` filter used by Admin category shortcuts.
+  /// Existing optional `?category=` filter used by the category shortcuts.
   final String? categoryFilter;
 
   @override
@@ -63,13 +64,8 @@ class _JobsPageViewState extends State<_JobsPageView> {
   String _statusFilter = '';
   String _categoryFilter = '';
 
-  /// Which tab of the main navigation this page shows.
-  ///
-  /// A technician's jobs list *is* the "My Jobs" tab. An administrator reaches
-  /// the list through the two category tabs, so the highlighted tab follows the
-  /// active category; the unfiltered list (opened from the dashboard's
-  /// "View Jobs" tile) belongs to no tab, and the bar then highlights nothing
-  /// rather than pointing at a page the user is not looking at.
+  /// The existing role-aware navigation selection remains tied to the category
+  /// query. An administrator's unfiltered list intentionally highlights none.
   int? get _navIndex {
     if (!widget.isAdmin) {
       return AppNavDestinations.jobsIndex(isAdmin: false);
@@ -114,18 +110,25 @@ class _JobsPageViewState extends State<_JobsPageView> {
   }
 
   List<Job> _categoryJobs(List<Job> jobs) {
-    if (_categoryFilter.isEmpty) return jobs;
-    return jobs.where((Job job) => job.jobType == _categoryFilter).toList();
+    if (_categoryFilter.isEmpty) {
+      return jobs;
+    }
+    return jobs
+        .where((Job job) => job.jobType == _categoryFilter)
+        .toList();
   }
 
   List<Job> _visibleJobs(List<Job> jobs, AppLocalizations l10n) {
     final String query = _searchController.text.trim().toLowerCase();
     final JobLabelMapper mapper = JobLabelMapper(l10n);
+
     return _categoryJobs(jobs).where((Job job) {
       if (_statusFilter.isNotEmpty && job.status.value != _statusFilter) {
         return false;
       }
-      if (query.isEmpty) return true;
+      if (query.isEmpty) {
+        return true;
+      }
       final String searchable = <String?>[
         job.jobNumber.toString(),
         job.customerName,
@@ -159,14 +162,11 @@ class _JobsPageViewState extends State<_JobsPageView> {
           const SizedBox(width: AppSpacing.xs),
         ],
       ),
-      // The list keeps its filters pinned and scrolls only the rows, so this
-      // screen composes the shared navigation shell itself instead of using
-      // AppPageBody's scroll wrapper.
       navigation: AppNavSpec(
         isAdmin: widget.isAdmin,
         selectedIndex: _navIndex,
       ),
-      // Keep the existing admin create/assign workflow and post-create refresh.
+      // Preserve the existing admin-only creation route and refresh behaviour.
       floatingActionButton: widget.isAdmin
           ? FloatingActionButton.extended(
               key: const Key('create_job_fab'),
@@ -183,76 +183,115 @@ class _JobsPageViewState extends State<_JobsPageView> {
       child: BlocBuilder<JobsCubit, JobsState>(
         builder: (BuildContext context, JobsState state) {
           final JobsCubit cubit = context.read<JobsCubit>();
-          switch (state.status) {
-            case JobsStatus.initial:
-            case JobsStatus.loading:
-              return const JobsLoadingView();
-            case JobsStatus.failure:
-              return JobsErrorState(onRetry: cubit.loadJobs);
-            case JobsStatus.success:
-              final List<Job> visibleJobs = _visibleJobs(state.jobs, l10n);
-              // No jobs at all means nothing to filter — showing a search box
-              // over an empty result is busywork.
-              final bool showControls = state.jobs.isNotEmpty;
+          final bool hasSnapshot = state.status == JobsStatus.success;
+          final List<Job> jobs = hasSnapshot ? state.jobs : const <Job>[];
+          final List<Job> visibleJobs = hasSnapshot
+              ? _visibleJobs(jobs, l10n)
+              : const <Job>[];
+          final bool showControls = hasSnapshot && jobs.isNotEmpty;
 
-              return AppContentWidth(
-                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  if (showControls) ...<Widget>[
-                    _JobsListControls(
+          return AppContentWidth(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double width = constraints.maxWidth;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Padding(
+                  padding: AppPageGutter.withVertical(
+                    width,
+                    top: AppSpacing.xl,
+                    bottom: AppSpacing.md,
+                  ),
+                  child: _JobsHeader(
+                    title: widget.isAdmin ? l10n.jobsTitle : l10n.myJobsTitle,
+                    subtitle: l10n.searchJobsHint,
+                    countLabel: hasSnapshot
+                        ? l10n.jobsCountLabel(jobs.length)
+                        : null,
+                  ),
+                ),
+                if (showControls)
+                  Padding(
+                    padding: AppPageGutter.withVertical(
+                      width,
+                      top: AppSpacing.xs,
+                      bottom: AppSpacing.md,
+                    ),
+                    child: _JobsListControls(
                       searchController: _searchController,
                       searchText: _searchController.text,
                       statusFilter: _statusFilter,
                       categoryFilter: _categoryFilter,
-                      availableStatuses: _uniqueStatuses(state.jobs),
+                      availableStatuses: _uniqueStatuses(jobs),
                       isFiltered: _hasActiveFilters,
-                      onSearchChanged: (String value) => setState(() {}),
+                      onSearchChanged: (_) => setState(() {}),
                       onStatusChanged: (String value) =>
                           setState(() => _statusFilter = value),
                       onCategoryChanged: (String value) =>
                           setState(() => _categoryFilter = value),
                       onClear: _clearFilters,
                     ),
-                    Divider(height: 1, color: context.colors.outlineVariant),
-                  ],
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: cubit.loadJobs,
-                      child: ListView(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: EdgeInsetsDirectional.fromSTEB(
-                          AppSpacing.lg,
-                          AppSpacing.lg,
-                          AppSpacing.lg,
-                          widget.isAdmin ? 104 : AppSpacing.xxl,
-                        ),
-                        children: <Widget>[
-                          if (showControls) ...<Widget>[
-                            _JobsSummary(jobs: visibleJobs),
-                            const SizedBox(height: AppSpacing.md),
-                          ],
-                          if (state.jobs.isEmpty)
-                            const JobsEmptyState()
-                          else if (visibleJobs.isEmpty)
-                            _NoMatchingJobs(onClear: _clearFilters)
-                          else
-                            _JobsListSurface(
-                              jobs: visibleJobs,
-                              isAdmin: widget.isAdmin,
-                              onTap: (Job job) => context.goNamed(
-                                'jobDetails',
-                                pathParameters: <String, String>{'id': job.id},
-                              ),
-                            ),
-                        ],
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: cubit.loadJobs,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: AppPageGutter.withVertical(
+                        width,
+                        top: AppSpacing.md,
+                        bottom: widget.isAdmin ? 104 : AppSpacing.xxl,
                       ),
+                      children: <Widget>[
+                        if (hasSnapshot && showControls) ...<Widget>[
+                          _JobsSummary(jobs: visibleJobs),
+                          const SizedBox(height: AppSpacing.lg),
+                        ],
+                        switch (state.status) {
+                          JobsStatus.initial || JobsStatus.loading =>
+                            AppSurfacePanel(
+                              divideRows: false,
+                              children: <Widget>[
+                                AppLoadingStateView(
+                                  label: l10n.jobsLoadingLabel,
+                                ),
+                              ],
+                            ),
+                          JobsStatus.failure => AppSurfacePanel(
+                            divideRows: false,
+                            children: <Widget>[
+                              AppErrorStateView(
+                                title: l10n.jobsErrorTitle,
+                                message: l10n.jobsErrorSubtitle,
+                                retryLabel: l10n.tryAgainButton,
+                                onRetry: cubit.loadJobs,
+                              ),
+                            ],
+                          ),
+                          JobsStatus.success when jobs.isEmpty =>
+                            const _JobsEmptyPanel(),
+                          JobsStatus.success when visibleJobs.isEmpty =>
+                            _NoMatchingJobs(onClear: _clearFilters),
+                          JobsStatus.success => _JobsListGrid(
+                            jobs: visibleJobs,
+                            isAdmin: widget.isAdmin,
+                            onTap: (Job job) => context.goNamed(
+                              'jobDetails',
+                              pathParameters: <String, String>{'id': job.id},
+                            ),
+                          ),
+                        },
+                      ],
                     ),
                   ),
-                ],
                 ),
-              );
-          }
+                  ],
+                );
+              },
+            ),
+          );
         },
       ),
     );
@@ -271,38 +310,34 @@ class _JobsPageViewState extends State<_JobsPageView> {
     ..sort();
 }
 
-/// The whole visible list in one bordered surface, rows separated by hairlines.
-class _JobsListSurface extends StatelessWidget {
-  const _JobsListSurface({
-    required this.jobs,
-    required this.isAdmin,
-    required this.onTap,
+class _JobsHeader extends StatelessWidget {
+  const _JobsHeader({
+    required this.title,
+    required this.subtitle,
+    required this.countLabel,
   });
 
-  final List<Job> jobs;
-  final bool isAdmin;
-  final ValueChanged<Job> onTap;
+  final String title;
+  final String subtitle;
+  final String? countLabel;
 
   @override
-  Widget build(BuildContext context) {
-    // One surface for the whole list — the shared panel supplies the white
-    // fill, the hairline and the Material the rows' ink lands on — with the
-    // shared job row inside it. Rows are keyed by job so the list can address
-    // them and the ink-surface test can find them.
-    return AppSurfacePanel(
-      children: <Widget>[
-        for (final Job job in jobs)
-          JobsListCard(
-            key: ValueKey<String>('job_card_${job.id}'),
-            job: job,
-            isAdmin: isAdmin,
-            onTap: () => onTap(job),
+  Widget build(BuildContext context) => AppStandardPageHeader(
+    logoAssetName: AuthLogo.assetName,
+    title: title,
+    subtitle: subtitle,
+    supporting: countLabel == null
+        ? null
+        : AppStatusBadge(
+            icon: Icons.assignment_outlined,
+            label: countLabel!,
+            tone: AppStatusTone.brand,
           ),
-      ],
-    );
-  }
+  );
 }
 
+/// Search and filters are one control surface. Search remains the first control
+/// on a phone while tablet/wide layouts keep the status field beside it.
 class _JobsListControls extends StatelessWidget {
   const _JobsListControls({
     required this.searchController,
@@ -338,162 +373,212 @@ class _JobsListControls extends StatelessWidget {
       if (statusFilter.isNotEmpty) statusFilter,
     }.toList()..sort();
 
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.lg,
-        AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          TextField(
-            key: const Key('jobs_search_field'),
-            controller: searchController,
-            onChanged: onSearchChanged,
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: l10n.searchJobsHint,
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: searchText.isEmpty
-                  ? null
-                  : IconButton(
-                      key: const Key('jobs_clear_search'),
-                      tooltip: l10n.clearButton,
-                      onPressed: () {
-                        searchController.clear();
-                        onSearchChanged('');
-                      },
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  l10n.filterCategoryLabel,
-                  style: context.textStyles.titleSmall,
-                ),
+    final Widget search = TextField(
+      key: const Key('jobs_search_field'),
+      controller: searchController,
+      onChanged: onSearchChanged,
+      textInputAction: TextInputAction.search,
+      decoration: InputDecoration(
+        hintText: l10n.searchJobsHint,
+        prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: searchText.isEmpty
+            ? null
+            : IconButton(
+                key: const Key('jobs_clear_search'),
+                tooltip: l10n.clearButton,
+                onPressed: () {
+                  searchController.clear();
+                  onSearchChanged('');
+                },
+                icon: const Icon(Icons.close_rounded),
               ),
-              if (isFiltered)
-                TextButton.icon(
-                  key: const Key('jobs_clear_filters'),
-                  onPressed: onClear,
-                  icon: const Icon(
-                    Icons.filter_alt_off_outlined,
-                    size: AppDimensions.iconSm,
-                  ),
-                  label: Text(l10n.clearFiltersButton),
-                ),
-            ],
-          ),
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xs,
-            children: <Widget>[
-              _CategoryFilterChip(
-                label: l10n.allCategoriesLabel,
-                selected: categoryFilter.isEmpty,
-                onSelected: () => onCategoryChanged(''),
-              ),
-              _CategoryFilterChip(
-                label: l10n.jobCategoryKitchenRenovation,
-                selected: categoryFilter == JobCategory.kitchenRenovation,
-                onSelected: () =>
-                    onCategoryChanged(JobCategory.kitchenRenovation),
-              ),
-              _CategoryFilterChip(
-                label: l10n.jobCategoryHomeRenovation,
-                selected: categoryFilter == JobCategory.homeRenovation,
-                onSelected: () => onCategoryChanged(JobCategory.homeRenovation),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          DropdownButtonFormField<String>(
-            key: const Key('jobs_status_filter'),
-            value: statusFilter,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: l10n.filterStatusLabel,
-              prefixIcon: const Icon(Icons.tune_rounded),
-            ),
-            items: statuses
-                .map(
-                  (String status) => DropdownMenuItem<String>(
-                    value: status,
-                    child: Text(
-                      status.isEmpty
-                          ? l10n.allStatusesLabel
-                          : mapper.statusLabel(
-                              // The mapper is intentionally passed only the raw
-                              // status value returned by the loaded jobs.
-                              _status(status),
-                            ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                )
-                .toList(),
-            onChanged: (String? value) => onStatusChanged(value ?? ''),
-          ),
-          // Only the filters that are actually on, each removable on its own.
-          // The category chips above choose a category; this row is the
-          // after-the-fact control that takes a single filter back off without
-          // resetting the others.
-          if (isFiltered) ...<Widget>[
-            const SizedBox(height: AppSpacing.md),
-            Wrap(
-              spacing: AppSpacing.xs,
-              runSpacing: AppSpacing.xs,
-              children: <Widget>[
-                if (searchText.trim().isNotEmpty)
-                  _ActiveFilterChip(
-                    chipKey: const Key('jobs_filter_chip_search'),
-                    icon: Icons.search_rounded,
-                    label: searchText.trim(),
-                    removeTooltip: l10n.clearSearchButton,
-                    onRemove: () {
-                      searchController.clear();
-                      onSearchChanged('');
-                    },
-                  ),
-                if (statusFilter.isNotEmpty)
-                  _ActiveFilterChip(
-                    chipKey: const Key('jobs_filter_chip_status'),
-                    icon: Icons.tune_rounded,
-                    label: mapper.statusLabel(_status(statusFilter)),
-                    removeTooltip: l10n.clearFiltersButton,
-                    onRemove: () => onStatusChanged(''),
-                  ),
-                if (categoryFilter.isNotEmpty)
-                  _ActiveFilterChip(
-                    chipKey: const Key('jobs_filter_chip_category'),
-                    icon: Icons.category_outlined,
-                    label: mapper.jobTypeLabel(categoryFilter),
-                    removeTooltip: l10n.clearFiltersButton,
-                    onRemove: () => onCategoryChanged(''),
-                  ),
-              ],
-            ),
-          ],
-        ],
       ),
     );
-  }
+    final Widget status = DropdownButtonFormField<String>(
+      key: const Key('jobs_status_filter'),
+      value: statusFilter,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: l10n.filterStatusLabel,
+        prefixIcon: const Icon(Icons.tune_rounded),
+      ),
+      items: <DropdownMenuItem<String>>[
+        for (final String value in statuses)
+          DropdownMenuItem<String>(
+            value: value,
+            child: Text(
+              value.isEmpty
+                  ? l10n.allStatusesLabel
+                  : mapper.statusLabel(JobStatus(value)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+      onChanged: (String? value) => onStatusChanged(value ?? ''),
+    );
 
-  JobStatus _status(String value) => JobStatus(value);
+    return AppSurfacePanel(
+      divideRows: false,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool useInlineSearch =
+                  constraints.maxWidth >= AppDimensions.tabletBreakpoint;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  if (useInlineSearch)
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(flex: 3, child: search),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(flex: 2, child: status),
+                      ],
+                    )
+                  else ...<Widget>[
+                    search,
+                    const SizedBox(height: AppSpacing.sm),
+                    status,
+                  ],
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          l10n.filterCategoryLabel,
+                          style: context.textStyles.titleSmall,
+                        ),
+                      ),
+                      if (isFiltered)
+                        TextButton.icon(
+                          key: const Key('jobs_clear_filters'),
+                          onPressed: onClear,
+                          icon: const Icon(
+                            Icons.filter_alt_off_outlined,
+                            size: AppDimensions.iconSm,
+                          ),
+                          label: Text(l10n.clearFiltersButton),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: <Widget>[
+                      _CategoryFilterChip(
+                        label: l10n.allCategoriesLabel,
+                        selected: categoryFilter.isEmpty,
+                        onSelected: () => onCategoryChanged(''),
+                      ),
+                      _CategoryFilterChip(
+                        label: l10n.jobCategoryKitchenRenovation,
+                        selected:
+                            categoryFilter == JobCategory.kitchenRenovation,
+                        onSelected: () =>
+                            onCategoryChanged(JobCategory.kitchenRenovation),
+                      ),
+                      _CategoryFilterChip(
+                        label: l10n.jobCategoryHomeRenovation,
+                        selected: categoryFilter == JobCategory.homeRenovation,
+                        onSelected: () =>
+                            onCategoryChanged(JobCategory.homeRenovation),
+                      ),
+                    ],
+                  ),
+                  if (isFiltered) ...<Widget>[
+                    const SizedBox(height: AppSpacing.md),
+                    _ActiveFilters(
+                      searchText: searchText,
+                      statusFilter: statusFilter,
+                      categoryFilter: categoryFilter,
+                      mapper: mapper,
+                      searchController: searchController,
+                      onSearchChanged: onSearchChanged,
+                      onStatusChanged: onStatusChanged,
+                      onCategoryChanged: onCategoryChanged,
+                      clearSearchTooltip: l10n.clearSearchButton,
+                      clearFilterTooltip: l10n.clearFiltersButton,
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
 }
 
-/// One active filter, removable on its own.
-///
-/// An [InputChip] — deliberately not a [ChoiceChip]: the choice chips above
-/// choose a filter, this one reports the state and takes it back, and the two
-/// must never be confused with each other (by the user or by a test).
+class _ActiveFilters extends StatelessWidget {
+  const _ActiveFilters({
+    required this.searchText,
+    required this.statusFilter,
+    required this.categoryFilter,
+    required this.mapper,
+    required this.searchController,
+    required this.onSearchChanged,
+    required this.onStatusChanged,
+    required this.onCategoryChanged,
+    required this.clearSearchTooltip,
+    required this.clearFilterTooltip,
+  });
+
+  final String searchText;
+  final String statusFilter;
+  final String categoryFilter;
+  final JobLabelMapper mapper;
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String> onStatusChanged;
+  final ValueChanged<String> onCategoryChanged;
+  final String clearSearchTooltip;
+  final String clearFilterTooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: AppSpacing.xs,
+      runSpacing: AppSpacing.xs,
+      children: <Widget>[
+        if (searchText.trim().isNotEmpty)
+          _ActiveFilterChip(
+            chipKey: const Key('jobs_filter_chip_search'),
+            icon: Icons.search_rounded,
+            label: searchText.trim(),
+            removeTooltip: clearSearchTooltip,
+            onRemove: () {
+              searchController.clear();
+              onSearchChanged('');
+            },
+          ),
+        if (statusFilter.isNotEmpty)
+          _ActiveFilterChip(
+            chipKey: const Key('jobs_filter_chip_status'),
+            icon: Icons.tune_rounded,
+            label: mapper.statusLabel(JobStatus(statusFilter)),
+            removeTooltip: clearFilterTooltip,
+            onRemove: () => onStatusChanged(''),
+          ),
+        if (categoryFilter.isNotEmpty)
+          _ActiveFilterChip(
+            chipKey: const Key('jobs_filter_chip_category'),
+            icon: Icons.category_outlined,
+            label: mapper.jobTypeLabel(categoryFilter),
+            removeTooltip: clearFilterTooltip,
+            onRemove: () => onCategoryChanged(''),
+          ),
+      ],
+    );
+  }
+}
+
 class _ActiveFilterChip extends StatelessWidget {
   const _ActiveFilterChip({
     required this.chipKey,
@@ -527,7 +612,7 @@ class _ActiveFilterChip extends StatelessWidget {
     onDeleted: onRemove,
     backgroundColor: AppColors.primarySurface,
     side: const BorderSide(color: AppColors.primary),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    shape: const StadiumBorder(),
   );
 }
 
@@ -557,12 +642,11 @@ class _CategoryFilterChip extends StatelessWidget {
     side: BorderSide(
       color: selected ? AppColors.primary : context.colors.outlineVariant,
     ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
+    shape: const StadiumBorder(),
   );
 }
 
-/// The result line: how many jobs the current filter produced, plus a real
-/// per-status breakdown of that same filtered set.
+/// Shows only figures calculated from the currently visible filtered list.
 class _JobsSummary extends StatelessWidget {
   const _JobsSummary({required this.jobs});
 
@@ -580,20 +664,23 @@ class _JobsSummary extends StatelessWidget {
         ifAbsent: () => 1,
       );
     }
-    final List<String> statusValues = counts.keys.toList()..sort();
+    final List<String> statuses = counts.keys.toList()..sort();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(l10n.jobsCountLabel(jobs.length), style: context.textStyles.titleSmall),
-        if (statusValues.isNotEmpty) ...<Widget>[
+        Text(
+          l10n.jobsCountLabel(jobs.length),
+          style: context.textStyles.titleSmall,
+        ),
+        if (statuses.isNotEmpty) ...<Widget>[
           const SizedBox(height: AppSpacing.xs),
           Wrap(
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
             children: <Widget>[
-              for (final String status in statusValues)
-                _StatusCountChip(
+              for (final String status in statuses)
+                _StatusCountBadge(
                   label: mapper.statusLabel(JobStatus(status)),
                   count: counts[status]!,
                   status: JobStatus(status),
@@ -606,8 +693,8 @@ class _JobsSummary extends StatelessWidget {
   }
 }
 
-class _StatusCountChip extends StatelessWidget {
-  const _StatusCountChip({
+class _StatusCountBadge extends StatelessWidget {
+  const _StatusCountBadge({
     required this.label,
     required this.count,
     required this.status,
@@ -619,33 +706,32 @@ class _StatusCountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (Color foreground, Color background) = _statusColors(status);
+    final (Color foreground, Color background) = JobStatusBadge.styleFor(
+      context,
+      status,
+    );
+
     return Semantics(
       label: '$label: $count',
       child: Container(
-        constraints: const BoxConstraints(minHeight: 28),
-        padding: const EdgeInsets.symmetric(
+        padding: const EdgeInsetsDirectional.symmetric(
           horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xxs,
+          vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
           color: background,
-          borderRadius: BorderRadius.circular(999),
+          borderRadius: const BorderRadius.all(Radius.circular(999)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(
-              _statusIcon(status),
-              size: AppDimensions.iconSm,
-              color: foreground,
-            ),
+            Icon(_iconFor(status), size: AppDimensions.iconSm, color: foreground),
             const SizedBox(width: AppSpacing.xs),
             Text(
               '$label · $count',
-              style: context.textStyles.bodySmall?.copyWith(
+              style: context.textStyles.labelSmall?.copyWith(
                 color: foreground,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -654,24 +740,74 @@ class _StatusCountChip extends StatelessWidget {
     );
   }
 
-  static IconData _statusIcon(JobStatus status) => switch (status.value) {
+  IconData _iconFor(JobStatus value) => switch (value.value) {
     JobStatus.assigned => Icons.assignment_outlined,
     JobStatus.started || JobStatus.inProgress => Icons.pending_actions_rounded,
     JobStatus.completed => Icons.check_circle_outline_rounded,
     JobStatus.cancelled => Icons.cancel_outlined,
     _ => Icons.info_outline_rounded,
   };
+}
 
-  static (Color, Color) _statusColors(JobStatus status) =>
-      switch (status.value) {
-        JobStatus.assigned => (AppColors.primary, AppColors.primarySurface),
-        JobStatus.started || JobStatus.inProgress =>
-          (AppColors.goldDeep, AppColors.goldSurface),
-        JobStatus.completed => (AppColors.primaryDark, AppColors.primarySurface),
-        JobStatus.cancelled =>
-          (AppColors.textSecondary, AppColors.surfaceMuted),
-        _ => (AppColors.textSecondary, AppColors.surfaceMuted),
-      };
+class _JobsListGrid extends StatelessWidget {
+  const _JobsListGrid({
+    required this.jobs,
+    required this.isAdmin,
+    required this.onTap,
+  });
+
+  final List<Job> jobs;
+  final bool isAdmin;
+  final ValueChanged<Job> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool useTwoColumns =
+            constraints.maxWidth >= AppDimensions.tabletBreakpoint;
+        final double itemWidth = useTwoColumns
+            ? (constraints.maxWidth - AppSpacing.md) / 2
+            : constraints.maxWidth;
+
+        return Wrap(
+          spacing: AppSpacing.md,
+          runSpacing: AppSpacing.md,
+          children: <Widget>[
+            for (final Job job in jobs)
+              SizedBox(
+                width: itemWidth,
+                child: JobsListCard(
+                  key: ValueKey<String>('job_card_${job.id}'),
+                  job: job,
+                  isAdmin: isAdmin,
+                  onTap: () => onTap(job),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _JobsEmptyPanel extends StatelessWidget {
+  const _JobsEmptyPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    return AppSurfacePanel(
+      divideRows: false,
+      children: <Widget>[
+        AppEmptyStateView(
+          icon: Icons.event_note_outlined,
+          title: l10n.jobsEmptyTitle,
+          message: l10n.jobsEmptySubtitle,
+        ),
+      ],
+    );
+  }
 }
 
 class _NoMatchingJobs extends StatelessWidget {
@@ -682,31 +818,15 @@ class _NoMatchingJobs extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-      child: Column(
-        children: <Widget>[
-          Icon(
-            Icons.search_off_rounded,
-            size: AppDimensions.iconXl,
-            color: context.colors.onSurfaceVariant,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            l10n.noJobsMatchTitle,
-            textAlign: TextAlign.center,
-            style: context.textStyles.titleMedium,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            l10n.noJobsMatchSubtitle,
-            textAlign: TextAlign.center,
-            style: context.textStyles.bodyMedium?.copyWith(
-              color: context.colors.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          OutlinedButton.icon(
+
+    return AppSurfacePanel(
+      divideRows: false,
+      children: <Widget>[
+        AppEmptyStateView(
+          icon: Icons.search_off_rounded,
+          title: l10n.noJobsMatchTitle,
+          message: l10n.noJobsMatchSubtitle,
+          action: OutlinedButton.icon(
             onPressed: onClear,
             icon: const Icon(
               Icons.filter_alt_off_outlined,
@@ -714,8 +834,8 @@ class _NoMatchingJobs extends StatelessWidget {
             ),
             label: Text(l10n.clearFiltersButton),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

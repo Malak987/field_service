@@ -1,5 +1,6 @@
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_elevation.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
@@ -69,8 +70,8 @@ abstract final class AppTheme {
       // selection, key figures) rather than the window frame.
       appBarTheme: AppBarThemeData(
         centerTitle: false,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+        elevation: AppElevation.surface,
+        scrolledUnderElevation: AppElevation.surface,
         backgroundColor: cardSurface,
         foregroundColor: onSurfaceColor,
         surfaceTintColor: Colors.transparent,
@@ -92,7 +93,7 @@ abstract final class AppTheme {
 
       // --- Cards and containers -------------------------------------------
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: AppElevation.surface,
         margin: EdgeInsets.zero,
         color: cardSurface,
         surfaceTintColor: Colors.transparent,
@@ -109,6 +110,7 @@ abstract final class AppTheme {
 
       // --- Dialogs & sheets -------------------------------------------------
       dialogTheme: DialogThemeData(
+        elevation: AppElevation.overlay,
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -116,6 +118,7 @@ abstract final class AppTheme {
         ),
       ),
       bottomSheetTheme: BottomSheetThemeData(
+        elevation: AppElevation.overlay,
         backgroundColor: cardSurface,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
@@ -167,7 +170,7 @@ abstract final class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: brand,
         foregroundColor: colorScheme.onPrimary,
-        elevation: 2,
+        elevation: AppElevation.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
         ),
@@ -363,6 +366,7 @@ abstract final class AppTheme {
   static TextTheme _textTheme() {
     return const TextTheme(
       headlineMedium: AppTextStyles.headlineMedium,
+      headlineSmall: AppTextStyles.metric,
       titleLarge: AppTextStyles.titleLarge,
       titleMedium: AppTextStyles.titleMedium,
       titleSmall: AppTextStyles.titleSmall,
@@ -371,6 +375,7 @@ abstract final class AppTheme {
       bodySmall: AppTextStyles.bodySmall,
       labelLarge: AppTextStyles.buttonLabel,
       labelMedium: AppTextStyles.linkLabel,
+      labelSmall: AppTextStyles.badgeLabel,
     );
   }
 }

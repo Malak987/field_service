@@ -91,6 +91,32 @@ class AppNavigationScaffold extends StatelessWidget {
   }
 }
 
+/// Standard horizontal gutter policy for the audited authenticated pages.
+///
+/// Compact phones retain the 16px edge inset. From the compact breakpoint up,
+/// pages use the regular 24px screen inset while their own max-width container
+/// continues to control readable line length.
+abstract final class AppPageGutter {
+  static EdgeInsetsDirectional forWidth(double maxWidth) =>
+      maxWidth < AppDimensions.compactMobileBreakpoint
+      ? AppSpacing.pagePaddingCompact
+      : AppSpacing.pagePadding;
+
+  static EdgeInsetsDirectional withVertical(
+    double maxWidth, {
+    required double top,
+    required double bottom,
+  }) {
+    final EdgeInsetsDirectional gutter = forWidth(maxWidth);
+    return EdgeInsetsDirectional.fromSTEB(
+      gutter.start,
+      top,
+      gutter.end,
+      bottom,
+    );
+  }
+}
+
 /// The scroll shell shared by every authenticated screen.
 ///
 /// One place where the responsive rules live, so a screen never invents its
@@ -116,6 +142,7 @@ class AppPageBody extends StatelessWidget {
     this.appBar,
     this.wide = false,
     this.padding,
+    this.responsivePadding = false,
     this.bottomNavigationBar,
     this.floatingActionButton,
     this.navigation,
@@ -134,6 +161,10 @@ class AppPageBody extends StatelessWidget {
   /// Overrides the standard page padding.
   final EdgeInsetsGeometry? padding;
 
+  /// Opts this screen into [AppPageGutter]'s compact-phone/regular-page rule.
+  /// Kept opt-in so unrelated legacy pages retain their established geometry.
+  final bool responsivePadding;
+
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
 
@@ -149,19 +180,29 @@ class AppPageBody extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       navigation: navigation,
       child: SafeArea(
-        child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: padding ?? AppSpacing.pagePaddingCompact,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: wide
-                    ? AppDimensions.wideContentMaxWidth
-                    : AppDimensions.contentMaxWidth,
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final EdgeInsetsGeometry resolvedPadding =
+                padding ??
+                (responsivePadding
+                    ? AppPageGutter.forWidth(constraints.maxWidth)
+                    : AppSpacing.pagePaddingCompact);
+
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: resolvedPadding,
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: wide
+                        ? AppDimensions.wideContentMaxWidth
+                        : AppDimensions.contentMaxWidth,
+                  ),
+                  child: child,
+                ),
               ),
-              child: child,
-            ),
-          ),
+            );
+          },
         ),
       ),
     );

@@ -2,9 +2,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/sync/sync_status.dart';
 import 'package:field_service/core/theme/app_colors.dart';
-import 'package:field_service/core/theme/app_dimensions.dart';
-import 'package:field_service/core/theme/app_radius.dart';
-import 'package:field_service/core/theme/app_spacing.dart';
+import 'package:field_service/core/widgets/app_status_badge.dart';
 import 'package:flutter/material.dart';
 
 /// The one sync/connection indicator of the app.
@@ -28,35 +26,12 @@ class AppSyncBadge extends StatelessWidget {
   final Color background;
 
   @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xs,
-        ),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: AppDimensions.iconSm, color: color),
-            const SizedBox(width: AppSpacing.xs),
-            Text(
-              label,
-              style: context.textStyles.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppStatusBadge(
+    icon: icon,
+    label: label,
+    foregroundColor: color,
+    backgroundColor: background,
+  );
 }
 
 /// The whole-engine indicator: connectivity plus the state of the sync queue.
@@ -92,7 +67,7 @@ class AppSyncStatusBadge extends StatelessWidget {
             Icons.sync,
             l10n.syncingLabel,
             AppColors.info,
-            AppColors.primarySurface,
+            AppColors.infoSurface,
           ),
           SyncDisplayStatus.offline => (
             Icons.cloud_off_outlined,

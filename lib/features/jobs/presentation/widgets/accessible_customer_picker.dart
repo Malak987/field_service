@@ -1,5 +1,7 @@
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
+import 'package:field_service/core/theme/app_colors.dart';
+import 'package:field_service/core/theme/app_dimensions.dart';
 import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
@@ -30,62 +32,95 @@ class AccessibleCustomerTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
+    final bool selected = customer != null;
     final Color borderColor = hasError
         ? context.colors.error
+        : selected
+        ? AppColors.primary
         : context.colors.outlineVariant;
 
-    return Material(
-      color: context.colors.surface,
-      borderRadius: AppRadius.control,
-      child: InkWell(
-        onTap: onTap,
+    return Semantics(
+      button: true,
+      label: customer?.name ?? l10n.selectCustomerLabel,
+      child: Material(
+        color: selected ? AppColors.primarySurface : context.colors.surface,
         borderRadius: AppRadius.control,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 64),
-          padding: const EdgeInsetsDirectional.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.control,
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            children: <Widget>[
-              Icon(Icons.person_search_outlined, color: context.colors.primary),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      customer?.name ?? l10n.selectCustomerLabel,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.textStyles.bodyLarge?.copyWith(
-                        fontWeight: customer == null
-                            ? FontWeight.normal
-                            : FontWeight.w600,
-                      ),
-                    ),
-                    if (customer != null && customer!.subtitle.isNotEmpty)
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: AppRadius.control,
+          child: Container(
+            constraints: const BoxConstraints(
+              minHeight: AppDimensions.minTapTarget + AppSpacing.lg,
+            ),
+            padding: const EdgeInsetsDirectional.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.control,
+              border: Border.all(
+                color: borderColor,
+                width: selected ? AppDimensions.focusedBorderWidth : 1,
+              ),
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: AppDimensions.buttonHeightCompact,
+                  height: AppDimensions.buttonHeightCompact,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: AppColors.goldSurface,
+                    borderRadius: AppRadius.banner,
+                  ),
+                  child: const Icon(
+                    Icons.person_search_outlined,
+                    color: AppColors.goldDeep,
+                    size: AppDimensions.iconMd,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
                       Text(
-                        customer!.subtitle,
+                        customer?.name ?? l10n.selectCustomerLabel,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: context.textStyles.bodySmall?.copyWith(
-                          color: context.colors.onSurfaceVariant,
+                        style: context.textStyles.bodyLarge?.copyWith(
+                          fontWeight: selected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
-                  ],
+                      if (customer != null && customer!.subtitle.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                          child: Text(
+                            customer!.subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.textStyles.bodySmall?.copyWith(
+                              color: context.colors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                Icons.expand_more_rounded,
-                color: context.colors.onSurfaceVariant,
-              ),
-            ],
+                const SizedBox(width: AppSpacing.sm),
+                Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.expand_more_rounded,
+                  color: selected
+                      ? AppColors.primary
+                      : context.colors.onSurfaceVariant,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -143,72 +178,180 @@ class _AccessibleCustomerPickerState extends State<AccessibleCustomerPicker> {
         top: AppSpacing.sm,
         bottom: bottomInset + AppSpacing.lg,
       ),
-      child: SizedBox(
-        height: (media.size.height - bottomInset) * .7,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Text(
-              l10n.technicianSelectExistingCustomerTitle,
-              style: context.textStyles.titleLarge,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            TextField(
-              key: const Key('technician_customer_search'),
-              autofocus: true,
-              onChanged: (String value) => setState(() => _query = value),
-              decoration: InputDecoration(
-                hintText: l10n.searchCustomersHint,
-                prefixIcon: const Icon(Icons.search_rounded),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: AppDimensions.contentMaxWidth,
+        ),
+        child: SizedBox(
+          height: (media.size.height - bottomInset) * .7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Text(
+                l10n.technicianSelectExistingCustomerTitle,
+                style: context.textStyles.titleLarge,
               ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Expanded(
-              child: visible.isEmpty
-                  ? Center(
-                      child: Text(
-                        _query.trim().isEmpty
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                key: const Key('technician_customer_search'),
+                autofocus: true,
+                onChanged: (String value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: l10n.searchCustomersHint,
+                  prefixIcon: const Icon(Icons.search_rounded),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Expanded(
+                child: visible.isEmpty
+                    ? _PickerEmptyState(
+                        title: _query.trim().isEmpty
                             ? l10n.customersEmptyTitle
                             : l10n.customersNoResultsTitle,
+                      )
+                    : ListView.separated(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        itemCount: visible.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: AppSpacing.sm),
+                        itemBuilder: (BuildContext context, int index) {
+                          final AccessibleCustomer customer = visible.elementAt(
+                            index,
+                          );
+                          return _PickerCustomerRow(
+                            key: Key(
+                              'technician_customer_option_${customer.id}',
+                            ),
+                            customer: customer,
+                            selected: widget.selectedId == customer.id,
+                            onTap: () => Navigator.of(context).pop(customer),
+                          );
+                        },
                       ),
-                    )
-                  : ListView.separated(
-                      keyboardDismissBehavior:
-                          ScrollViewKeyboardDismissBehavior.onDrag,
-                      itemCount: visible.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (BuildContext context, int index) {
-                        final AccessibleCustomer customer = visible.elementAt(
-                          index,
-                        );
-                        return ListTile(
-                          key: Key('technician_customer_option_${customer.id}'),
-                          contentPadding: EdgeInsets.zero,
-                          leading: const CircleAvatar(
-                            child: Icon(Icons.person_outline),
-                          ),
-                          title: Text(
-                            customer.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: customer.subtitle.isEmpty
-                              ? null
-                              : Text(
-                                  customer.subtitle,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                          trailing: widget.selectedId == customer.id
-                              ? Icon(
-                                  Icons.check_circle,
-                                  color: context.colors.primary,
-                                )
-                              : null,
-                          onTap: () => Navigator.of(context).pop(customer),
-                        );
-                      },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerCustomerRow extends StatelessWidget {
+  const _PickerCustomerRow({
+    super.key,
+    required this.customer,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AccessibleCustomer customer;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.primarySurface : context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(
+          color: selected ? AppColors.primary : context.colors.outlineVariant,
+          width: selected ? AppDimensions.focusedBorderWidth : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: AppDimensions.buttonHeightCompact,
+                height: AppDimensions.buttonHeightCompact,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: AppColors.goldSurface,
+                  borderRadius: AppRadius.banner,
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  color: AppColors.goldDeep,
+                  size: AppDimensions.iconMd,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      customer.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.textStyles.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
+                    if (customer.subtitle.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AppSpacing.xxs),
+                        child: Text(
+                          customer.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textStyles.bodySmall?.copyWith(
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.chevron_right_rounded,
+                color: selected
+                    ? AppColors.primary
+                    : context.colors.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PickerEmptyState extends StatelessWidget {
+  const _PickerEmptyState({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const Icon(
+              Icons.person_search_outlined,
+              size: AppDimensions.iconXl,
+              color: AppColors.goldDeep,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: context.textStyles.bodyMedium?.copyWith(
+                color: context.colors.onSurfaceVariant,
+              ),
             ),
           ],
         ),

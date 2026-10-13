@@ -4,6 +4,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
 import 'package:field_service/features/jobs/presentation/widgets/job_step_empty_note.dart';
@@ -125,17 +126,44 @@ class _SignatureSectionState extends State<SignatureSection> {
         const SizedBox(height: AppSpacing.md),
         if (signature != null && !_replacing) ...<Widget>[
           if (widget.failedIds.contains(signature.id)) ...<Widget>[
-            Row(
-              children: <Widget>[
-                const Icon(Icons.cloud_off_rounded, size: AppDimensions.iconMd),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(child: Text(l10n.uploadFailedLabel)),
-                TextButton(
-                  key: const Key('retry_signature_button'),
-                  onPressed: widget.onRetry,
-                  child: Text(l10n.retryButton),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsetsDirectional.only(
+                start: AppSpacing.md,
+                top: AppSpacing.xs,
+                bottom: AppSpacing.xs,
+                end: AppSpacing.xs,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.errorSurface,
+                borderRadius: AppRadius.banner,
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.25),
                 ),
-              ],
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(
+                    Icons.cloud_off_rounded,
+                    size: AppDimensions.iconMd,
+                    color: AppColors.error,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Text(
+                      l10n.uploadFailedLabel,
+                      style: context.textStyles.bodyMedium?.copyWith(
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    key: const Key('retry_signature_button'),
+                    onPressed: widget.onRetry,
+                    child: Text(l10n.retryButton),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: AppSpacing.md),
           ],

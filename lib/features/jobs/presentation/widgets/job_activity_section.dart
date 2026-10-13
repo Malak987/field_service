@@ -2,6 +2,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
@@ -87,7 +88,13 @@ class JobActivitySection extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    return Card(
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
@@ -165,7 +172,17 @@ class _ActivityRow extends StatelessWidget {
       children: <Widget>[
         Column(
           children: <Widget>[
-            Icon(entry.icon, size: AppDimensions.iconMd, color: muted),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceMuted,
+                shape: BoxShape.circle,
+                border: Border.all(color: context.colors.outlineVariant),
+              ),
+              alignment: Alignment.center,
+              child: Icon(entry.icon, size: AppDimensions.iconSm, color: muted),
+            ),
             if (!isLast)
               Container(
                 width: 1,

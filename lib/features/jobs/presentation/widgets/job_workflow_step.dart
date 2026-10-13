@@ -6,15 +6,11 @@ import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 
-/// One numbered step of the job execution workflow.
+/// One numbered stage of the existing six-stage job workflow.
 ///
-/// The job runs in a fixed order — 1 start, 2 before photos, 3 work
-/// description, 4 after photos, 5 signature, 6 review and complete — so every
-/// section of the details page is presented inside this frame. The step
-/// indicator is on top; the section itself supplies its own content below.
-///
-/// State is carried twice: the icon/number/text say it and the colour only
-/// reinforces it, so the path still reads in monochrome.
+/// The component does not decide what a technician can do; callers provide the
+/// existing [done] and [current] facts. It turns those facts into a scan-friendly
+/// execution frame with a restrained state rail and a clearly separated body.
 class JobWorkflowStep extends StatelessWidget {
   const JobWorkflowStep({
     super.key,
@@ -24,44 +20,56 @@ class JobWorkflowStep extends StatelessWidget {
     required this.child,
   });
 
-  /// 1-based position in the six-stage workflow.
   final int step;
-
-  /// The stage is finished (its evidence exists, or the job is completed).
   final bool done;
-
-  /// The stage the technician is expected to do next.
   final bool current;
-
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final Color accent = done
+        ? AppColors.success
+        : current
+        ? AppColors.goldDeep
+        : context.colors.outlineVariant;
+
+    return Material(
+      color: context.colors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: AppRadius.card,
         side: BorderSide(
           color: current ? AppColors.goldAccent : context.colors.outlineVariant,
-          width: current ? 1.5 : 1,
+          width: current ? AppDimensions.focusedBorderWidth : 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            _StepHeader(step: step, done: done, current: current),
-            const SizedBox(height: AppSpacing.md),
-            child,
-          ],
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: <Widget>[
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(width: 4, color: accent),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _StepHeader(step: step, done: done, current: current),
+                const SizedBox(height: AppSpacing.md),
+                Divider(height: 1, color: context.colors.outlineVariant),
+                const SizedBox(height: AppSpacing.md),
+                child,
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Numbered step state: completed, current, or upcoming. Both the text and the
-/// icon carry meaning; colour is a reinforcing accent, never the only cue.
 class _StepHeader extends StatelessWidget {
   const _StepHeader({
     required this.step,
@@ -92,18 +100,18 @@ class _StepHeader extends StatelessWidget {
         child: Row(
           children: <Widget>[
             Container(
-              width: 32,
-              height: 32,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: done
-                    ? AppColors.primary
+                    ? AppColors.success
                     : current
                     ? AppColors.goldSurface
-                    : context.colors.surface,
+                    : AppColors.surfaceMuted,
                 border: Border.all(
                   color: done
-                      ? AppColors.primary
+                      ? AppColors.success
                       : current
                       ? AppColors.goldAccent
                       : context.colors.outlineVariant,
@@ -114,15 +122,15 @@ class _StepHeader extends StatelessWidget {
                   ? const Icon(
                       Icons.check_rounded,
                       size: AppDimensions.iconSm,
-                      color: AppColors.surface,
+                      color: AppColors.onBrand,
                     )
                   : Text(
                       '$step',
                       style: context.textStyles.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
                         color: current
-                            ? AppColors.primaryDark
+                            ? AppColors.goldDeep
                             : context.colors.onSurfaceVariant,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
             ),
@@ -135,20 +143,18 @@ class _StepHeader extends StatelessWidget {
             ),
             if (current)
               Container(
-                constraints: const BoxConstraints(minHeight: 32),
-                padding: const EdgeInsets.symmetric(
+                padding: const EdgeInsetsDirectional.symmetric(
                   horizontal: AppSpacing.sm,
                   vertical: AppSpacing.xs,
                 ),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.goldSurface,
                   borderRadius: AppRadius.circular,
                 ),
                 child: Text(
                   l10n.currentStepLabel,
-                  style: context.textStyles.bodySmall?.copyWith(
-                    color: AppColors.primaryDark,
-                    fontWeight: FontWeight.w700,
+                  style: context.textStyles.labelSmall?.copyWith(
+                    color: AppColors.goldDeep,
                   ),
                 ),
               ),

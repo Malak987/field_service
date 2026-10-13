@@ -1,5 +1,7 @@
 import 'package:field_service/core/extensions/build_context_extensions.dart';
+import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 
@@ -36,42 +38,51 @@ class JobStepEmptyNote extends StatelessWidget {
       container: true,
       label: message == null ? title : '$title. $message',
       child: ExcludeSemantics(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.surfaceContainerHighest,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: AppRadius.banner,
+            border: Border.all(color: context.colors.outlineVariant),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: AppDimensions.buttonHeightCompact,
+                height: AppDimensions.buttonHeightCompact,
+                decoration: const BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: AppRadius.banner,
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  size: AppDimensions.iconMd,
+                  color: AppColors.primary,
+                ),
               ),
-              alignment: Alignment.center,
-              child: Icon(
-                icon,
-                size: AppDimensions.iconMd,
-                color: context.colors.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(title, style: context.textStyles.titleSmall),
-                  if (message != null) ...<Widget>[
-                    const SizedBox(height: AppSpacing.xxs),
-                    Text(
-                      message,
-                      style: context.textStyles.bodySmall?.copyWith(
-                        color: context.colors.onSurfaceVariant,
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(title, style: context.textStyles.titleSmall),
+                    if (message != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        message,
+                        style: context.textStyles.bodySmall?.copyWith(
+                          color: context.colors.onSurfaceVariant,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -10,20 +10,21 @@ import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/core/widgets/app_bottom_nav.dart';
 import 'package:field_service/core/widgets/app_page_body.dart';
 import 'package:field_service/core/widgets/app_section_header.dart';
-import 'package:field_service/core/widgets/app_surface_panel.dart';
+import 'package:field_service/core/widgets/app_standard_page_header.dart';
 import 'package:field_service/core/widgets/app_sync_status_badge.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
+import 'package:field_service/features/authentication/presentation/widgets/auth_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-/// Account screen (route `/account`) — identity, language and sign-out for
-/// BOTH roles.
+/// Account screen (route `/account`) — identity, language, sync visibility and
+/// sign-out for both authenticated roles.
 ///
-/// Purely presentational over the existing [AuthenticationCubit] session:
-/// it reads the authenticated [AppUser] and the shared language cubit, and
-/// offers no business action besides the already-existing sign-out.
+/// It is purely presentational over the existing [AuthenticationCubit] session
+/// and shared locale/sync state. No profile data is fetched, edited or invented
+/// here; all facts come from the already-authenticated [AppUser].
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
 
@@ -39,190 +40,483 @@ class AccountPage extends StatelessWidget {
     );
 
     return BlocProvider<SyncStatusCubit>(
-      // The offline engine's own state — the app has one sync indicator and
-      // this screen shows the same one the customers list does.
+      // The offline engine's own state — the same source of truth used by the
+      // existing customers header and account surface.
       create: (_) => sl<SyncStatusCubit>(),
       child: AppPageBody(
-        appBar: AppBar(title: Text(l10n.accountTitle)),
-        padding: AppSpacing.pagePadding,
-        // Account is one of the main areas, so it keeps the same role-aware
-        // navigation as the two dashboards — bottom bar on a phone, rail on a
-        // wide layout — with the account destination current.
+        // The logo-led header below is the page identity. Keeping the app bar
+        // as quiet navigation chrome avoids repeating the title on a phone.
+        appBar: AppBar(),
+        responsivePadding: true,
         navigation: AppNavSpec(
           isAdmin: isAdmin,
           selectedIndex: AppNavDestinations.accountIndex(isAdmin: isAdmin),
         ),
         child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              _IdentityBlock(user: user),
-              const SizedBox(height: AppSpacing.xxl),
-              // This is the ONE home for the language choice inside the signed-in
-              // app: a labelled row, not a panel with a heading inside it.
-              AppSectionHeader(title: l10n.selectLanguage),
-              AppSurfacePanel(
-                divideRows: false,
-                padding: const EdgeInsetsDirectional.only(
-                  start: AppSpacing.lg,
-                  end: AppSpacing.sm,
-                  top: AppSpacing.xs,
-                  bottom: AppSpacing.xs,
-                ),
-                children: <Widget>[
-                  const Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: LanguageSwitcher(),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              // Connection and sync queue, in the app's one indicator: it is
-              // the same fact the customers header reports, so an offline
-              // technician sees one consistent answer everywhere. Nothing here
-              // is invented — the badge reads the shared engine state.
-              AppSectionHeader(title: l10n.syncStatusTitle),
-              AppSurfacePanel(
-                divideRows: false,
-                padding: const EdgeInsetsDirectional.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.md,
-                ),
-                children: <Widget>[
-                  BlocBuilder<SyncStatusCubit, SyncHealth>(
-                    builder: (BuildContext context, SyncHealth health) => Align(
-                      alignment: AlignmentDirectional.centerStart,
-                      child: AppSyncStatusBadge(health: health, filled: true),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              FilledButton.icon(
-                key: const Key('account_sign_out'),
-                onPressed: isSigningOut
-                    ? null
-                    : () => context.read<AuthenticationCubit>().signOut(),
-                icon: const Icon(
-                  Icons.logout_outlined,
-                  size: AppDimensions.iconMd,
-                ),
-                label: Text(l10n.logoutButton),
-              ),
-            ],
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            _AccountHeader(
+              title: l10n.accountTitle,
+              subtitle: l10n.accountSettingsTooltip,
+            ),
+            const SizedBox(height: AppSpacing.xxl),
+            _ProfilePanel(user: user),
+            const SizedBox(height: AppSpacing.xxl),
+            AppSectionHeader(title: l10n.selectLanguage),
+            const SizedBox(height: AppSpacing.md),
+            const _LanguagePreferencePanel(),
+            const SizedBox(height: AppSpacing.xxl),
+            AppSectionHeader(title: l10n.syncStatusTitle),
+            const SizedBox(height: AppSpacing.md),
+            const _SyncStatusPanel(),
+            const SizedBox(height: AppSpacing.xxl),
+            _SignOutPanel(isSigningOut: isSigningOut),
+          ],
         ),
       ),
     );
   }
 }
 
-/// The identity card: avatar (initials of the real name or email), name,
-/// e-mail, role badge and the employee code when the backend provides one.
-class _IdentityBlock extends StatelessWidget {
-  const _IdentityBlock({required this.user});
+class _AccountHeader extends StatelessWidget {
+  const _AccountHeader({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) => AppStandardPageHeader(
+    logoAssetName: AuthLogo.assetName,
+    title: title,
+    subtitle: subtitle,
+  );
+}
+
+/// Real account facts only: the authenticated employee name, email, role and
+/// employee code when the session contains them. A missing name falls back to
+/// the actual email; a missing session renders a neutral person icon rather
+/// than an invented identity.
+class _ProfilePanel extends StatelessWidget {
+  const _ProfilePanel({required this.user});
 
   final AppUser? user;
-
-  String get _displayName {
-    final String? name = user?.name;
-    if (name != null && name.trim().isNotEmpty) {
-      return name.trim();
-    }
-    return user?.email ?? '';
-  }
-
-  String get _initials {
-    final List<String> parts = _displayName
-        .split(RegExp(r'\s+'))
-        .where((s) => s.isNotEmpty)
-        .toList();
-    if (parts.isEmpty) {
-      return '?';
-    }
-    if (parts.length == 1) {
-      return parts.first.characters.first.toUpperCase();
-    }
-    return (parts.first.characters.first + parts.last.characters.first)
-        .toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
     final AppLocalizations l10n = context.l10n;
     final AppUser? user = this.user;
+    final String displayName = _displayName(user);
+    final String initials = _initials(displayName);
+    final String roleLabel = _roleLabel(l10n, user);
+    final String employeeCode = user?.employeeCode?.trim() ?? '';
+    final String realName = user?.name?.trim() ?? '';
+    final String email = user?.email.trim() ?? '';
 
-    // Open block on the canvas, not a card: this is the page's title, and the
-    // settings surface below it is the only thing that needs a border.
-    return Column(
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Container(
-              key: const Key('account_avatar'),
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primarySurface,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _initials,
-                style: context.textStyles.titleLarge?.copyWith(
-                  color: AppColors.primary,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  key: const Key('account_avatar'),
+                  width: 68,
+                  height: 68,
+                  decoration: const BoxDecoration(
+                    color: AppColors.primarySurface,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: initials.isEmpty
+                      ? const Icon(
+                          Icons.person_outline_rounded,
+                          size: AppDimensions.iconLg,
+                          color: AppColors.primary,
+                        )
+                      : Text(
+                          initials,
+                          style: context.textStyles.titleLarge?.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
                 ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            Text(
-              _displayName,
-              textAlign: TextAlign.center,
-              style: context.textStyles.titleLarge,
-            ),
-            if (user != null) ...<Widget>[
-              if (user.email != _displayName) ...<Widget>[
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  user.email,
-                  textAlign: TextAlign.center,
-                  style: context.textStyles.bodyMedium?.copyWith(
-                    color: context.colors.onSurfaceVariant,
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      if (displayName.isNotEmpty)
+                        Text(
+                          displayName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.textStyles.titleLarge,
+                        ),
+                      if (roleLabel.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: AppSpacing.sm),
+                        Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: <Widget>[
+                            _RoleBadge(label: roleLabel),
+                            if (employeeCode.isNotEmpty)
+                              _EmployeeCodeBadge(code: employeeCode),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.xs,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: AppRadius.circular,
-                      color: AppColors.goldSurface,
-                    ),
-                    child: Text(
-                      user.isAdmin
-                          ? l10n.roleAdminLabel
-                          : l10n.roleTechnicianLabel,
-                      style: context.textStyles.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.goldDeep,
-                      ),
-                    ),
-                  ),
-                  if ((user.employeeCode ?? '').isNotEmpty) ...<Widget>[
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(
-                      user.employeeCode!,
-                      style: context.textStyles.bodySmall?.copyWith(
-                        color: context.colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            ),
+            if (realName.isNotEmpty || email.isNotEmpty) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              Divider(height: 1, color: context.colors.outlineVariant),
+              const SizedBox(height: AppSpacing.lg),
+              if (realName.isNotEmpty)
+                _ProfileDetailRow(
+                  icon: Icons.person_outline_rounded,
+                  label: l10n.fullNameLabel,
+                  value: realName,
+                ),
+              if (realName.isNotEmpty && email.isNotEmpty)
+                const SizedBox(height: AppSpacing.md),
+              if (email.isNotEmpty)
+                _ProfileDetailRow(
+                  icon: Icons.mail_outline_rounded,
+                  label: l10n.emailLabel,
+                  value: email,
+                ),
             ],
           ],
-        );
+        ),
+      ),
+    );
+  }
+
+  String _displayName(AppUser? user) {
+    final String name = user?.name?.trim() ?? '';
+    if (name.isNotEmpty) {
+      return name;
+    }
+    return user?.email.trim() ?? '';
+  }
+
+  String _initials(String value) {
+    final List<String> parts = value
+        .split(RegExp(r'\s+'))
+        .where((String part) => part.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) {
+      return '';
+    }
+    return parts
+        .take(2)
+        .map((String part) => part[0])
+        .join()
+        .toUpperCase();
+  }
+
+  String _roleLabel(AppLocalizations l10n, AppUser? user) {
+    if (user == null) {
+      return '';
+    }
+    if (user.isAdmin) {
+      return l10n.roleAdminLabel;
+    }
+    if (user.isTechnician) {
+      return l10n.roleTechnicianLabel;
+    }
+    return user.role;
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  const _RoleBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.goldSurface,
+        borderRadius: AppRadius.circular,
+      ),
+      child: Text(
+        label,
+        style: context.textStyles.labelSmall?.copyWith(
+          color: AppColors.goldDeep,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployeeCodeBadge extends StatelessWidget {
+  const _EmployeeCodeBadge({required this.code});
+
+  final String code;
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 180),
+      child: Container(
+        padding: const EdgeInsetsDirectional.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceMuted,
+          borderRadius: AppRadius.circular,
+          border: Border.all(color: context.colors.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.badge_outlined,
+              size: AppDimensions.iconSm,
+              color: context.colors.onSurfaceVariant,
+            ),
+            const SizedBox(width: AppSpacing.xs),
+            Flexible(
+              child: Text(
+                code,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.textStyles.labelSmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileDetailRow extends StatelessWidget {
+  const _ProfileDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          width: AppDimensions.buttonHeightCompact,
+          height: AppDimensions.buttonHeightCompact,
+          decoration: const BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: AppRadius.banner,
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, size: AppDimensions.iconMd, color: AppColors.primary),
+        ),
+        const SizedBox(width: AppSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: context.textStyles.bodySmall?.copyWith(
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxs),
+              Text(value, style: context.textStyles.bodyMedium),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LanguagePreferencePanel extends StatelessWidget {
+  const _LanguagePreferencePanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final Widget switcher = const LanguageSwitcher();
+            final Widget description = Text(
+              l10n.selectLanguage,
+              style: context.textStyles.titleSmall,
+            );
+
+            if (constraints.maxWidth < 500) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      _SectionIcon(icon: Icons.language_outlined),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(child: description),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: switcher,
+                  ),
+                ],
+              );
+            }
+
+            return Row(
+              children: <Widget>[
+                _SectionIcon(icon: Icons.language_outlined),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: description),
+                const SizedBox(width: AppSpacing.md),
+                switcher,
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncStatusPanel extends StatelessWidget {
+  const _SyncStatusPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            _SectionIcon(icon: Icons.cloud_outlined),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(l10n.syncStatusTitle, style: context.textStyles.titleSmall),
+                  const SizedBox(height: AppSpacing.sm),
+                  BlocBuilder<SyncStatusCubit, SyncHealth>(
+                    builder: (BuildContext context, SyncHealth health) =>
+                        AppSyncStatusBadge(health: health, filled: true),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionIcon extends StatelessWidget {
+  const _SectionIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: AppDimensions.buttonHeightCompact,
+      height: AppDimensions.buttonHeightCompact,
+      decoration: const BoxDecoration(
+        color: AppColors.primarySurface,
+        borderRadius: AppRadius.banner,
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, size: AppDimensions.iconMd, color: AppColors.primary),
+    );
+  }
+}
+
+class _SignOutPanel extends StatelessWidget {
+  const _SignOutPanel({required this.isSigningOut});
+
+  final bool isSigningOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            key: const Key('account_sign_out'),
+            onPressed: isSigningOut
+                ? null
+                : () => context.read<AuthenticationCubit>().signOut(),
+            icon: isSigningOut
+                ? const SizedBox(
+                    width: AppDimensions.iconSm,
+                    height: AppDimensions.iconSm,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(
+                    Icons.logout_outlined,
+                    size: AppDimensions.iconMd,
+                  ),
+            label: Text(l10n.logoutButton),
+          ),
+        ),
+      ),
+    );
   }
 }

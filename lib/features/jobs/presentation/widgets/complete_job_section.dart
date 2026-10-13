@@ -2,6 +2,7 @@ import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_colors.dart';
 import 'package:field_service/core/theme/app_dimensions.dart';
+import 'package:field_service/core/theme/app_radius.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:flutter/material.dart';
 
@@ -100,25 +101,38 @@ class CompleteJobSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: AppSpacing.sm),
-        _RequirementLine(
-          key: const Key('completion_requirement_before_photos'),
-          label: l10n.beforePhotosTitle,
-          met: hasBeforePhoto,
-        ),
-        _RequirementLine(
-          key: const Key('completion_requirement_work_description'),
-          label: l10n.workDescriptionTitle,
-          met: hasWorkDescription,
-        ),
-        _RequirementLine(
-          key: const Key('completion_requirement_after_photos'),
-          label: l10n.afterPhotosTitle,
-          met: hasAfterPhoto,
-        ),
-        _RequirementLine(
-          key: const Key('completion_requirement_customer_signature'),
-          label: l10n.customerSignatureTitle,
-          met: hasSignature,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceMuted,
+            borderRadius: AppRadius.banner,
+            border: Border.all(color: context.colors.outlineVariant),
+          ),
+          child: Column(
+            children: <Widget>[
+              _RequirementLine(
+                key: const Key('completion_requirement_before_photos'),
+                label: l10n.beforePhotosTitle,
+                met: hasBeforePhoto,
+              ),
+              _RequirementLine(
+                key: const Key('completion_requirement_work_description'),
+                label: l10n.workDescriptionTitle,
+                met: hasWorkDescription,
+              ),
+              _RequirementLine(
+                key: const Key('completion_requirement_after_photos'),
+                label: l10n.afterPhotosTitle,
+                met: hasAfterPhoto,
+              ),
+              _RequirementLine(
+                key: const Key('completion_requirement_customer_signature'),
+                label: l10n.customerSignatureTitle,
+                met: hasSignature,
+              ),
+            ],
+          ),
         ),
         // Sync readiness (server truth requires registered files): a local
         // file alone is NOT sufficient — while a required upload is pending

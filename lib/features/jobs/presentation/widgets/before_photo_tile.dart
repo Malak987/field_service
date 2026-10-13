@@ -137,33 +137,45 @@ class _BeforePhotoTileState extends State<BeforePhotoTile> {
       child: ExcludeSemantics(
         child: GestureDetector(
           onTap: () => _openPreview(context),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.md),
-            child: FutureBuilder<Uint8List?>(
-              future: _bytesFuture,
-              builder: (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
-                final Uint8List? bytes = snapshot.data;
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: context.colors.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              child: FutureBuilder<Uint8List?>(
+                future: _bytesFuture,
+                builder:
+                    (BuildContext context, AsyncSnapshot<Uint8List?> snapshot) {
+                      final Uint8List? bytes = snapshot.data;
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    if (bytes != null)
-                      Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
-                    else
-                      Container(
-                        color: context.colors.surfaceContainerHighest,
-                        alignment: Alignment.center,
-                        child: Icon(
-                          snapshot.connectionState == ConnectionState.waiting
-                              ? Icons.hourglass_empty_rounded
-                              : Icons.photo_rounded,
-                          color: context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                    Positioned(right: 4, bottom: 4, child: badge),
-                  ],
-                );
-              },
+                      return Stack(
+                        fit: StackFit.expand,
+                        children: <Widget>[
+                          if (bytes != null)
+                            Image.memory(
+                              bytes,
+                              fit: BoxFit.cover,
+                              gaplessPlayback: true,
+                            )
+                          else
+                            Container(
+                              color: context.colors.surfaceContainerHighest,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                snapshot.connectionState ==
+                                        ConnectionState.waiting
+                                    ? Icons.hourglass_empty_rounded
+                                    : Icons.photo_rounded,
+                                color: context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          Positioned(right: 4, bottom: 4, child: badge),
+                        ],
+                      );
+                    },
+              ),
             ),
           ),
         ),

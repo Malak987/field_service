@@ -1,4 +1,3 @@
-import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/theme/app_spacing.dart';
 import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
@@ -268,61 +267,6 @@ class TechnicianFormField extends StatelessWidget {
         helperText: helperText,
         prefixIcon: icon == null ? null : Icon(icon),
       ),
-    );
-  }
-}
-
-/// A numbered section heading, matching the visual language of the admin
-/// Create Job screen (numbered badge + localized title).
-class TechnicianJobFormSection extends StatelessWidget {
-  const TechnicianJobFormSection({
-    super.key,
-    required this.number,
-    required this.title,
-    required this.child,
-  });
-
-  final String number;
-  final String title;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: context.colors.primaryContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Text(
-                number,
-                style: context.textStyles.labelLarge?.copyWith(
-                  color: context.colors.onPrimaryContainer,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                title,
-                style: context.textStyles.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        child,
-      ],
     );
   }
 }

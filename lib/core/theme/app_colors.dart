@@ -94,8 +94,11 @@ abstract final class AppColors {
   /// Error wash (failures, destructive confirmations).
   static const Color errorSurface = Color(0x14D32F2F);
 
-  /// Primary wash (selected states, informational chips).
+  /// Primary wash (selected states and brand chips).
   static const Color primarySurface = Color(0x147B1E28);
+
+  /// Informational wash (sync in progress and neutral system notices).
+  static const Color infoSurface = Color(0x140288D1);
 
   /// Gold wash (accent chips, timeline markers).
   static const Color goldSurface = Color(0x1AC89F6A);
