@@ -107,6 +107,10 @@ Deno.serve(async (request: Request): Promise<Response> => {
     while (true) {
       let query = supabase.from('job_storage_cleanup_outbox')
         .select('job_id,storage_prefix,attempts')
+        // Pending rows only (processed_at IS NULL), matching the SQL outbox
+        // contract. Uploads for a deleted job are refused by the restrictive
+        // Storage policy, so a processed prefix does not need revisiting.
+        .is('processed_at', null)
         .order('job_id', { ascending: true })
         .limit(50);
       if (lastJobId) query = query.gt('job_id', lastJobId);
@@ -141,9 +145,8 @@ Deno.serve(async (request: Request): Promise<Response> => {
             }
           }
 
-          // Re-list after removals. The outbox row stays present and is
-          // revisited on later invocations, so a late in-flight upload is
-          // eventually removed after the server-side expiry policy blocks it.
+          // Re-list after removals; processed_at is only set once the prefix
+          // is empty. A failed row stays pending and is retried next run.
           const remaining = await listPaths(storage, `jobs/${row.job_id}`, prefix);
           if (remaining.length > 0) throw new Error('storage_prefix_not_empty');
 

@@ -81,6 +81,26 @@ class AppDatabase extends _$AppDatabase {
         await _createRetentionTables(m);
       }
     },
+    beforeOpen: (OpeningDetails details) async {
+      // Self-healing migration: if sync_queue date columns were written as
+      // ISO-8601 text strings, convert them back to unix epoch integers so
+      // Drift's DateTime mapper parses them correctly without radix errors.
+      await customStatement('''
+        UPDATE sync_queue 
+        SET created_at = CAST(strftime('%s', created_at) AS INTEGER) 
+        WHERE typeof(created_at) = 'text' AND strftime('%s', created_at) IS NOT NULL;
+      ''');
+      await customStatement('''
+        UPDATE sync_queue 
+        SET updated_at = CAST(strftime('%s', updated_at) AS INTEGER) 
+        WHERE typeof(updated_at) = 'text' AND strftime('%s', updated_at) IS NOT NULL;
+      ''');
+      await customStatement('''
+        UPDATE sync_queue 
+        SET last_attempt_at = CAST(strftime('%s', last_attempt_at) AS INTEGER) 
+        WHERE typeof(last_attempt_at) = 'text' AND strftime('%s', last_attempt_at) IS NOT NULL;
+      ''');
+    },
   );
 
   Future<void> _createRetentionTables(Migrator m) async {
@@ -99,6 +119,12 @@ class AppDatabase extends _$AppDatabase {
     await m.database.customStatement(
       'CREATE INDEX IF NOT EXISTS idx_sync_scope_owner_job '
       'ON sync_operation_scope (owner_user_id, job_id)',
+    );
+    // Job-only lookups (terminal blocking, retention cleanup) cannot use the
+    // owner-first index above.
+    await m.database.customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_sync_scope_job '
+      'ON sync_operation_scope (job_id)',
     );
     await m.database.customStatement('''
       CREATE TABLE IF NOT EXISTS local_job_retention (

@@ -11,18 +11,41 @@ class LocalJobRetentionCleaner {
     required AppDatabase database,
     required FileStorage fileStorage,
     required String? Function() currentUserId,
+    Future<bool> Function(String jobId)? confirmExpiredOnServer,
     DateTime Function()? now,
   }) : _db = database,
        _fileStorage = fileStorage,
        _currentUserId = currentUserId,
+       _confirmExpiredOnServer = confirmExpiredOnServer,
        _now = now ?? DateTime.now;
+
+  /// Server-side confirmation that a job is expired or deleted. The device
+  /// clock only nominates candidates; it is never final evidence for a
+  /// deletion. Without this callback [sweep] deletes nothing, so wiring the
+  /// cleaner in DI stays inert until a trusted check is supplied.
+  final Future<bool> Function(String jobId)? _confirmExpiredOnServer;
 
   final AppDatabase _db;
   final FileStorage _fileStorage;
   final String? Function() _currentUserId;
   final DateTime Function() _now;
 
+  bool _sweeping = false;
+
   Future<int> sweep() async {
+    // One sweep at a time: two interleaved sweeps could both mark and delete
+    // the same job's rows and files.
+    if (_sweeping) return 0;
+    _sweeping = true;
+    try {
+      return await _sweep();
+    } finally {
+      _sweeping = false;
+    }
+  }
+
+  Future<int> _sweep() async {
+    if (_confirmExpiredOnServer == null) return 0;
     final String? ownerId = _currentUserId();
     if (ownerId == null || ownerId.isEmpty) return 0;
     final String now = _now().toUtc().toIso8601String();
@@ -50,6 +73,16 @@ class LocalJobRetentionCleaner {
   Future<bool> _cleanJob(String jobId) async {
     final String? ownerId = _currentUserId();
     if (ownerId == null || ownerId.isEmpty) return false;
+    // Ask the server before touching any state, so an unconfirmed (or
+    // unreachable-server) candidate is left fully active and syncable.
+    final Future<bool> Function(String jobId)? confirm = _confirmExpiredOnServer;
+    if (confirm == null) return false;
+    try {
+      if (!await confirm(jobId)) return false;
+    } catch (_) {
+      return false;
+    }
+    if (_currentUserId() != ownerId) return false;
     // Mark first: the sync queue filters any operation for a job whose
     // retention state is no longer active.
     final int eligible = await _db.customUpdate(
@@ -164,25 +197,44 @@ class LocalJobRetentionCleaner {
           await _recordFailure(jobId, 'account_changed_during_cleanup');
           return false;
         }
-        final String fileId = file.read<String>('id');
+        // Bytes only. The job_files row stays until the final transaction so
+        // a crash or failure here leaves a state the next sweep can resume
+        // (delete is idempotent); removing rows first would make queued
+        // uploads look like unregistered files and block cleanup forever.
         await _fileStorage.delete(file.read<String>('local_path'));
-        await _db.customUpdate(
-          'DELETE FROM job_files WHERE id = ? AND job_id = ?',
-          variables: <Variable<Object>>[
-            Variable<String>(fileId),
-            Variable<String>(jobId),
-          ],
-        );
       }
     } catch (_) {
       await _recordFailure(jobId, 'local_file_delete_failed');
       return false;
     }
 
+    String commitFailure = 'local_cleanup_commit_failed';
     try {
       await _db.transaction(() async {
         if (_currentUserId() != ownerId) {
+          commitFailure = 'account_changed_during_cleanup';
           throw StateError('Account changed during local retention cleanup.');
+        }
+        // A local write (file saved, operation queued) may have landed after
+        // the scope above was read. Anything unknown to this sweep aborts the
+        // commit untouched; the next sweep re-reads and decides again.
+        final List<QueryRow> lateFiles = await _db.customSelect(
+          'SELECT id FROM job_files WHERE job_id = ?',
+          variables: <Variable<Object>>[Variable<String>(jobId)],
+        ).get();
+        final List<QueryRow> lateOps = await _db.customSelect(
+          '''SELECT q.id FROM sync_queue q
+             LEFT JOIN sync_operation_scope s ON s.operation_id = q.id
+             WHERE s.job_id = ? OR (q.entity_type = 'job' AND q.entity_id = ?)''',
+          variables: <Variable<Object>>[
+            Variable<String>(jobId),
+            Variable<String>(jobId),
+          ],
+        ).get();
+        if (lateFiles.any((r) => !fileIds.contains(r.read<String>('id'))) ||
+            lateOps.any((r) => !operationIds.contains(r.read<String>('id')))) {
+          commitFailure = 'job_changed_during_cleanup';
+          throw StateError('Job changed during local retention cleanup.');
         }
         if (operationIds.isNotEmpty) {
           final List<String> ids = operationIds.toList();
@@ -190,10 +242,17 @@ class LocalJobRetentionCleaner {
           await _db.customStatement(
             'UPDATE sync_queue SET depends_on = NULL WHERE id IN ($placeholders)', ids,
           );
+          // Explicit: the scope table's ON DELETE CASCADE is not enforced
+          // unless PRAGMA foreign_keys is on, and scope rows carry the owner
+          // uid, which must not outlive the purge.
+          await _db.customStatement(
+            'DELETE FROM sync_operation_scope WHERE operation_id IN ($placeholders)', ids,
+          );
           await _db.customStatement(
             'DELETE FROM sync_queue WHERE id IN ($placeholders)', ids,
           );
         }
+        await _db.customStatement('DELETE FROM job_files WHERE job_id = ?', <Object?>[jobId]);
         await _db.customStatement('DELETE FROM job_events WHERE job_id = ?', <Object?>[jobId]);
         await _db.customStatement('DELETE FROM jobs WHERE id = ?', <Object?>[jobId]);
         // Keep only a minimal anti-resurrection tombstone. It contains no task,
@@ -209,7 +268,7 @@ class LocalJobRetentionCleaner {
         );
       });
     } catch (_) {
-      await _recordFailure(jobId, 'local_cleanup_commit_failed');
+      await _recordFailure(jobId, commitFailure);
       return false;
     }
     return true;
