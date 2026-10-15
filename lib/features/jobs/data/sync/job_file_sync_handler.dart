@@ -84,21 +84,7 @@ class JobFileSyncHandler implements SyncOperationHandler {
 
     // Ask the server before reading/sending bytes. The Storage policy and the
     // metadata RPC must repeat this check to close the preflight race.
-    try {
-      await _remote.authorizeJobFileUpload(jobId: row.jobId);
-    } catch (error) {
-      if (error is PostgrestException &&
-          (error.code == 'PGRST202' ||
-              error.code == '42883' ||
-              error.message.contains('schema cache') ||
-              error.message.contains('Could not find the function'))) {
-        AppLogger.warning(
-          'authorize_job_file_upload RPC not found on server; proceeding with Storage RLS and register_job_file.',
-        );
-      } else {
-        rethrow;
-      }
-    }
+    await _remote.authorizeJobFileUpload(jobId: row.jobId);
 
     final List<int>? bytes = await _fileStorage.read(row.localPath);
     if (bytes == null) {

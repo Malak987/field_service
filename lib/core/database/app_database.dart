@@ -100,6 +100,15 @@ class AppDatabase extends _$AppDatabase {
         SET last_attempt_at = CAST(strftime('%s', last_attempt_at) AS INTEGER) 
         WHERE typeof(last_attempt_at) = 'text' AND strftime('%s', last_attempt_at) IS NOT NULL;
       ''');
+      // Installs already past the migration that creates the retention tables
+      // never run _createRetentionTables again; this is idempotent and only a
+      // performance index, so it must never block opening the database.
+      try {
+        await customStatement(
+          'CREATE INDEX IF NOT EXISTS idx_sync_scope_job '
+          'ON sync_operation_scope (job_id)',
+        );
+      } catch (_) {}
     },
   );
 

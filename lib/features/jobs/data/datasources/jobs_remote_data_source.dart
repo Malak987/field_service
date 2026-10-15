@@ -317,19 +317,6 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
 
       return JobModel.fromMap(rows.first as Map<String, dynamic>);
     } on PostgrestException catch (error) {
-      if (params.containsKey('p_created_at') &&
-          (error.code == 'PGRST202' ||
-              error.code == '42883' ||
-              error.message.contains('schema cache') ||
-              error.message.contains('Could not find the function'))) {
-        // Fallback for legacy RPC signatures on the backend that do not take p_created_at
-        final Map<String, dynamic> fallbackParams = Map<String, dynamic>.from(params)
-          ..remove('p_created_at');
-        return _technicianCreateJob(
-          function: function,
-          params: fallbackParams,
-        );
-      }
       // Map the RPC's stable error codes onto the typed domain refusal so
       // the UI can explain WHY the creation was refused.
       throw TechnicianJobCreationRejectedException(
