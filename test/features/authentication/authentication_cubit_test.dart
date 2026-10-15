@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
+import 'package:field_service/features/authentication/domain/usecases/clear_local_session.dart';
 import 'package:field_service/features/authentication/domain/usecases/get_current_user.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_in.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_out.dart';
@@ -21,6 +22,7 @@ void main() {
     cubit = AuthenticationCubit(
       signIn: SignIn(repository),
       signOut: SignOut(repository),
+      clearLocalSession: ClearLocalSession(repository),
       getCurrentUser: GetCurrentUser(repository),
       watchAuthStateChanges: WatchAuthStateChanges(repository),
     );
@@ -50,6 +52,21 @@ void main() {
       repository.emitSignOutEvent = false;
       await cubit.checkCurrentUser();
       await cubit.signOut();
+      expect(cubit.state.status, AuthenticationStatus.unauthenticated);
+      expect(cubit.state.user, isNull);
+    },
+  );
+
+  test(
+    'clears the local session and account state after account deletion',
+    () async {
+      await cubit.checkCurrentUser();
+
+      await cubit.clearDeletedOrInvalidAccountSession();
+
+      expect(repository.clearLocalSessionCalls, 1);
+      expect(repository.signOutCalls, 0);
+      expect(repository.currentUser, isNull);
       expect(cubit.state.status, AuthenticationStatus.unauthenticated);
       expect(cubit.state.user, isNull);
     },

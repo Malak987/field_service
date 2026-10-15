@@ -119,6 +119,11 @@ class _ServerLikeFilesRemote implements JobFilesRemoteDataSource {
   }
 
   @override
+  Future<void> authorizeJobFileUpload({required String jobId}) async {
+    _assertAuthorized(jobId);
+  }
+
+  @override
   Future<void> uploadPhotoBytes({
     required String storagePath,
     required List<int> bytes,
@@ -225,6 +230,7 @@ class _UnusedJobsRemote implements JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 
@@ -233,6 +239,7 @@ class _UnusedJobsRemote implements JobsRemoteDataSource {
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 

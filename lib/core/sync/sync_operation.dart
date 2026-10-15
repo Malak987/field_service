@@ -48,6 +48,10 @@ enum SyncOperationStatus {
 
   /// Push failed and was postponed; [SyncOperation.attempts] was incremented.
   failed,
+
+  /// A server-confirmed permanent refusal. Kept with its payload for review,
+  /// but excluded from automatic and manual retry paths.
+  blocked,
 }
 
 /// A single local change waiting to be pushed to the backend.
@@ -75,6 +79,8 @@ class SyncOperation extends Equatable {
     this.status = SyncOperationStatus.pending,
     this.lastAttemptAt,
     this.errorMessage,
+    this.ownerUserId,
+    this.jobId,
   });
 
   /// Identifier of the operation itself, generated locally with `uuid` so it
@@ -119,6 +125,14 @@ class SyncOperation extends Equatable {
   /// Error of the last failed attempt, kept for diagnostics.
   final String? errorMessage;
 
+  /// Supabase Auth UID captured when the durable queue row is created.
+  /// `null` means legacy/unattributed and is never inferred from the session
+  /// that happens to be active later.
+  final String? ownerUserId;
+
+  /// Job aggregate for this operation, including file uploads.
+  final String? jobId;
+
   /// Returns a copy with the given fields replaced.
   SyncOperation copyWith({
     SyncOperationStatus? status,
@@ -138,6 +152,8 @@ class SyncOperation extends Equatable {
       attempts: attempts ?? this.attempts,
       lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
       errorMessage: errorMessage ?? this.errorMessage,
+      ownerUserId: ownerUserId,
+      jobId: jobId,
     );
   }
 
@@ -154,5 +170,7 @@ class SyncOperation extends Equatable {
     attempts,
     lastAttemptAt,
     errorMessage,
+    ownerUserId,
+    jobId,
   ];
 }

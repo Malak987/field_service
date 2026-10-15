@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:field_service/core/utils/logger.dart';
 import 'package:field_service/features/authentication/data/datasources/authentication_remote_data_source.dart';
 import 'package:field_service/features/authentication/data/models/app_user_model.dart';
+import 'package:field_service/features/authentication/domain/entities/account_deletion_failure.dart';
+import 'package:field_service/features/authentication/domain/entities/account_deletion_preview.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
@@ -106,6 +110,34 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   }
 
   @override
+  Future<AccountDeletionPreview> previewAccountDeletion() async {
+    try {
+      final Object? data = await _remoteDataSource.previewAccountDeletion();
+      return AccountDeletionPreview.fromFunctionData(data);
+    } on FunctionException catch (error, stackTrace) {
+      // Handle Supabase Function errors before the general mapper so preview
+      // diagnostics remain available in the app log without leaking secrets.
+      final AccountDeletionFailure failure = _mapFunctionFailure(error);
+      _logPreviewFunctionFailure(failure, stackTrace);
+      throw failure;
+    } catch (error) {
+      throw _mapAccountDeletionFailure(error);
+    }
+  }
+
+  @override
+  Future<void> confirmAccountDeletion() async {
+    try {
+      // The remote source invokes only the authenticated caller's
+      // `delete-account` Edge Function. It deliberately performs no local,
+      // database, job, customer, photo, or signature deletion.
+      await _remoteDataSource.confirmAccountDeletion();
+    } catch (error) {
+      throw _mapAccountDeletionFailure(error);
+    }
+  }
+
+  @override
   Future<AppUser?> getCurrentUser() async {
     final User? user = _remoteDataSource.currentUser;
 
@@ -119,6 +151,11 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   @override
   Future<void> signOut() {
     return _remoteDataSource.signOut();
+  }
+
+  @override
+  Future<void> clearLocalSession() {
+    return _remoteDataSource.clearLocalSession();
   }
 
   @override
@@ -144,14 +181,159 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
     });
   }
 
+  AccountDeletionFailure _mapAccountDeletionFailure(Object error) {
+    if (error is AccountDeletionFailure) {
+      return error;
+    }
+    if (error is AuthException) {
+      return const AccountDeletionFailure(
+        AccountDeletionFailureKind.sessionInvalid,
+      );
+    }
+    if (error is FunctionException) {
+      return _mapFunctionFailure(error);
+    }
+    return const AccountDeletionFailure(AccountDeletionFailureKind.requestFailed);
+  }
+
+  AccountDeletionFailure _mapFunctionFailure(FunctionException error) {
+    final AccountDeletionFailureKind kind;
+    if (error.status == 401) {
+      kind = AccountDeletionFailureKind.sessionInvalid;
+    } else if (error.status == 409 && _isLastActiveAdmin(error.details)) {
+      kind = AccountDeletionFailureKind.lastActiveAdmin;
+    } else {
+      kind = AccountDeletionFailureKind.requestFailed;
+    }
+
+    return AccountDeletionFailure(
+      kind,
+      status: error.status,
+      reasonPhrase: _sanitizeLogText(error.reasonPhrase),
+      details: _sanitizeFunctionDetails(error.details),
+    );
+  }
+
+  void _logPreviewFunctionFailure(
+      AccountDeletionFailure failure,
+      StackTrace stackTrace,
+      ) {
+    AppLogger.warning(
+      'delete-account dry-run failed: '
+          'status=${failure.status ?? 'unknown'}; '
+          'reasonPhrase=${failure.reasonPhrase ?? 'none'}; '
+          'details=${failure.details ?? 'none'}',
+      error: failure,
+      stackTrace: stackTrace,
+    );
+  }
+
+  String? _sanitizeFunctionDetails(Object? details) {
+    if (details == null) {
+      return null;
+    }
+
+    if (details is String) {
+      try {
+        return _sanitizeFunctionDetails(jsonDecode(details));
+      } on FormatException {
+        return _sanitizeLogText(details);
+      }
+    }
+
+    final Object? sanitized = _sanitizeLogValue(details);
+    if (sanitized is String) {
+      return _sanitizeLogText(sanitized);
+    }
+    try {
+      return _truncateLogText(jsonEncode(sanitized));
+    } on JsonUnsupportedObjectError {
+      return '[non-serializable response details]';
+    }
+  }
+
+  Object? _sanitizeLogValue(Object? value) {
+    if (value is Map) {
+      return <String, Object?>{
+        for (final MapEntry<dynamic, dynamic> entry in value.entries)
+          entry.key.toString(): _isSensitiveLogKey(entry.key.toString())
+              ? '[REDACTED]'
+              : _sanitizeLogValue(entry.value),
+      };
+    }
+    if (value is Iterable) {
+      return value.map(_sanitizeLogValue).toList(growable: false);
+    }
+    if (value is String) {
+      return _sanitizeLogText(value);
+    }
+    return value;
+  }
+
+  bool _isSensitiveLogKey(String key) =>
+      const <String>{
+        'authorization',
+        'access_token',
+        'apikey',
+        'api_key',
+        'service_role',
+        'refresh_token',
+      }.contains(key.toLowerCase());
+
+  String? _sanitizeLogText(String? value) {
+    if (value == null) {
+      return null;
+    }
+    final String redactedFields = value.replaceAllMapped(
+      RegExp(
+        r'''(["']?(?:authorization|access_token|apikey|api_key|service_role|refresh_token)["']?\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^,\s}\]]+)''',
+        caseSensitive: false,
+      ),
+          (Match match) => '${match.group(1)}[REDACTED]',
+    );
+    final String redactedBearer = redactedFields.replaceAllMapped(
+      RegExp(r'Bearer\s+[A-Za-z0-9._~+/=-]+', caseSensitive: false),
+          (Match _) => 'Bearer [REDACTED]',
+    );
+    return _truncateLogText(redactedBearer);
+  }
+
+  String _truncateLogText(String value) {
+    const int maximumLogLength = 2048;
+    return value.length <= maximumLogLength
+        ? value
+        : '${value.substring(0, maximumLogLength)}…[truncated]';
+  }
+
+  bool _isLastActiveAdmin(Object? details) {
+    if (details is Map) {
+      return details.values.any(_isLastActiveAdmin);
+    }
+    if (details is Iterable) {
+      return details.any(_isLastActiveAdmin);
+    }
+    if (details is String) {
+      final String value = details.trim();
+      if (value == 'last_active_admin') {
+        return true;
+      }
+      try {
+        return _isLastActiveAdmin(jsonDecode(value));
+      } on FormatException {
+        return value.contains('last_active_admin');
+      }
+    }
+    return false;
+  }
+
   Future<AppUserModel> _getAppUser(User user) async {
     // IMPORTANT: `employees.id` is the employee primary key whereas
     // `employees.auth_user_id` references `auth.users.id`.
     final Map<String, dynamic>? employee = await _supabase
         .from('employees')
         .select(
-          'id, auth_user_id, employee_code, name, phone, email, role, is_active',
-        )
+      'id, auth_user_id, employee_code, name, phone, email, role, is_active',
+    )
         .eq('auth_user_id', user.id)
         .maybeSingle();
 

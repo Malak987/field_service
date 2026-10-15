@@ -80,6 +80,27 @@ abstract class AppLocalizations {
   String get loginLink;
   String get logoutButton;
   String get tryAgainButton;
+
+  // --- Account deletion ---------------------------------------------------
+  String get accountDeletionTitle;
+  String get accountDeletionDescription;
+  String get accountDeletionAction;
+  String get accountDeletionConfirmationTitle;
+  String get accountDeletionConfirmationBody;
+  String get accountDeletionConfirmAction;
+  String get accountDeletionSubmitting;
+  String get accountDeletionPreviewTitle;
+  String get accountDeletionPreviewReady;
+  String get accountDeletionAccountEffect;
+  String get accountDeletionRetentionEffect;
+  String accountDeletionServerResult(String result);
+  String get accountDeletionPreviewLoading;
+  String get accountDeletionConfirming;
+  String get accountDeletionSuccess;
+  String get accountDeletionSessionInvalid;
+  String get accountDeletionLastActiveAdmin;
+  String get accountDeletionFailure;
+
   String get showPasswordTooltip;
   String get hidePasswordTooltip;
 
@@ -586,6 +607,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tryAgainButton => 'Try Again';
+
+  @override
+  String get accountDeletionTitle => 'Delete account';
+
+  @override
+  String get accountDeletionDescription =>
+      'Review what will happen before you delete your account.';
+
+  @override
+  String get accountDeletionAction => 'Review account deletion';
+
+  @override
+  String get accountDeletionConfirmationTitle => 'Delete your account?';
+
+  @override
+  String get accountDeletionConfirmationBody =>
+      'Your sign-in account and email address will be deleted. Your employee record, work history, photos, and signatures will remain stored until the retention period ends. This action cannot be undone.';
+
+  @override
+  String get accountDeletionConfirmAction => 'Delete account';
+
+  @override
+  String get accountDeletionSubmitting => 'Preparing deletion preview…';
+
+  @override
+  String get accountDeletionPreviewTitle => 'Deletion preview';
+
+  @override
+  String get accountDeletionPreviewReady =>
+      'The server preview is ready. No account or data has been deleted.';
+
+  @override
+  String get accountDeletionAccountEffect =>
+      'Your sign-in account and email address will be deleted.';
+
+  @override
+  String get accountDeletionRetentionEffect =>
+      'Your employee record, work history, photos, and signatures will stay stored until the retention period ends.';
+
+  @override
+  String accountDeletionServerResult(String result) => 'Server result: $result';
+
+  @override
+  String get accountDeletionPreviewLoading => 'Preparing deletion preview…';
+
+  @override
+  String get accountDeletionConfirming => 'Deleting account…';
+
+  @override
+  String get accountDeletionSuccess =>
+      'Your account has been deleted. Signing you out.';
+
+  @override
+  String get accountDeletionSessionInvalid =>
+      'Your session is no longer valid. Please sign in again before deleting your account.';
+
+  @override
+  String get accountDeletionLastActiveAdmin =>
+      'You are the last active administrator. Add another active administrator before deleting this account.';
+
+  @override
+  String get accountDeletionFailure =>
+      'The account deletion could not be completed. No account data was deleted. Please try again later.';
 
   @override
   String get showPasswordTooltip => 'Show password';
@@ -1758,6 +1842,70 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tryAgainButton => 'Erneut versuchen';
+
+  @override
+  String get accountDeletionTitle => 'Konto löschen';
+
+  @override
+  String get accountDeletionDescription =>
+      'Prüfe zuerst, was beim Löschen deines Kontos geschieht.';
+
+  @override
+  String get accountDeletionAction => 'Kontolöschung prüfen';
+
+  @override
+  String get accountDeletionConfirmationTitle => 'Konto löschen?';
+
+  @override
+  String get accountDeletionConfirmationBody =>
+      'Dein Anmeldekonto und deine E-Mail-Adresse werden gelöscht. Dein Mitarbeitereintrag, Arbeitshistorie, Fotos und Unterschriften bleiben bis zum Ende der Aufbewahrungsfrist gespeichert. Diese Aktion kann nicht rückgängig gemacht werden.';
+
+  @override
+  String get accountDeletionConfirmAction => 'Konto löschen';
+
+  @override
+  String get accountDeletionSubmitting => 'Löschvorschau wird vorbereitet…';
+
+  @override
+  String get accountDeletionPreviewTitle => 'Löschvorschau';
+
+  @override
+  String get accountDeletionPreviewReady =>
+      'Die Servervorschau ist bereit. Es wurden keine Konto- oder Datenbestände gelöscht.';
+
+  @override
+  String get accountDeletionAccountEffect =>
+      'Dein Anmeldekonto und deine E-Mail-Adresse werden gelöscht.';
+
+  @override
+  String get accountDeletionRetentionEffect =>
+      'Dein Mitarbeitereintrag, Arbeitshistorie, Fotos und Unterschriften bleiben bis zum Ende der Aufbewahrungsfrist gespeichert.';
+
+  @override
+  String accountDeletionServerResult(String result) =>
+      'Serverergebnis: $result';
+
+  @override
+  String get accountDeletionPreviewLoading => 'Löschvorschau wird vorbereitet…';
+
+  @override
+  String get accountDeletionConfirming => 'Konto wird gelöscht…';
+
+  @override
+  String get accountDeletionSuccess =>
+      'Dein Konto wurde gelöscht. Du wirst abgemeldet.';
+
+  @override
+  String get accountDeletionSessionInvalid =>
+      'Deine Sitzung ist nicht mehr gültig. Bitte melde dich erneut an, bevor du dein Konto löschst.';
+
+  @override
+  String get accountDeletionLastActiveAdmin =>
+      'Du bist der letzte aktive Administrator. Füge einen weiteren aktiven Administrator hinzu, bevor du dieses Konto löschst.';
+
+  @override
+  String get accountDeletionFailure =>
+      'Das Konto konnte nicht gelöscht werden. Es wurden keine Kontodaten gelöscht. Bitte versuche es später erneut.';
 
   @override
   String get showPasswordTooltip => 'Passwort anzeigen';

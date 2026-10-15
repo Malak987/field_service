@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heimwerk Privacy Policy — Draft</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; }
+    body { max-width: 850px; margin: 0 auto; padding: 2rem 1.25rem 4rem; color: #20242a; }
+    h1, h2 { line-height: 1.25; }
+    .draft { border: 2px solid #9a4c00; background: #fff4e5; padding: 1rem; }
+    .owner-input { background: #fff0a8; padding: .1rem .25rem; }
+    nav a { margin-right: 1rem; }
+    section { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="draft"><strong>DRAFT — DO NOT PUBLISH YET.</strong> This is a local review draft, not a published policy or legal approval. Confirm every open item, actual data flow, retention detail, contact channel, and link before publication.</p>
+    <h1>Heimwerk Privacy Policy</h1>
+    <p>Last updated: 14 October 2026 (draft date)</p>
+    <p>Responsible contact supplied for this draft: Malak Ezat<br>
+      Proposed privacy/support email: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a> <span class="owner-input">[OWNER: confirm this inbox is monitored and suitable for public requests]</span><br>
+      Legal controller identity/status and postal address: <span class="owner-input">[TO CONFIRM]</span></p>
+    <nav aria-label="Languages"><a href="#english">English</a><a href="#deutsch">Deutsch</a></nav>
+  </header>
+
+  <main>
+    <section id="english" lang="en">
+      <h2>English</h2>
+      <p>This draft describes data used by the Heimwerk Field Service app, based on the current app and Supabase configuration reviewed on 14 October 2026. The responsible operator must confirm it is complete and accurate before publication.</p>
+
+      <h3>Data we process</h3>
+      <ul>
+        <li><strong>Login and staff account:</strong> email address used by Supabase Auth; employee profile details such as name, employee code, phone number, role, and active/account status.</li>
+        <li><strong>Customer profile:</strong> name, phone number, email address, service address, city, postal code, and notes entered for service work.</li>
+        <li><strong>Job and work history:</strong> job category and description, customer and assigned employee references, status, and creation, assignment, start, completion, and update times.</li>
+        <li><strong>Job attachments:</strong> before/after photos, customer signatures, and other job documents. The app may keep local copies and pending uploads on the device to support offline work.</li>
+        <li><strong>Job activity:</strong> events such as job creation, assignment, start, photo/signature capture, and completion, associated with the relevant job and, where applicable, an employee record.</li>
+      </ul>
+
+      <h3>Why and where we use it</h3>
+      <p>We use this information to authenticate staff, assign and perform service jobs, contact customers about service, document work, synchronize offline work, protect accounts, and maintain work history. The app uses Supabase Auth, Database, and private Storage as its backend service provider. The current Supabase project is configured in the EU Central region. The operator must confirm applicable subprocessors, support access, logs, backups, and any other data recipients before publication.</p>
+
+      <h3>Camera and photo library</h3>
+      <p>Camera access is used to capture before/after job photos. Photo library access is used to attach existing photos to a job. Photos and signatures are stored as job attachments, not as profile pictures.</p>
+
+      <h3>Retention and deletion</h3>
+      <p><strong>Target retention:</strong> job data is intended to be kept for 12 months from job creation and then deleted automatically. The production server-side cleanup has been checked for job records and files in Supabase Storage: it runs daily, removes the job's Storage files before deleting the job, and associated job-file and job-event rows are removed with it. Failed Storage cleanup is retried by a later run. Each run processes at most 100 jobs, so a larger expired backlog can take multiple daily runs. At the review time there were no expired jobs awaiting deletion. This describes the server-side job cleanup only.</p>
+      <p><strong>Not covered by that server cleanup:</strong> local files and cached job data on devices, pending offline operations or uploads, and service-provider backups. Automatic expiry cleanup for local files and queued operations has not been implemented or verified in the app. The app retains local photo/signature bytes and metadata even after an upload succeeds, and queued sync payloads have no expiry cleanup. A historical database snapshot also exists; its disposal period is not defined. Service-provider backup retention periods and deletion behavior have not been confirmed. Do not treat these copies as covered by the 12-month server schedule.</p>
+      <p>Employee, administrator, and customer profiles are not automatically deleted by the 12-month job cleanup. When a staff member deletes their login account, the current workflow deletes the Supabase Auth account/login email, deactivates the linked employee account, and clears the employee profile's email field. The employee record remains, including other fields such as name, employee code, phone number, and role; work attribution is retained. This workflow does not implement anonymization of the employee record. Customer profiles, including customers created by that employee, are retained. The legal basis and retention period for these remaining personal details must be confirmed before publication.</p>
+      <p>To delete a login account, use the in-app account deletion option. The proposed email contact above is an additional request route only if the owner confirms it is monitored and defines identity verification, handling, and response timelines. Those operational details are not yet confirmed: <span class="owner-input">[OWNER: confirm and test request handling]</span>.</p>
+
+      <h3>Legal basis and your choices</h3>
+      <p>Before publication, the operator must state the legal basis for each processing purpose and explain rights and complaint routes for every country where the app will be offered: <span class="owner-input">[OWNER: complete after reviewing applicable privacy laws]</span>.</p>
+
+      <h3>Children</h3>
+      <p>This app is designed for field-service staff and business use, not for children. The operator must confirm the intended audience and store declarations.</p>
+
+      <h3>Contact</h3>
+      <p>Responsible contact supplied for this draft: Malak Ezat. Privacy questions and deletion requests: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a>. The owner must confirm that this inbox is monitored and that the request process is operational before publication.</p>
+    </section>
+
+    <hr>
+
+    <section id="deutsch" lang="de">
+      <h2>Deutsch</h2>
+      <p>Dieser Entwurf beschreibt die Datenverarbeitung in der Heimwerk Field Service App auf Grundlage der am 14. Oktober 2026 geprüften App- und Supabase-Konfiguration. Die verantwortliche Stelle muss Vollständigkeit und Richtigkeit vor der Veröffentlichung bestätigen.</p>
+
+      <h3>Verarbeitete Daten</h3>
+      <ul>
+        <li><strong>Anmeldung und Mitarbeiterkonto:</strong> E-Mail-Adresse für Supabase Auth sowie Mitarbeiterangaben wie Name, Mitarbeiternummer, Telefonnummer, Rolle und Konto-/Aktivitätsstatus.</li>
+        <li><strong>Kundenprofil:</strong> Name, Telefonnummer, E-Mail-Adresse, Serviceadresse, Stadt, Postleitzahl und eingegebene Notizen.</li>
+        <li><strong>Aufträge und Arbeitsverlauf:</strong> Auftragsart und -beschreibung, Verknüpfungen zu Kunden und zugewiesenen Mitarbeitern, Status sowie Erstellungs-, Zuweisungs-, Start-, Abschluss- und Änderungszeitpunkte.</li>
+        <li><strong>Auftragsdateien:</strong> Vorher-/Nachherfotos, Kundenunterschriften und weitere Auftragsdokumente. Für die Offline-Arbeit kann die App lokale Kopien und noch nicht hochgeladene Dateien auf dem Gerät speichern.</li>
+        <li><strong>Auftragsaktivitäten:</strong> Ereignisse wie Auftragserstellung, Zuweisung, Start, Foto-/Unterschriftserfassung und Abschluss, jeweils dem Auftrag und gegebenenfalls einem Mitarbeiterdatensatz zugeordnet.</li>
+      </ul>
+
+      <h3>Zwecke und Dienstanbieter</h3>
+      <p>Wir verwenden diese Informationen zur Anmeldung von Mitarbeitern, zur Zuweisung und Ausführung von Serviceaufträgen, zur Kundenkommunikation, zur Dokumentation der Arbeit, zur Offline-Synchronisierung, zum Schutz von Konten und zur Führung des Arbeitsverlaufs. Als Backend verwendet die App Supabase Auth, Database und privaten Storage. Das aktuelle Supabase-Projekt ist in der Region EU Central eingerichtet. Die verantwortliche Stelle muss vor Veröffentlichung Unterauftragnehmer, Supportzugriffe, Protokolle, Sicherungskopien und weitere Empfänger bestätigen.</p>
+
+      <h3>Kamera und Fotomediathek</h3>
+      <p>Die Kamera wird für Vorher-/Nachherfotos eines Auftrags verwendet. Die Fotomediathek wird verwendet, um vorhandene Fotos an einen Auftrag anzuhängen. Fotos und Unterschriften werden als Auftragsdateien und nicht als Profilbilder gespeichert.</p>
+
+      <h3>Speicherung und Löschung</h3>
+      <p><strong>Vorgesehene Aufbewahrungsdauer:</strong> Auftragsdaten sollen ab Erstellung 12 Monate gespeichert und danach automatisch gelöscht werden. Die serverseitige Bereinigung wurde für Auftragsdatensätze und Dateien im Supabase Storage geprüft: Sie läuft täglich, löscht zunächst die Storage-Dateien des Auftrags und danach den Auftrag; zugehörige Datei- und Ereignisdatensätze werden mit entfernt. Fehlgeschlagene Storage-Löschungen werden bei einem späteren Lauf erneut versucht. Pro Lauf werden höchstens 100 Aufträge verarbeitet; ein größerer Rückstand kann mehrere Tage benötigen. Zum Prüfzeitpunkt gab es keine abgelaufenen Aufträge. Diese Aussage betrifft nur die serverseitige Auftragsbereinigung.</p>
+      <p><strong>Nicht von dieser Serverbereinigung erfasst:</strong> lokale Dateien und zwischengespeicherte Auftragsdaten auf Geräten, ausstehende Offline-Vorgänge oder Uploads sowie Sicherungskopien. Die App behält lokale Foto-/Unterschriftsdateien und Metadaten auch nach erfolgreichem Upload; ausstehende Synchronisierungsvorgänge haben keine Ablaufbereinigung. Außerdem existiert eine historische Datenbankkopie ohne festgelegte Löschfrist. Eine automatische Ablaufbereinigung lokaler Dateien und ausstehender Vorgänge ist in der App noch nicht implementiert oder überprüft. Aufbewahrungsfristen und Löschverhalten von Sicherungskopien bei Dienstanbietern sind nicht bestätigt. Diese Kopien dürfen nicht als von der 12-Monats-Serverfrist erfasst dargestellt werden.</p>
+      <p>Mitarbeiter-, Administrator- und Kundenprofile werden durch die 12-Monats-Löschung der Aufträge nicht automatisch gelöscht. Wenn ein Mitarbeiter sein Anmeldekonto löscht, löscht das aktuelle Verfahren das Supabase-Auth-Konto und die Anmelde-E-Mail, deaktiviert das verknüpfte Mitarbeiterkonto und leert das E-Mail-Feld im Mitarbeiterprofil. Der Mitarbeiterdatensatz bleibt mit weiteren Angaben wie Name, Mitarbeiternummer, Telefonnummer und Rolle erhalten; auch die Zuordnung zum Arbeitsverlauf bleibt bestehen. Eine Anonymisierung des Mitarbeiterdatensatzes ist in diesem Verfahren nicht umgesetzt. Kundenprofile, einschließlich der von diesem Mitarbeiter angelegten Kunden, bleiben erhalten. Rechtsgrundlage und Aufbewahrungsfrist für diese personenbezogenen Daten müssen vor Veröffentlichung bestätigt werden.</p>
+      <p>Zum Löschen eines Anmeldekontos verwenden Sie die Löschfunktion in der App. Die oben genannte E-Mail-Adresse ist nur dann ein zusätzlicher Antragsweg, wenn die verantwortliche Stelle bestätigt, dass das Postfach überwacht wird, und Identitätsprüfung, Bearbeitung und Fristen festlegt. Diese Abläufe sind noch nicht bestätigt: <span class="owner-input">[VERANTWORTLICHE STELLE: Anfragebearbeitung bestätigen und testen]</span>.</p>
+
+      <h3>Rechtsgrundlage und Ihre Rechte</h3>
+      <p>Vor der Veröffentlichung muss die verantwortliche Stelle die Rechtsgrundlage für jeden Verarbeitungszweck angeben und Betroffenenrechte sowie Beschwerdewege für alle Länder erläutern, in denen die App angeboten wird: <span class="owner-input">[VERANTWORTLICHE STELLE: nach Prüfung der geltenden Datenschutzgesetze ergänzen]</span>.</p>
+
+      <h3>Kinder</h3>
+      <p>Diese App ist für Servicepersonal und geschäftliche Nutzung und nicht für Kinder bestimmt. Die verantwortliche Stelle muss Zielgruppe und Store-Angaben bestätigen.</p>
+
+      <h3>Kontakt</h3>
+      <p>Für diesen Entwurf angegebener Ansprechpartner: Malak Ezat. Datenschutzfragen und Löschanfragen: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a>. Vor der Veröffentlichung muss bestätigt werden, dass dieses Postfach überwacht wird und das Anfrageverfahren funktioniert.</p>
+    </section>
+  </main>
+</body>
+</html>

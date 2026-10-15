@@ -28,4 +28,8 @@ abstract interface class SyncProcessor {
   /// Re-queues operations that previously failed, for an explicit user action
   /// ("Try again") after a long offline period.
   Future<void> retryFailedOperations();
+
+  /// Runs a direct remote write under the current auth session and registers
+  /// it with the same pause/drain barrier used by queued synchronization.
+  Future<T> runSessionBound<T>(Future<T> Function() operation);
 }

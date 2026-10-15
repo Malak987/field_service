@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:field_service/core/utils/logger.dart';
+import 'package:field_service/core/sync/sync_manager.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
+import 'package:field_service/features/authentication/domain/usecases/clear_local_session.dart';
 import 'package:field_service/features/authentication/domain/usecases/get_current_user.dart';
 import 'package:field_service/features/authentication/domain/usecases/send_password_reset_email.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_in.dart';
@@ -18,7 +20,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
   AuthenticationCubit({
     required this._signIn,
     required this._signOut,
+    required this._clearLocalSession,
     required this._getCurrentUser,
+    this.syncManager,
     this._signUp,
     this._sendPasswordResetEmail,
     this._updatePassword,
@@ -40,7 +44,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
 
   final SignIn _signIn;
   final SignOut _signOut;
+  final ClearLocalSession _clearLocalSession;
   final GetCurrentUser _getCurrentUser;
+  final SyncManager? syncManager;
   final SignUp? _signUp;
   final SendPasswordResetEmail? _sendPasswordResetEmail;
   final UpdatePassword? _updatePassword;
@@ -160,6 +166,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
           clearMessage: true,
         ),
       );
+      syncManager?.resume();
     } catch (error, stackTrace) {
       AppLogger.warning(
         'Failed to restore authenticated employee session.',
@@ -181,6 +188,8 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     if (isClosed || _signOutInProgress) {
       return;
     }
+    final bool hadAuthenticatedSession =
+        state.status == AuthenticationStatus.authenticated;
     final int sessionRevision = _sessionRevision;
     emit(
       state.copyWith(
@@ -191,6 +200,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     );
 
     try {
+      // If sign-in replaces an existing session, drain the old user's work
+      // before Supabase changes the active UID.
+      await syncManager?.pauseAndDrain();
       final AppUser user = await _signIn(email: email, password: password);
 
       if (isClosed ||
@@ -207,7 +219,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
           clearMessage: true,
         ),
       );
+      syncManager?.resume();
     } catch (error, stackTrace) {
+      if (hadAuthenticatedSession) syncManager?.resume();
       AppLogger.warning(
         'Sign-in attempt failed.',
         error: error,
@@ -222,6 +236,8 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     required String email,
     required String password,
   }) async {
+    final bool hadAuthenticatedSession =
+        state.status == AuthenticationStatus.authenticated;
     final SignUp? signUpUseCase = _signUp;
     if (signUpUseCase == null) {
       _emitFailure(AuthErrorCode.unexpected, clearUser: true);
@@ -237,6 +253,9 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     );
 
     try {
+      // Sign-up may establish a different Supabase UID, so drain any prior
+      // account's queue and direct writes before making that auth request.
+      await syncManager?.pauseAndDrain();
       final AppUser? user = await signUpUseCase(
         fullName: fullName,
         email: email,
@@ -252,6 +271,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
             clearMessage: true,
           ),
         );
+        syncManager?.resume();
       } else {
         emit(
           state.copyWith(
@@ -261,8 +281,10 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
             clearMessage: true,
           ),
         );
+        if (hadAuthenticatedSession) syncManager?.resume();
       }
     } catch (error, stackTrace) {
+      if (hadAuthenticatedSession) syncManager?.resume();
       AppLogger.warning(
         'Registration attempt failed.',
         error: error,
@@ -358,6 +380,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
     );
 
     try {
+      await syncManager?.pauseAndDrain();
       await _signOut();
       if (isClosed) {
         return;
@@ -372,6 +395,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         ),
       );
     } catch (error, stackTrace) {
+      syncManager?.resume();
       AppLogger.warning(
         'Sign-out failed.',
         error: error,
@@ -381,6 +405,53 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
         _emitFailure(error);
       }
     } finally {
+      _signOutInProgress = false;
+    }
+  }
+
+  /// Clears this device's persisted Supabase session and the in-memory account
+  /// state after a server-confirmed deletion or a 401 session rejection.
+  ///
+  /// This intentionally uses the local-only use case rather than [signOut], so
+  /// it never relies on an auth account that the server has just removed.
+  Future<void> clearDeletedOrInvalidAccountSession() async {
+    if (isClosed || _signOutInProgress) {
+      return;
+    }
+    _signOutInProgress = true;
+    _sessionRevision++;
+    emit(
+      state.copyWith(
+        status: AuthenticationStatus.loading,
+        clearErrorCode: true,
+        clearMessage: true,
+      ),
+    );
+
+    try {
+      await syncManager?.pauseAndDrain();
+      await _clearLocalSession();
+    } catch (error, stackTrace) {
+      // A successful server-side deletion must still leave the app in a
+      // signed-out in-memory state. The local Supabase scope normally avoids
+      // network calls; this log preserves the unexpected storage failure for
+      // diagnostics without exposing it to the user as a deletion failure.
+      AppLogger.warning(
+        'Failed to clear the persisted local session after account deletion.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      if (!isClosed) {
+        emit(
+          state.copyWith(
+            status: AuthenticationStatus.unauthenticated,
+            clearUser: true,
+            clearErrorCode: true,
+            clearMessage: true,
+          ),
+        );
+      }
       _signOutInProgress = false;
     }
   }

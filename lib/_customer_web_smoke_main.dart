@@ -6,6 +6,7 @@ import 'package:field_service/app/router/app_router.dart';
 import 'package:field_service/core/database/app_database.dart';
 import 'package:field_service/core/database/app_database_factory.dart';
 import 'package:field_service/core/network/network_info.dart';
+import 'package:field_service/features/authentication/domain/entities/account_deletion_preview.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
@@ -66,7 +67,24 @@ class _AdminAuthentication implements AuthenticationRepository {
   Future<void> updatePassword({required String newPassword}) async {}
 
   @override
+  Future<AccountDeletionPreview> previewAccountDeletion() async {
+    throw StateError(
+      'Offline Chrome smoke test cannot preview account deletion.',
+    );
+  }
+
+  @override
+  Future<void> confirmAccountDeletion() async {
+    throw StateError(
+      'Offline Chrome smoke test cannot confirm account deletion.',
+    );
+  }
+
+  @override
   Future<void> signOut() async {}
+
+  @override
+  Future<void> clearLocalSession() async {}
 
   @override
   Stream<AuthSessionEvent> watchAuthStateChanges() => const Stream.empty();

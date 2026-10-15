@@ -147,6 +147,7 @@ class _ServerLikeCompleteRemote implements JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 
@@ -155,6 +156,7 @@ class _ServerLikeCompleteRemote implements JobsRemoteDataSource {
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 

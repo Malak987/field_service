@@ -55,6 +55,10 @@ abstract interface class JobFilesRemoteDataSource {
     String? mimeType,
   });
 
+  /// Server-side expiry/ownership preflight. A rejection must happen before
+  /// file bytes are sent; Storage RLS remains the final race-safe check.
+  Future<void> authorizeJobFileUpload({required String jobId});
+
   /// Registers the uploaded file through the `register_job_file` RPC — the
   /// only write path. The RPC resolves the caller's identity itself,
   /// verifies job ownership and `in_progress` status, inserts the row
@@ -126,6 +130,14 @@ class JobFilesRemoteDataSourceImpl implements JobFilesRemoteDataSource {
   }
 
   @override
+  Future<void> authorizeJobFileUpload({required String jobId}) async {
+    await supabase.rpc(
+      'authorize_job_file_upload',
+      params: <String, dynamic>{'p_job_id': jobId},
+    );
+  }
+
+  @override
   Future<void> registerJobFile({
     required String fileId,
     required String jobId,
@@ -155,7 +167,12 @@ class JobFilesRemoteDataSourceImpl implements JobFilesRemoteDataSource {
 
   @override
   Future<Uint8List> downloadPhotoBytes(String storagePath) async {
-    final Uint8List? cached = _downloadCache[storagePath];
+    // Storage access is user-scoped. Do not let a later account in the same
+    // app process receive bytes cached by the previous account.
+    final String? userId = supabase.auth.currentUser?.id;
+    final String? cacheKey = userId == null ? null : '$userId:$storagePath';
+    final Uint8List? cached =
+        cacheKey == null ? null : _downloadCache[cacheKey];
     if (cached != null) {
       return cached;
     }
@@ -164,10 +181,19 @@ class JobFilesRemoteDataSourceImpl implements JobFilesRemoteDataSource {
         .from(JobFilesRemoteDataSource.bucket)
         .download(storagePath);
 
-    if (_downloadCache.length >= _downloadCacheLimit) {
-      _downloadCache.remove(_downloadCache.keys.first);
+    // A completed request still belongs to the session that started it. Do
+    // not hand bytes to a caller after sign-out or account switching.
+    if (supabase.auth.currentUser?.id != userId) {
+      throw StateError('Supabase session changed during photo download.');
     }
-    _downloadCache[storagePath] = bytes;
+
+    // Cache only under the same user-scoped key used for lookup.
+    if (cacheKey != null) {
+      if (_downloadCache.length >= _downloadCacheLimit) {
+        _downloadCache.remove(_downloadCache.keys.first);
+      }
+      _downloadCache[cacheKey] = bytes;
+    }
     return bytes;
   }
 }

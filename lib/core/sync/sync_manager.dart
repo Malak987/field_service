@@ -8,6 +8,7 @@ import 'package:field_service/core/sync/sync_processor.dart';
 import 'package:field_service/core/sync/sync_queue.dart';
 import 'package:field_service/core/sync/sync_status.dart';
 import 'package:field_service/core/utils/logger.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// The offline-first push engine.
 ///
@@ -34,16 +35,22 @@ import 'package:field_service/core/utils/logger.dart';
 /// of the architecture.
 class SyncManager implements SyncProcessor {
   SyncManager({
-    required this._queue,
-    required this._connectivity,
-    required this._handlers,
+    required SyncQueue queue,
+    required ConnectivityService connectivity,
+    required SyncHandlerRegistry handlers,
+    String? Function()? currentUserId,
     SyncErrorMapper? errorMapper,
-  }) : _errorMapper = errorMapper ?? const SyncErrorMapper();
+  }) : _queue = queue,
+       _connectivity = connectivity,
+       _handlers = handlers,
+       _errorMapper = errorMapper ?? const SyncErrorMapper(),
+       _currentUserId = currentUserId ?? (() => null);
 
   final SyncQueue _queue;
   final ConnectivityService _connectivity;
   final SyncHandlerRegistry _handlers;
   final SyncErrorMapper _errorMapper;
+  final String? Function() _currentUserId;
 
   final StreamController<SyncHealth> _healthController =
       StreamController<SyncHealth>.broadcast();
@@ -51,6 +58,10 @@ class SyncManager implements SyncProcessor {
 
   bool _started = false;
   bool _syncing = false;
+  bool _paused = false;
+  Completer<void>? _idleCompleter;
+  Completer<void>? _externalIdleCompleter;
+  int _externalOperations = 0;
   SyncHealth _lastHealth = SyncHealth(
     networkStatus: ConnectivityStatus.offline,
   );
@@ -117,6 +128,49 @@ class SyncManager implements SyncProcessor {
     await _healthController.close();
   }
 
+  /// Prevents new queue work and waits for the currently claimed operation to
+  /// settle before Auth changes the session. Queue contents are preserved.
+  Future<void> pauseAndDrain() async {
+    _paused = true;
+    final Completer<void>? idle = _idleCompleter;
+    final Completer<void>? externalIdle = _externalIdleCompleter;
+    await Future.wait<void>(<Future<void>>[
+      if (idle != null && !idle.isCompleted) idle.future,
+      if (externalIdle != null && !externalIdle.isCompleted) externalIdle.future,
+    ]);
+  }
+
+  @override
+  Future<T> runSessionBound<T>(Future<T> Function() operation) async {
+    if (_paused) throw StateError('Auth session changes are in progress.');
+    final String? ownerAtStart = _currentUserId();
+    if (ownerAtStart == null || ownerAtStart.isEmpty) {
+      throw StateError('A signed-in account is required for this operation.');
+    }
+    if (_externalOperations == 0) _externalIdleCompleter = Completer<void>();
+    _externalOperations++;
+    try {
+      final T result = await operation();
+      if (_currentUserId() != ownerAtStart) {
+        throw StateError('Auth session changed while the operation was active.');
+      }
+      return result;
+    } finally {
+      _externalOperations--;
+      if (_externalOperations == 0) {
+        final Completer<void>? externalIdle = _externalIdleCompleter;
+        _externalIdleCompleter = null;
+        if (externalIdle != null && !externalIdle.isCompleted) externalIdle.complete();
+      }
+    }
+  }
+
+  /// Resumes only operations owned by the now-current Supabase UID.
+  void resume() {
+    _paused = false;
+    if (_connectivity.isOnline) unawaited(processPendingOperations());
+  }
+
   // --- Sync runs -------------------------------------------------------------------
 
   @override
@@ -124,10 +178,11 @@ class SyncManager implements SyncProcessor {
     // Serialise runs: a second trigger (manual sync + connectivity event)
     // must never interleave with an active run — duplicate-processing guard
     // number one (queue-level claims are guard number two).
-    if (_syncing) {
+    if (_syncing || _paused) {
       return;
     }
     _syncing = true;
+    _idleCompleter = Completer<void>();
     _emitHealth();
 
     try {
@@ -135,7 +190,7 @@ class SyncManager implements SyncProcessor {
         // Pause check: no usable internet → stop. Everything not yet claimed
         // stays `pending`; a claimed operation is either already resolved or
         // released back below. The queue is never cleared.
-        if (!_connectivity.isOnline) {
+        if (_paused || !_connectivity.isOnline) {
           break;
         }
 
@@ -156,6 +211,16 @@ class SyncManager implements SyncProcessor {
           break;
         }
 
+        // Queue-level scope filtering is repeated immediately before dispatch
+        // to close the selection/claim account-switch window.
+        final String? currentUserId = _currentUserId();
+        if (operation.ownerUserId == null ||
+            currentUserId == null ||
+            operation.ownerUserId != currentUserId) {
+          await _queue.releaseInFlight(operation.id);
+          break;
+        }
+
         final RemotePushResult result = await _push(operation);
 
         if (result.success) {
@@ -163,10 +228,17 @@ class SyncManager implements SyncProcessor {
         } else {
           // Persist the failure and **continue with the remaining
           // operations**: one bad record must not hold up everything else.
-          await _queue.markFailed(
-            operation.id,
-            errorMessage: result.reason ?? 'Unknown error.',
-          );
+          if (result.terminal) {
+            await _queue.markTerminal(
+              operation.id,
+              safeReason: result.reason ?? 'The server permanently rejected this task.',
+            );
+          } else {
+            await _queue.markFailed(
+              operation.id,
+              errorMessage: result.reason ?? 'Unknown error.',
+            );
+          }
           _lastHealth = _lastHealth.copyWithLastError(result.reason);
         }
 
@@ -185,6 +257,9 @@ class SyncManager implements SyncProcessor {
       );
     } finally {
       _syncing = false;
+      final Completer<void>? idle = _idleCompleter;
+      _idleCompleter = null;
+      if (idle != null && !idle.isCompleted) idle.complete();
       _emitHealth();
     }
   }
@@ -220,6 +295,15 @@ class SyncManager implements SyncProcessor {
     try {
       return await handler.push(operation);
     } catch (error) {
+      if (error is PostgrestException &&
+          (error.message.contains('JOB_EXPIRED') ||
+              error.message.contains('JOB_DELETED'))) {
+        return RemotePushResult.terminalFailure(
+          error.message.contains('JOB_EXPIRED')
+              ? 'This task expired and will not be retried.'
+              : 'This task was deleted and will not be retried.',
+        );
+      }
       return RemotePushResult.failure(_errorMapper.toSafeMessage(error));
     }
   }

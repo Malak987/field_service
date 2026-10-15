@@ -1,14 +1,18 @@
 import 'package:field_service/features/authentication/data/datasources/authentication_remote_data_source.dart';
 import 'package:field_service/features/authentication/data/repositories/authentication_repository_impl.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
+import 'package:field_service/features/authentication/domain/usecases/clear_local_session.dart';
 import 'package:field_service/features/authentication/domain/usecases/get_current_user.dart';
+import 'package:field_service/features/authentication/domain/usecases/request_account_deletion.dart';
 import 'package:field_service/features/authentication/domain/usecases/send_password_reset_email.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_in.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_out.dart';
 import 'package:field_service/features/authentication/domain/usecases/sign_up.dart';
 import 'package:field_service/features/authentication/domain/usecases/update_password.dart';
 import 'package:field_service/features/authentication/domain/usecases/watch_auth_state_changes.dart';
+import 'package:field_service/features/authentication/presentation/cubit/account_deletion_cubit.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
+import 'package:field_service/core/sync/sync_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -44,6 +48,14 @@ void registerAuthenticationModule(GetIt sl) {
     () => SignOut(sl<AuthenticationRepository>()),
   );
 
+  sl.registerLazySingleton<ClearLocalSession>(
+    () => ClearLocalSession(sl<AuthenticationRepository>()),
+  );
+
+  sl.registerLazySingleton<RequestAccountDeletion>(
+    () => RequestAccountDeletion(sl<AuthenticationRepository>()),
+  );
+
   sl.registerLazySingleton<GetCurrentUser>(
     () => GetCurrentUser(sl<AuthenticationRepository>()),
   );
@@ -53,6 +65,13 @@ void registerAuthenticationModule(GetIt sl) {
   );
 
   // One session owner for the gate, router and all feature/authentication pages.
+  // Page-scoped: each account page owns its own request feedback state.
+  sl.registerFactory<AccountDeletionCubit>(
+    () => AccountDeletionCubit(
+      requestAccountDeletion: sl<RequestAccountDeletion>(),
+    ),
+  );
+
   sl.registerLazySingleton<AuthenticationCubit>(
     () => AuthenticationCubit(
       signIn: sl<SignIn>(),
@@ -60,8 +79,10 @@ void registerAuthenticationModule(GetIt sl) {
       sendPasswordResetEmail: sl<SendPasswordResetEmail>(),
       updatePassword: sl<UpdatePassword>(),
       signOut: sl<SignOut>(),
+      clearLocalSession: sl<ClearLocalSession>(),
       getCurrentUser: sl<GetCurrentUser>(),
       watchAuthStateChanges: sl<WatchAuthStateChanges>(),
+      syncManager: sl<SyncManager>(),
     ),
     dispose: (AuthenticationCubit cubit) => cubit.close(),
   );

@@ -11,7 +11,9 @@ import 'package:field_service/core/sync/sync_status_cubit.dart';
 import 'package:field_service/core/storage/app_file_storage.dart';
 import 'package:field_service/core/storage/file_storage.dart';
 import 'package:field_service/core/storage/local_file_storage.dart';
+import 'package:field_service/core/storage/local_job_retention_cleaner.dart';
 import 'package:get_it/get_it.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Composition root of the offline-first foundation.
 ///
@@ -30,7 +32,12 @@ void registerOfflineModule(GetIt sl) {
   );
 
   // --- Sync queue ----------------------------------------------------------
-  sl.registerLazySingleton<SyncQueue>(() => DriftSyncQueue(sl<AppDatabase>()));
+  sl.registerLazySingleton<SyncQueue>(
+    () => DriftSyncQueue(
+      sl<AppDatabase>(),
+      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
+    ),
+  );
 
   // --- Connectivity ----------------------------------------------------------
   // NetworkInfo (interface + reachability probe) is registered by the core
@@ -56,6 +63,7 @@ void registerOfflineModule(GetIt sl) {
       queue: sl<SyncQueue>(),
       connectivity: sl<ConnectivityService>(),
       handlers: sl<SyncHandlerRegistry>(),
+      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
     ),
   );
 
@@ -66,6 +74,16 @@ void registerOfflineModule(GetIt sl) {
 
   // --- File storage -------------------------------------------------------------
   sl.registerLazySingleton<FileStorage>(AppFileStorage.new);
+
+  // Constructed for the reviewed retention flow, but intentionally not
+  // scheduled/run until owner-approved staging validation is complete.
+  sl.registerLazySingleton<LocalJobRetentionCleaner>(
+    () => LocalJobRetentionCleaner(
+      database: sl<AppDatabase>(),
+      fileStorage: sl<FileStorage>(),
+      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
+    ),
+  );
 
   sl.registerLazySingleton<LocalFileStorage>(
     () => LocalFileStorage(

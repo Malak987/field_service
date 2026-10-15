@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:field_service/app/di/injection.dart';
+import 'package:field_service/app/router/app_routes.dart';
 import 'package:field_service/core/extensions/build_context_extensions.dart';
 import 'package:field_service/core/localization/app_localizations.dart';
 import 'package:field_service/core/sync/sync_status.dart';
@@ -13,11 +16,16 @@ import 'package:field_service/core/widgets/app_section_header.dart';
 import 'package:field_service/core/widgets/app_standard_page_header.dart';
 import 'package:field_service/core/widgets/app_sync_status_badge.dart';
 import 'package:field_service/core/widgets/language_switcher.dart';
+import 'package:field_service/features/authentication/domain/entities/account_deletion_failure.dart';
+import 'package:field_service/features/authentication/domain/entities/account_deletion_preview.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
+import 'package:field_service/features/authentication/presentation/cubit/account_deletion_cubit.dart';
+import 'package:field_service/features/authentication/presentation/cubit/account_deletion_state.dart';
 import 'package:field_service/features/authentication/presentation/cubit/authentication_cubit.dart';
 import 'package:field_service/features/authentication/presentation/widgets/auth_logo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 /// Account screen (route `/account`) — identity, language, sync visibility and
 /// sign-out for both authenticated roles.
@@ -39,42 +47,123 @@ class AccountPage extends StatelessWidget {
       (AuthenticationCubit cubit) => cubit.state.isLoading,
     );
 
-    return BlocProvider<SyncStatusCubit>(
-      // The offline engine's own state — the same source of truth used by the
-      // existing customers header and account surface.
-      create: (_) => sl<SyncStatusCubit>(),
-      child: AppPageBody(
-        // The logo-led header below is the page identity. Keeping the app bar
-        // as quiet navigation chrome avoids repeating the title on a phone.
-        appBar: AppBar(),
-        responsivePadding: true,
-        navigation: AppNavSpec(
-          isAdmin: isAdmin,
-          selectedIndex: AppNavDestinations.accountIndex(isAdmin: isAdmin),
+    return MultiBlocProvider(
+      providers: <BlocProvider<dynamic>>[
+        // The offline engine's own state — the same source of truth used by the
+        // existing customers header and account surface.
+        BlocProvider<SyncStatusCubit>(create: (_) => sl<SyncStatusCubit>()),
+        BlocProvider<AccountDeletionCubit>(
+          create: (_) => sl<AccountDeletionCubit>(),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            _AccountHeader(
-              title: l10n.accountTitle,
-              subtitle: l10n.accountSettingsTooltip,
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            _ProfilePanel(user: user),
-            const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(title: l10n.selectLanguage),
-            const SizedBox(height: AppSpacing.md),
-            const _LanguagePreferencePanel(),
-            const SizedBox(height: AppSpacing.xxl),
-            AppSectionHeader(title: l10n.syncStatusTitle),
-            const SizedBox(height: AppSpacing.md),
-            const _SyncStatusPanel(),
-            const SizedBox(height: AppSpacing.xxl),
-            _SignOutPanel(isSigningOut: isSigningOut),
-          ],
+      ],
+      child: BlocListener<AccountDeletionCubit, AccountDeletionState>(
+        listenWhen: (
+          AccountDeletionState previous,
+          AccountDeletionState current,
+        ) => previous.status != current.status,
+        listener: (BuildContext context, AccountDeletionState state) {
+          final AppLocalizations pageL10n = context.l10n;
+          final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+          if (state.isSuccessful) {
+            // The server confirmed `confirm_delete` before any local session
+            // state is cleared or navigation to sign-in occurs.
+            messenger
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(content: Text(pageL10n.accountDeletionSuccess)),
+              );
+            unawaited(_clearSessionAndOpenLogin(context));
+          } else if (state.hasFailed) {
+            messenger
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _accountDeletionFailureMessage(pageL10n, state.failure),
+                  ),
+                ),
+              );
+            if (state.failure == AccountDeletionFailureKind.sessionInvalid) {
+              // A 401 is not a deletion success. It only means the persisted
+              // session cannot authenticate the request and must be replaced.
+              unawaited(_clearSessionAndOpenLogin(context));
+            }
+          }
+        },
+        child: AppPageBody(
+          // The logo-led header below is the page identity. Keeping the app bar
+          // as quiet navigation chrome avoids repeating the title on a phone.
+          appBar: AppBar(),
+          responsivePadding: true,
+          navigation: AppNavSpec(
+            isAdmin: isAdmin,
+            selectedIndex: AppNavDestinations.accountIndex(isAdmin: isAdmin),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _AccountHeader(
+                title: l10n.accountTitle,
+                subtitle: l10n.accountSettingsTooltip,
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              _ProfilePanel(user: user),
+              const SizedBox(height: AppSpacing.xxl),
+              AppSectionHeader(title: l10n.selectLanguage),
+              const SizedBox(height: AppSpacing.md),
+              const _LanguagePreferencePanel(),
+              const SizedBox(height: AppSpacing.xxl),
+              AppSectionHeader(title: l10n.syncStatusTitle),
+              const SizedBox(height: AppSpacing.md),
+              const _SyncStatusPanel(),
+              const SizedBox(height: AppSpacing.xxl),
+              AppSectionHeader(title: l10n.accountDeletionTitle),
+              const SizedBox(height: AppSpacing.md),
+              BlocBuilder<AccountDeletionCubit, AccountDeletionState>(
+                builder: (BuildContext context, AccountDeletionState state) =>
+                    _AccountDeletionPanel(state: state),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              BlocBuilder<AccountDeletionCubit, AccountDeletionState>(
+                buildWhen: (
+                  AccountDeletionState previous,
+                  AccountDeletionState current,
+                ) => previous.isBusy != current.isBusy,
+                builder: (BuildContext context, AccountDeletionState state) =>
+                    _SignOutPanel(
+                      isSigningOut: isSigningOut || state.isBusy,
+                    ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+Future<void> _clearSessionAndOpenLogin(BuildContext context) async {
+  await context
+      .read<AuthenticationCubit>()
+      .clearDeletedOrInvalidAccountSession();
+  if (context.mounted) {
+    context.go(AppRoutes.login);
+  }
+}
+
+String _accountDeletionFailureMessage(
+  AppLocalizations l10n,
+  AccountDeletionFailureKind? failure,
+) {
+  switch (failure) {
+    case AccountDeletionFailureKind.sessionInvalid:
+      return l10n.accountDeletionSessionInvalid;
+    case AccountDeletionFailureKind.lastActiveAdmin:
+      return l10n.accountDeletionLastActiveAdmin;
+    case AccountDeletionFailureKind.requestFailed:
+    case null:
+      return l10n.accountDeletionFailure;
   }
 }
 
@@ -475,6 +564,216 @@ class _SectionIcon extends StatelessWidget {
       ),
       alignment: Alignment.center,
       child: Icon(icon, size: AppDimensions.iconMd, color: AppColors.primary),
+    );
+  }
+}
+
+class _AccountDeletionPanel extends StatelessWidget {
+  const _AccountDeletionPanel({required this.state});
+
+  final AccountDeletionState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+    final AccountDeletionPreview? preview = state.preview;
+    final bool isUnavailable = state.isBusy || state.isSuccessful;
+    final bool canConfirm = preview != null;
+
+    return Material(
+      color: context.colors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.card,
+        side: BorderSide(color: context.colors.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Container(
+                  width: AppDimensions.buttonHeightCompact,
+                  height: AppDimensions.buttonHeightCompact,
+                  decoration: const BoxDecoration(
+                    color: AppColors.errorSurface,
+                    borderRadius: AppRadius.banner,
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.delete_forever_outlined,
+                    size: AppDimensions.iconMd,
+                    color: AppColors.error,
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Text(
+                    l10n.accountDeletionDescription,
+                    style: context.textStyles.bodyMedium?.copyWith(
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (preview != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.lg),
+              _AccountDeletionPreviewCard(preview: preview),
+            ],
+            if (state.hasFailed) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _accountDeletionFailureMessage(l10n, state.failure),
+                  style: context.textStyles.bodySmall?.copyWith(
+                    color: AppColors.error,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: AppSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: Key(
+                  canConfirm
+                      ? 'account_delete_open_confirmation'
+                      : 'account_delete_request_preview',
+                ),
+                style: FilledButton.styleFrom(
+                  backgroundColor: canConfirm
+                      ? AppColors.error
+                      : AppColors.primary,
+                  foregroundColor: AppColors.onBrand,
+                ),
+                onPressed: isUnavailable
+                    ? null
+                    : canConfirm
+                    ? () => _confirmDeletion(context)
+                    : () => context
+                          .read<AccountDeletionCubit>()
+                          .previewDeletion(),
+                icon: state.isBusy
+                    ? const SizedBox(
+                        width: AppDimensions.iconSm,
+                        height: AppDimensions.iconSm,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.onBrand,
+                        ),
+                      )
+                    : Icon(
+                        canConfirm
+                            ? Icons.delete_forever_outlined
+                            : Icons.visibility_outlined,
+                        size: AppDimensions.iconMd,
+                      ),
+                label: Text(_actionLabel(l10n, canConfirm: canConfirm)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _actionLabel(AppLocalizations l10n, {required bool canConfirm}) {
+    if (state.isPreviewing) {
+      return l10n.accountDeletionPreviewLoading;
+    }
+    if (state.isConfirming) {
+      return l10n.accountDeletionConfirming;
+    }
+    return canConfirm
+        ? l10n.accountDeletionConfirmAction
+        : l10n.accountDeletionAction;
+  }
+
+  Future<void> _confirmDeletion(BuildContext context) async {
+    final AppLocalizations l10n = context.l10n;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => AlertDialog(
+        key: const Key('account_delete_confirmation_dialog'),
+        title: Text(l10n.accountDeletionConfirmationTitle),
+        content: Text(l10n.accountDeletionConfirmationBody),
+        actions: <Widget>[
+          TextButton(
+            key: const Key('account_delete_cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.cancelButton),
+          ),
+          FilledButton(
+            key: const Key('account_delete_confirm'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.onBrand,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(l10n.accountDeletionConfirmAction),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) {
+      return;
+    }
+
+    await context.read<AccountDeletionCubit>().confirmDeletion();
+  }
+}
+
+class _AccountDeletionPreviewCard extends StatelessWidget {
+  const _AccountDeletionPreviewCard({required this.preview});
+
+  final AccountDeletionPreview preview;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppLocalizations l10n = context.l10n;
+
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.md),
+        decoration: BoxDecoration(
+          color: AppColors.infoSurface,
+          borderRadius: AppRadius.banner,
+          border: Border.all(color: context.colors.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(l10n.accountDeletionPreviewTitle, style: context.textStyles.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l10n.accountDeletionPreviewReady),
+            const SizedBox(height: AppSpacing.sm),
+            Text(l10n.accountDeletionAccountEffect),
+            const SizedBox(height: AppSpacing.xs),
+            Text(l10n.accountDeletionRetentionEffect),
+            if (preview.serverMessage != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                l10n.accountDeletionServerResult(preview.serverMessage!),
+                style: context.textStyles.bodySmall,
+              ),
+            ],
+            if (preview.retentionDetail != null) ...<Widget>[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                l10n.accountDeletionServerResult(preview.retentionDetail!),
+                style: context.textStyles.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

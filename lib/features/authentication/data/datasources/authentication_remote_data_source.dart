@@ -17,9 +17,20 @@ abstract interface class AuthenticationRemoteDataSource {
 
   Future<UserResponse> updatePassword({required String newPassword});
 
+  /// Runs the non-destructive `delete-account` preview for the current session.
+  Future<Object?> previewAccountDeletion();
+
+  /// Confirms deletion of the current authenticated account through the
+  /// deployed `delete-account` Edge Function.
+  Future<void> confirmAccountDeletion();
+
   User? get currentUser;
 
   Future<void> signOut();
+
+  /// Removes this device's persisted session without making a remote sign-out
+  /// request. Used only after a confirmed deletion or invalid session.
+  Future<void> clearLocalSession();
 
   Stream<AuthState> get onAuthStateChange;
 }
@@ -80,11 +91,54 @@ class AuthenticationRemoteDataSourceImpl
   }
 
   @override
+  Future<Object?> previewAccountDeletion() async {
+    final FunctionResponse response = await _invokeAccountDeletionFunction(
+      body: const <String, bool>{'dry_run': true},
+    );
+    return response.data;
+  }
+
+  @override
+  Future<void> confirmAccountDeletion() async {
+    await _invokeAccountDeletionFunction(
+      body: const <String, bool>{'confirm_delete': true},
+    );
+  }
+
+  Future<FunctionResponse> _invokeAccountDeletionFunction({
+    required Map<String, bool> body,
+  }) async {
+    // The function identifies and authorizes the caller from the current JWT.
+    // Do not send a user id: it must never be possible for a client to choose
+    // another account for deletion. The Supabase client supplies the current
+    // session Authorization header automatically.
+    if (supabase.auth.currentSession == null) {
+      throw const AuthException('No authenticated session is available.');
+    }
+
+    final FunctionResponse response = await supabase.functions.invoke(
+      'delete-account',
+      body: body,
+    );
+    if (response.status < 200 || response.status >= 300) {
+      throw StateError(
+        'delete-account responded with an unsuccessful status: ${response.status}',
+      );
+    }
+    return response;
+  }
+
+  @override
   User? get currentUser => supabase.auth.currentUser;
 
   @override
   Future<void> signOut() {
     return supabase.auth.signOut();
+  }
+
+  @override
+  Future<void> clearLocalSession() {
+    return supabase.auth.signOut(scope: SignOutScope.local);
   }
 
   @override

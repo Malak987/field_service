@@ -46,3 +46,12 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Signing material and store credentials: never commit.
+key.properties
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+*.certSigningRequest

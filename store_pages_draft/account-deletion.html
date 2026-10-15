@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heimwerk Account Deletion — Draft</title>
+  <style>
+    :root { color-scheme: light; font: 16px/1.6 system-ui, sans-serif; }
+    body { max-width: 850px; margin: 0 auto; padding: 2rem 1.25rem 4rem; color: #20242a; }
+    h1, h2 { line-height: 1.25; }
+    .draft { border: 2px solid #9a4c00; background: #fff4e5; padding: 1rem; }
+    .owner-input { background: #fff0a8; padding: .1rem .25rem; }
+    nav a { margin-right: 1rem; }
+    section { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="draft"><strong>DRAFT — DO NOT PUBLISH YET.</strong> Local review draft only. The email request route is not confirmed as monitored or operational; complete and test it before publication. This is not legal approval.</p>
+    <h1>Delete your Heimwerk account</h1>
+    <p>Responsible contact supplied for this draft: Malak Ezat. Legal operator identity/status and postal address: <span class="owner-input">[OWNER: confirm before publication]</span></p>
+    <p>Proposed deletion request contact: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a> <span class="owner-input">[OWNER: confirm this inbox is monitored and define the request workflow]</span></p>
+    <nav aria-label="Languages"><a href="#english">English</a><a href="#deutsch">Deutsch</a><a href="privacy-policy.html">Privacy policy / Datenschutzerklärung</a></nav>
+  </header>
+
+  <main>
+    <section id="english" lang="en">
+      <h2>English</h2>
+      <p>You can delete your Heimwerk login account in the app: open Account, choose “Review account deletion,” review the data impact, and confirm deletion. This requires access to the signed-in account.</p>
+      <p><strong>Cannot sign in or use the app?</strong> The proposed email contact is <a href="mailto:malakdeveloper9876@gmail.com?subject=Heimwerk%20account%20deletion%20request">malakdeveloper9876@gmail.com</a>. This route is not confirmed as monitored or operational. If enabled, state the email address used for your Heimwerk login; never send your password or authentication codes. The operator must define identity verification, request handling, and response times before this can be presented as a working request path.</p>
+
+      <h3>What deletion does</h3>
+      <ul>
+        <li>The Supabase Auth login account and its login email are deleted.</li>
+        <li>The linked employee account is deactivated, and its employee-profile email field is cleared. The employee record remains; other profile fields, such as name, employee code, phone, and role, are retained in the current backend workflow.</li>
+        <li>Customer profiles, including customers created by the employee, are retained.</li>
+        <li><strong>12-month target:</strong> server-side job records and files stored in Supabase are scheduled for automatic cleanup 12 months after job creation. The Supabase job and Storage cleanup was checked and runs daily; associated job-file and job-event rows are removed with the job. This does not establish automatic deletion of local device files, cached data, queued offline operations or uploads, or provider backups. Local uploaded photo/signature bytes and metadata remain after upload, queued sync payloads have no expiry cleanup, and a historical database snapshot exists with no confirmed disposal period. Provider backup retention periods are also unconfirmed. Each server purge run handles at most 100 jobs, so a larger backlog can take multiple days.</li>
+        <li>The request does not delete another employee's, customer's, or administrator's account or records.</li>
+      </ul>
+
+      <h3>Administrator accounts</h3>
+      <p>The last active administrator cannot delete their account until another active administrator is in place. The app reports this condition and keeps the current account signed in.</p>
+
+      <p>For details, read the <a href="privacy-policy.html">Heimwerk Privacy Policy</a>. Responsible contact supplied for this draft: Malak Ezat. Proposed privacy/deletion contact: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a>. The owner must confirm inbox monitoring and the request process before publication.</p>
+    </section>
+
+    <hr>
+
+    <section id="deutsch" lang="de">
+      <h2>Deutsch</h2>
+      <p>Sie können Ihr Heimwerk-Anmeldekonto in der App löschen: Öffnen Sie „Konto“, wählen Sie „Kontolöschung prüfen“, prüfen Sie die Auswirkungen und bestätigen Sie die Löschung. Dafür benötigen Sie Zugriff auf das angemeldete Konto.</p>
+      <p><strong>Kein Zugriff auf die App oder Anmeldung?</strong> Als Kontakt ist <a href="mailto:malakdeveloper9876@gmail.com?subject=Antrag%20auf%20L%C3%B6schung%20des%20Heimwerk-Kontos">malakdeveloper9876@gmail.com</a> für diesen Entwurf angegeben. Es ist nicht bestätigt, dass dieses Postfach überwacht wird oder als Anfrageweg funktioniert. Falls der Weg aktiviert wird, geben Sie die E-Mail-Adresse Ihres Heimwerk-Kontos an; senden Sie niemals Ihr Passwort oder Authentifizierungscodes. Die verantwortliche Stelle muss Identitätsprüfung, Bearbeitung und Antwortfristen vorab festlegen.</p>
+
+      <h3>Was wird gelöscht und was bleibt erhalten?</h3>
+      <ul>
+        <li>Das Supabase-Anmeldekonto und die zugehörige Anmelde-E-Mail werden gelöscht.</li>
+        <li>Das verknüpfte Mitarbeiterkonto wird deaktiviert und das E-Mail-Feld im Mitarbeiterprofil geleert. Der Mitarbeiterdatensatz bleibt erhalten; weitere Profilangaben wie Name, Mitarbeiternummer, Telefonnummer und Rolle bleiben nach dem aktuellen Backend-Verfahren bestehen.</li>
+        <li>Kundenprofile, einschließlich der von diesem Mitarbeiter angelegten Kunden, bleiben erhalten.</li>
+        <li><strong>12-Monats-Ziel:</strong> Serverseitige Auftragsdatensätze und Dateien im Supabase Storage sollen 12 Monate nach Auftragserstellung automatisch bereinigt werden. Die Bereinigung von Supabase-Aufträgen und Storage wurde geprüft und läuft täglich; zugehörige Datei- und Ereignisdatensätze werden mit dem Auftrag entfernt. Dies belegt keine automatische Löschung lokaler Gerätedateien, zwischengespeicherter Daten, ausstehender Offline-Vorgänge oder Uploads oder von Anbieter-Backups. Lokale Foto-/Unterschriftsdateien und Metadaten bleiben auch nach dem Upload erhalten; ausstehende Synchronisierungsvorgänge haben keine Ablaufbereinigung. Außerdem existiert eine historische Datenbankkopie ohne bestätigte Löschfrist. Auch die Aufbewahrungsfristen von Anbieter-Backups sind nicht bestätigt. Ein Serverlauf verarbeitet höchstens 100 Aufträge; ein größerer Rückstand kann daher mehrere Tage benötigen.</li>
+        <li>Der Antrag löscht keine Konten oder Datensätze anderer Mitarbeiter, Kunden oder Administratoren.</li>
+      </ul>
+
+      <h3>Administratorkonten</h3>
+      <p>Der letzte aktive Administrator kann sein Konto erst löschen, wenn ein weiterer aktiver Administrator eingerichtet wurde. Die App meldet diesen Fall und lässt das aktuelle Konto angemeldet.</p>
+
+      <p>Weitere Informationen finden Sie in der <a href="privacy-policy.html">Heimwerk-Datenschutzerklärung</a>. Für diesen Entwurf angegebener Ansprechpartner: Malak Ezat. Vorgeschlagener Datenschutz-/Löschkontakt: <a href="mailto:malakdeveloper9876@gmail.com">malakdeveloper9876@gmail.com</a>. Vor Veröffentlichung müssen Postfachüberwachung und Anfrageverfahren bestätigt werden.</p>
+    </section>
+  </main>
+</body>
+</html>

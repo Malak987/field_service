@@ -116,6 +116,10 @@ class JobsRepositoryImpl implements JobsRepository {
   /// the RPC). Also the operation's `entityId`.
   static const String jobIdKey = 'job_id';
 
+  /// Creation timestamp captured once when the local job-create operation is
+  /// first enqueued. It is distinct from later update/upload queue times.
+  static const String createdAtKey = 'created_at';
+
   /// Payload key of the stable `customers.id` the job is linked to.
   static const String customerIdKey = 'customer_id';
 
@@ -137,13 +141,19 @@ class JobsRepositoryImpl implements JobsRepository {
   static const String _idNamespace = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
 
   @override
-  Future<List<Job>> getJobs() {
-    return _remoteDataSource.getJobs();
+  Future<List<Job>> getJobs() async {
+    final List<Job> jobs = await _remoteDataSource.getJobs();
+    for (final Job job in jobs) {
+      await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
+    }
+    return jobs;
   }
 
   @override
-  Future<Job> getJobById(String id) {
-    return _remoteDataSource.getJobById(id);
+  Future<Job> getJobById(String id) async {
+    final Job job = await _remoteDataSource.getJobById(id);
+    await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
+    return job;
   }
 
   @override
@@ -151,7 +161,9 @@ class JobsRepositoryImpl implements JobsRepository {
     required String jobId,
     required String status,
   }) {
-    return _remoteDataSource.updateJobStatus(jobId: jobId, status: status);
+    return _syncProcessor.runSessionBound(
+      () => _remoteDataSource.updateJobStatus(jobId: jobId, status: status),
+    );
   }
 
   @override
@@ -160,7 +172,7 @@ class JobsRepositoryImpl implements JobsRepository {
     required String jobType,
     String? description,
     required String assignedEmployeeId,
-  }) {
+  }) async {
     // Client-side pre-flight guard (defense in depth): the business supports
     // exactly two categories. The server (`create_job` RPC + table CHECK
     // constraint) remains the authoritative validator — this only keeps an
@@ -171,12 +183,19 @@ class JobsRepositoryImpl implements JobsRepository {
 
     // Direct RPC by design (see the domain contract): job number, assignment
     // timestamp and events are server-authoritative — nothing to queue.
-    return _remoteDataSource.createJob(
-      customerId: customerId,
-      jobType: jobType,
-      description: description,
-      assignedEmployeeId: assignedEmployeeId,
+    final Job job = await _syncProcessor.runSessionBound(
+      () => _remoteDataSource.createJob(
+        customerId: customerId,
+        jobType: jobType,
+        description: description,
+        assignedEmployeeId: assignedEmployeeId,
+      ),
     );
+    // Admin creation is online/server-authoritative rather than queued. Still
+    // persist the server-confirmed age locally; its owner remains unknown so
+    // the local cleaner cannot delete it automatically.
+    await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
+    return job;
   }
 
   @override
@@ -258,19 +277,26 @@ class JobsRepositoryImpl implements JobsRepository {
     final String jobId = _stableId(idempotencyKey, 'job');
     final String customerId = _stableId(idempotencyKey, 'customer');
     final String? cleanDescription = _cleanDescription(description);
+    final DateTime localCreatedAt = _now().toUtc();
 
-    await _enqueueTechnicianCreation(
+    final SyncOperation queuedCreation = await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,
       jobId: jobId,
+      createdAt: localCreatedAt,
       payload: <String, Object?>{
         actionKey: technicianCreateCustomerAndJobAction,
         jobIdKey: jobId,
         customerIdKey: customerId,
         jobTypeKey: jobType,
         descriptionKey: cleanDescription,
+        createdAtKey: localCreatedAt.toIso8601String(),
         customerKey: customer.toPayload(),
       },
     );
+    final DateTime? createdAt = creationTimestampFor(queuedCreation);
+    if (createdAt == null) {
+      throw StateError('Queued job creation has an invalid creation time.');
+    }
 
     return _submitTechnicianCreation(
       jobId: jobId,
@@ -281,6 +307,7 @@ class JobsRepositoryImpl implements JobsRepository {
         customer: customer,
         jobType: jobType,
         description: cleanDescription,
+        createdAt: createdAt,
       ),
     );
   }
@@ -303,18 +330,25 @@ class JobsRepositoryImpl implements JobsRepository {
 
     final String jobId = _stableId(idempotencyKey, 'job');
     final String? cleanDescription = _cleanDescription(description);
+    final DateTime localCreatedAt = _now().toUtc();
 
-    await _enqueueTechnicianCreation(
+    final SyncOperation queuedCreation = await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,
       jobId: jobId,
+      createdAt: localCreatedAt,
       payload: <String, Object?>{
         actionKey: technicianCreateJobAction,
         jobIdKey: jobId,
         customerIdKey: customerId.trim(),
         jobTypeKey: jobType,
         descriptionKey: cleanDescription,
+        createdAtKey: localCreatedAt.toIso8601String(),
       },
     );
+    final DateTime? createdAt = creationTimestampFor(queuedCreation);
+    if (createdAt == null) {
+      throw StateError('Queued job creation has an invalid creation time.');
+    }
 
     return _submitTechnicianCreation(
       jobId: jobId,
@@ -324,6 +358,7 @@ class JobsRepositoryImpl implements JobsRepository {
         customerId: customerId.trim(),
         jobType: jobType,
         description: cleanDescription,
+        createdAt: createdAt,
       ),
     );
   }
@@ -350,21 +385,43 @@ class JobsRepositoryImpl implements JobsRepository {
   /// The operation id is derived from the same idempotency key, so a retried
   /// enqueue is a no-op (`SyncQueue.enqueue` is `DoNothing` on `id`) — a
   /// double tap or a re-submitted form can never queue the creation twice.
-  Future<void> _enqueueTechnicianCreation({
+  Future<SyncOperation> _enqueueTechnicianCreation({
     required String idempotencyKey,
     required String jobId,
+    required DateTime createdAt,
     required Map<String, Object?> payload,
-  }) {
-    return _syncQueue.enqueue(
-      SyncOperation(
-        id: _stableId(idempotencyKey, 'operation'),
-        entityType: SyncEntityType.job,
-        entityId: jobId,
-        type: SyncOperationType.create,
-        payload: payload,
-        createdAt: _now(),
-      ),
+  }) async {
+    final SyncOperation operation = SyncOperation(
+      id: _stableId(idempotencyKey, 'operation'),
+      entityType: SyncEntityType.job,
+      entityId: jobId,
+      type: SyncOperationType.create,
+      payload: payload,
+      // This is the exact timestamp also persisted in the payload. Older
+      // queued create operations used this field as their creation time.
+      createdAt: createdAt,
     );
+    await _syncQueue.enqueue(operation);
+    final SyncOperation? stored = await _syncQueue.getOperation(operation.id);
+    if (stored == null) {
+      throw StateError('Queued job creation was not persisted.');
+    }
+    return stored;
+  }
+
+  /// Extracts the task timestamp from the durable create operation. Rows
+  /// created by older app versions have no payload field; their create
+  /// operation's createdAt was written at task creation and is a safe legacy
+  /// fallback (unlike timestamps on later update/upload operations).
+  static DateTime? creationTimestampFor(SyncOperation operation) {
+    final Object? value = operation.payload[createdAtKey];
+    if (value == null) {
+      return operation.createdAt.toUtc();
+    }
+    if (value is! String) {
+      return null;
+    }
+    return DateTime.tryParse(value)?.toUtc();
   }
 
   /// Pushes the queued creation now when the device is online.
@@ -386,7 +443,7 @@ class JobsRepositoryImpl implements JobsRepository {
     }
 
     try {
-      final Job job = await push();
+      final Job job = await _syncProcessor.runSessionBound(push);
       // Best effort: the engine may already have pushed the same operation
       // (the RPC is idempotent, so that is harmless). A bookkeeping failure
       // here must never mask a successful creation.
@@ -556,7 +613,9 @@ class JobsRepositoryImpl implements JobsRepository {
 
     // Direct RPC by design: only the job id travels. Identity, timestamps
     // and the event are server-authoritative — nothing to queue.
-    return _remoteDataSource.completeJob(jobId);
+    return _syncProcessor.runSessionBound(
+      () => _remoteDataSource.completeJob(jobId),
+    );
   }
 
   // --- Job photos (before / after) --------------------------------------------

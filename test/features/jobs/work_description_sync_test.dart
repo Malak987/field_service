@@ -111,6 +111,7 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 
@@ -119,6 +120,7 @@ class _ServerLikeJobsRemote implements JobsRemoteDataSource {
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async => throw UnimplementedError();
 
@@ -566,6 +568,10 @@ void main() {
 /// The job-files surface is not under test here — never reached (and would
 /// need a Supabase client).
 class _UnusedFilesRemote implements JobFilesRemoteDataSource {
+  @override
+  Future<void> authorizeJobFileUpload({required String jobId}) async =>
+      throw UnimplementedError();
+
   @override
   Future<List<JobFile>> getJobFilesByType(
     String jobId,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:field_service/features/authentication/domain/entities/account_deletion_preview.dart';
 import 'package:field_service/features/authentication/domain/entities/app_user.dart';
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
@@ -19,12 +20,21 @@ const AppUser technicianUser = AppUser(
 class TestAuthenticationRepository implements AuthenticationRepository {
   AppUser? currentUser;
   int signOutCalls = 0;
+  int clearLocalSessionCalls = 0;
   int currentUserCalls = 0;
   int signInCalls = 0;
+  int accountDeletionPreviewCalls = 0;
+  int accountDeletionConfirmCalls = 0;
   Object? signOutError;
+  Object? accountDeletionPreviewError;
+  Object? accountDeletionConfirmError;
+  AccountDeletionPreview accountDeletionPreview =
+      const AccountDeletionPreview();
   Future<AppUser?>? pendingLookup;
   Future<AppUser>? pendingSignIn;
   Completer<void>? pendingSignOut;
+  Completer<void>? pendingAccountDeletionPreview;
+  Completer<void>? pendingAccountDeletionConfirm;
   bool emitSignOutEvent = true;
 
   final StreamController<AuthSessionEvent> events =
@@ -78,6 +88,38 @@ class TestAuthenticationRepository implements AuthenticationRepository {
   @override
   Future<void> updatePassword({required String newPassword}) async {
     await signOut();
+  }
+
+  @override
+  Future<AccountDeletionPreview> previewAccountDeletion() async {
+    accountDeletionPreviewCalls++;
+    if (pendingAccountDeletionPreview != null) {
+      await pendingAccountDeletionPreview!.future;
+    }
+    if (accountDeletionPreviewError != null) {
+      throw accountDeletionPreviewError!;
+    }
+    return accountDeletionPreview;
+  }
+
+  @override
+  Future<void> confirmAccountDeletion() async {
+    accountDeletionConfirmCalls++;
+    if (pendingAccountDeletionConfirm != null) {
+      await pendingAccountDeletionConfirm!.future;
+    }
+    if (accountDeletionConfirmError != null) {
+      throw accountDeletionConfirmError!;
+    }
+  }
+
+  @override
+  Future<void> clearLocalSession() async {
+    clearLocalSessionCalls++;
+    currentUser = null;
+    if (emitSignOutEvent) {
+      events.add(AuthSessionEvent.signedOut);
+    }
   }
 
   @override

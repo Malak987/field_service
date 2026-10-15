@@ -58,10 +58,9 @@ abstract interface class JobsRemoteDataSource {
   /// the customer (stable client id, `ON CONFLICT DO NOTHING`) and the job in
   /// ONE transaction, assigns the job to the CALLER (resolved from
   /// `auth.uid()` — never from a client value), generates `job_number` from
-  /// the identity column, stamps every timestamp with `now()`, appends the
-  /// `job_created` / `job_assigned` events and returns the job row. A replay
-  /// with the same [jobId] returns the already-created row instead of
-  /// creating a second one.
+  /// the identity column, uses [createdAt] as the retention anchor, stamps
+  /// operational timestamps/events on the server and returns the job row. A
+  /// replay with the same [jobId] returns the existing row unchanged.
   ///
   /// Throws [TechnicianJobCreationRejectedException] for a refused creation
   /// (reason mapped from the RPC's SQLSTATE).
@@ -70,6 +69,7 @@ abstract interface class JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   });
 
@@ -77,13 +77,13 @@ abstract interface class JobsRemoteDataSource {
   /// RPC — a job for an EXISTING customer the technician may work for.
   ///
   /// Same server-authoritative contract as
-  /// [technicianCreateCustomerAndJob], plus the access rule: the customer
-  /// must already be linked to one of the caller's own jobs, otherwise the
-  /// RPC refuses with 42501.
+  /// [technicianCreateCustomerAndJob], plus the access rule that the customer
+  /// must be accessible to the caller.
   Future<Job> technicianCreateJobForCustomer({
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   });
 
@@ -259,6 +259,7 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) {
     return _technicianCreateJob(
@@ -275,6 +276,7 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
         'p_notes': customer.notes,
         'p_job_type': jobType,
         'p_description': description,
+        'p_created_at': createdAt.toUtc().toIso8601String(),
       },
     );
   }
@@ -284,6 +286,7 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) {
     return _technicianCreateJob(
@@ -293,13 +296,14 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
         'p_job_id': jobId,
         'p_job_type': jobType,
         'p_description': description,
+        'p_created_at': createdAt.toUtc().toIso8601String(),
       },
     );
   }
 
   /// Shared plumbing of both technician creation RPCs: one row in, one
-  /// refusal mapping out. The client sends only the stable ids and the form
-  /// facts — no employee id, no job number, no timestamp.
+  /// refusal mapping out. The client sends stable ids, form facts and the
+  /// local creation timestamp; it never sends employee id or job number.
   Future<Job> _technicianCreateJob({
     required String function,
     required Map<String, dynamic> params,

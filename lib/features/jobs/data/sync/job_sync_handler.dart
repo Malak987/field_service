@@ -87,6 +87,14 @@ class JobSyncHandler implements SyncOperationHandler {
         );
       }
 
+      final DateTime? createdAt =
+          JobsRepositoryImpl.creationTimestampFor(operation);
+      if (createdAt == null) {
+        return RemotePushResult.failure(
+          'Technician job creation operation has an invalid creation time.',
+        );
+      }
+
       await _remote.technicianCreateCustomerAndJob(
         jobId: draft.jobId,
         customerId: draft.customerId,
@@ -95,6 +103,7 @@ class JobSyncHandler implements SyncOperationHandler {
         ),
         jobType: draft.jobType,
         description: draft.description,
+        createdAt: createdAt,
       );
       return const RemotePushResult.ok();
     }
@@ -108,11 +117,20 @@ class JobSyncHandler implements SyncOperationHandler {
         );
       }
 
+      final DateTime? createdAt =
+          JobsRepositoryImpl.creationTimestampFor(operation);
+      if (createdAt == null) {
+        return RemotePushResult.failure(
+          'Technician job creation operation has an invalid creation time.',
+        );
+      }
+
       await _remote.technicianCreateJobForCustomer(
         jobId: draft.jobId,
         customerId: draft.customerId,
         jobType: draft.jobType,
         description: draft.description,
+        createdAt: createdAt,
       );
       return const RemotePushResult.ok();
     }

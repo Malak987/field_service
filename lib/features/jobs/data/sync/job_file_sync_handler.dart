@@ -82,6 +82,10 @@ class JobFileSyncHandler implements SyncOperationHandler {
       'fileType=${row.fileType}',
     );
 
+    // Ask the server before reading/sending bytes. The Storage policy and the
+    // metadata RPC must repeat this check to close the preflight race.
+    await _remote.authorizeJobFileUpload(jobId: row.jobId);
+
     final List<int>? bytes = await _fileStorage.read(row.localPath);
     if (bytes == null) {
       AppLogger.debug('JOB_FILE_SYNC STAGE=read_local_file\nfailure');
@@ -109,6 +113,20 @@ class JobFileSyncHandler implements SyncOperationHandler {
       AppLogger.debug('JOB_FILE_SYNC STAGE=storage_upload\nsuccess');
     } catch (error) {
       AppLogger.debug(_jobFileSyncUploadFailure(error));
+      // Storage RLS intentionally reports a generic denial. Re-check the
+      // authoritative task state so an expiry race becomes terminal; if the
+      // re-check itself fails transiently or reports another error, preserve
+      // the original upload failure as retryable.
+      try {
+        await _remote.authorizeJobFileUpload(jobId: row.jobId);
+      } on PostgrestException catch (recheckError) {
+        if (recheckError.message.contains('JOB_EXPIRED') ||
+            recheckError.message.contains('JOB_DELETED')) {
+          rethrow;
+        }
+      } catch (_) {
+        // Network/unknown failures are not proof of expiry.
+      }
       rethrow;
     }
 

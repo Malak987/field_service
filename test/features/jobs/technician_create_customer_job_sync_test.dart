@@ -11,6 +11,7 @@ import 'package:field_service/core/sync/sync_queue.dart';
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/repositories/jobs_repository_impl.dart';
+import 'package:field_service/features/jobs/data/sync/job_sync_handler.dart';
 import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
@@ -33,7 +34,8 @@ import '../../support/test_authentication_repository.dart';
 /// with the SAME semantics as `technician_customer_job_setup.sql`:
 /// * only an active technician may create (admins are refused),
 /// * the assignee is resolved from the session, never from the payload,
-/// * `job_number` and every timestamp come from the server,
+/// * `job_number` and operational timestamps come from the server; job
+///   `created_at` is the timestamp captured when the local create is queued,
 /// * customer + job are created together or not at all,
 /// * a replay with the same job id returns the existing row — never a second
 ///   job, a second customer or a second pair of events.
@@ -110,6 +112,7 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
     required String customerId,
     required String jobType,
     required String? description,
+    required DateTime createdAt,
   }) {
     final Job created = Job(
       id: jobId,
@@ -120,9 +123,18 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
       description: description,
       status: const JobStatus(JobStatus.assigned),
       assignedAt: serverNow,
-      createdAt: serverNow,
+      createdAt: createdAt,
       updatedAt: serverNow,
-      expiresAt: serverNow.add(const Duration(days: 90)),
+      expiresAt: DateTime.utc(
+        createdAt.year + 1,
+        createdAt.month,
+        createdAt.day,
+        createdAt.hour,
+        createdAt.minute,
+        createdAt.second,
+        createdAt.millisecond,
+        createdAt.microsecond,
+      ),
     );
     jobs[jobId] = created;
     for (final String eventType in <String>['job_created', 'job_assigned']) {
@@ -142,6 +154,7 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
     required String customerId,
     required NewCustomerDraft customer,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async {
     createCustomerAndJobCalls++;
@@ -176,6 +189,7 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
       customerId: customerId,
       jobType: jobType,
       description: description,
+      createdAt: createdAt,
     );
   }
 
@@ -184,6 +198,7 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
     required String jobId,
     required String customerId,
     required String jobType,
+    required DateTime createdAt,
     String? description,
   }) async {
     createJobCalls++;
@@ -219,6 +234,7 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
       customerId: customerId,
       jobType: jobType,
       description: description,
+      createdAt: createdAt,
     );
   }
 
@@ -273,6 +289,10 @@ class _TechnicianCreationRemote implements JobsRemoteDataSource {
 /// The job-file surface is irrelevant here — swapped so the repository can be
 /// constructed without a Supabase client.
 class _UnusedFilesRemote implements JobFilesRemoteDataSource {
+  @override
+  Future<void> authorizeJobFileUpload({required String jobId}) async =>
+      throw UnimplementedError();
+
   @override
   Future<List<JobFile>> getJobFilesByType(
     String jobId,
@@ -433,10 +453,16 @@ void main() {
         isNot(op.payload[JobsRepositoryImpl.jobIdKey]),
       );
 
-      // The client contributes no identity, no number and no timestamp.
+      // The client contributes no server identity/number. The local creation
+      // timestamp is explicit and matches this create operation's timestamp.
       expect(op.payload.containsKey('assigned_employee_id'), isFalse);
       expect(op.payload.containsKey('job_number'), isFalse);
-      expect(op.payload.containsKey('created_at'), isFalse);
+      expect(op.payload[JobsRepositoryImpl.createdAtKey], isA<String>());
+      expect(
+        DateTime.parse(op.payload[JobsRepositoryImpl.createdAtKey]! as String)
+            .toUtc(),
+        op.createdAt.toUtc(),
+      );
       expect(op.payload.containsKey('assigned_at'), isFalse);
 
       expect(remote.createCustomerAndJobCalls, 0);
@@ -523,10 +549,23 @@ void main() {
       // The assignee is the caller's own employee row, resolved server-side.
       expect(job.assignedEmployeeId, 'emp-me');
 
-      // Server-generated number and timestamps.
+      // The server still stamps operational times; retention uses the time
+      // captured when the local creation entered the durable queue.
       expect(job.jobNumber, 1);
       expect(job.assignedAt, _TechnicianCreationRemote.serverNow);
-      expect(job.createdAt, _TechnicianCreationRemote.serverNow);
+      expect(
+        job.expiresAt,
+        DateTime.utc(
+          job.createdAt.year + 1,
+          job.createdAt.month,
+          job.createdAt.day,
+          job.createdAt.hour,
+          job.createdAt.minute,
+          job.createdAt.second,
+          job.createdAt.millisecond,
+          job.createdAt.microsecond,
+        ),
+      );
 
       // The two append-only events, attributed to the caller.
       expect(remote.events, hasLength(2));
@@ -599,9 +638,11 @@ void main() {
             JobsRepositoryImpl.customerIdKey: first.job!.customerId,
             JobsRepositoryImpl.jobTypeKey: JobCategory.kitchenRenovation,
             JobsRepositoryImpl.descriptionKey: null,
+            JobsRepositoryImpl.createdAtKey:
+                first.job!.createdAt.toUtc().toIso8601String(),
             JobsRepositoryImpl.customerKey: kDraft.toPayload(),
           },
-          createdAt: DateTime.utc(2026, 10, 11, 9),
+          createdAt: DateTime.utc(2026, 10, 15, 9),
         ),
       );
       await sl<SyncProcessor>().processPendingOperations();
@@ -613,7 +654,74 @@ void main() {
       expect(remote.customers, hasLength(1));
       expect(remote.jobs, hasLength(1));
       expect(remote.jobs.values.single.jobNumber, 1);
+      expect(remote.jobs.values.single.createdAt, first.job!.createdAt);
+      expect(
+        remote.jobs.values.single.expiresAt,
+        first.job!.expiresAt,
+      );
       expect(remote.events, hasLength(2));
+    },
+  );
+
+  test(
+    'offline creation timestamp wins over a later sync-queue ordering time',
+    () async {
+      final _TechnicianCreationRemote remote = _TechnicianCreationRemote(
+        allowedCustomerIds: const <String>{'customer-1'},
+      );
+      final SyncOperation operation = SyncOperation(
+        id: 'offline-create-op',
+        entityType: SyncEntityType.job,
+        entityId: 'job-1',
+        type: SyncOperationType.create,
+        payload: <String, Object?>{
+          JobsRepositoryImpl.actionKey:
+              JobsRepositoryImpl.technicianCreateJobAction,
+          JobsRepositoryImpl.jobIdKey: 'job-1',
+          JobsRepositoryImpl.customerIdKey: 'customer-1',
+          JobsRepositoryImpl.jobTypeKey: JobCategory.homeRenovation,
+          JobsRepositoryImpl.descriptionKey: null,
+          JobsRepositoryImpl.createdAtKey: '2026-10-01T00:00:00.000Z',
+        },
+        createdAt: DateTime.utc(2026, 10, 15),
+      );
+
+      final result = await JobSyncHandler(remote: remote).push(operation);
+
+      expect(result.success, isTrue);
+      expect(remote.jobs['job-1']!.createdAt, DateTime.utc(2026, 10, 1));
+      expect(remote.jobs['job-1']!.expiresAt, DateTime.utc(2027, 10, 1));
+    },
+  );
+
+  test(
+    'legacy create queue rows fall back to their original create time',
+    () async {
+      final _TechnicianCreationRemote remote = _TechnicianCreationRemote(
+        allowedCustomerIds: const <String>{'customer-1'},
+      );
+      final SyncOperation operation = SyncOperation(
+        id: 'legacy-offline-create-op',
+        entityType: SyncEntityType.job,
+        entityId: 'job-legacy',
+        type: SyncOperationType.create,
+        payload: <String, Object?>{
+          JobsRepositoryImpl.actionKey:
+              JobsRepositoryImpl.technicianCreateJobAction,
+          JobsRepositoryImpl.jobIdKey: 'job-legacy',
+          JobsRepositoryImpl.customerIdKey: 'customer-1',
+          JobsRepositoryImpl.jobTypeKey: JobCategory.homeRenovation,
+          JobsRepositoryImpl.descriptionKey: null,
+        },
+        // Legacy _enqueueTechnicianCreation wrote this at task creation.
+        createdAt: DateTime.utc(2026, 10, 1),
+      );
+
+      final result = await JobSyncHandler(remote: remote).push(operation);
+
+      expect(result.success, isTrue);
+      expect(remote.jobs['job-legacy']!.createdAt, DateTime.utc(2026, 10, 1));
+      expect(remote.jobs['job-legacy']!.expiresAt, DateTime.utc(2027, 10, 1));
     },
   );
 

@@ -16,6 +16,16 @@ abstract interface class SyncQueue {
   /// a change.
   Future<void> enqueue(SyncOperation operation);
 
+  /// Reads one durable operation by id. Used by idempotent enqueue callers
+  /// to reuse the original payload and timestamp after a repeated submission.
+  Future<SyncOperation?> getOperation(String operationId);
+
+  /// Records server-visible task age without guessing which account owns it.
+  Future<void> recordRemoteJob({
+    required String jobId,
+    required DateTime createdAt,
+  });
+
   /// The oldest operation that still needs to be pushed, or `null` when the
   /// queue has nothing left. Oldest-first ordering is what keeps the local and
   /// remote states consistent (a create always precedes its updates).
@@ -61,6 +71,9 @@ abstract interface class SyncQueue {
   /// The operation stays in the queue and is retried later, so a transient
   /// network problem never loses a technician's work.
   Future<void> markFailed(String operationId, {required String errorMessage});
+
+  /// Stores a server-confirmed permanent refusal without making it retryable.
+  Future<void> markTerminal(String operationId, {required String safeReason});
 
   /// Ids of [type]'s entities that still have an operation in `pending`,
   /// `inProgress` or `failed` state.

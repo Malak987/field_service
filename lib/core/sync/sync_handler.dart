@@ -3,14 +3,24 @@ import 'package:field_service/core/sync/sync_operation.dart';
 /// Outcome of one remote push attempt.
 class RemotePushResult {
   /// The backend accepted the change.
-  const RemotePushResult.ok() : success = true, reason = null;
+  const RemotePushResult.ok()
+    : success = true,
+      reason = null,
+      terminal = false;
 
   /// The change was not (yet) accepted; [reason] must be a short,
   /// user-safe description (see `SyncErrorMapper`) — never a raw exception.
-  const RemotePushResult.failure(this.reason) : success = false;
+  const RemotePushResult.failure(this.reason) : success = false, terminal = false;
+
+  /// A server-confirmed final rejection (for example expiry/deletion) that
+  /// must never be sent through the ordinary retry action.
+  const RemotePushResult.terminalFailure(this.reason)
+    : success = false,
+      terminal = true;
 
   final bool success;
   final String? reason;
+  final bool terminal;
 }
 
 /// Pushes queued operations of one entity type to the backend.
