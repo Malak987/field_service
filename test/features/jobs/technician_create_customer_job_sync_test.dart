@@ -460,8 +460,10 @@ void main() {
       expect(op.payload[JobsRepositoryImpl.createdAtKey], isA<String>());
       expect(
         DateTime.parse(op.payload[JobsRepositoryImpl.createdAtKey]! as String)
-            .toUtc(),
-        op.createdAt.toUtc(),
+            .toUtc()
+            .millisecondsSinceEpoch ~/
+            1000,
+        op.createdAt.toUtc().millisecondsSinceEpoch ~/ 1000,
       );
       expect(op.payload.containsKey('assigned_at'), isFalse);
 

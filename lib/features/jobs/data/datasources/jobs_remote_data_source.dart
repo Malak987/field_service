@@ -276,7 +276,7 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
         'p_notes': customer.notes,
         'p_job_type': jobType,
         'p_description': description,
-        'p_created_at': createdAt.toUtc().toIso8601String(),
+        'p_client_created_at': createdAt.toUtc().toIso8601String(),
       },
     );
   }
@@ -290,13 +290,13 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
     String? description,
   }) {
     return _technicianCreateJob(
-      function: 'technician_create_job_for_customer',
+      function: 'technician_create_job',
       params: <String, dynamic>{
         'p_customer_id': customerId,
         'p_job_id': jobId,
         'p_job_type': jobType,
         'p_description': description,
-        'p_created_at': createdAt.toUtc().toIso8601String(),
+        'p_client_created_at': createdAt.toUtc().toIso8601String(),
       },
     );
   }
@@ -308,22 +308,68 @@ class JobsRemoteDataSourceImpl implements JobsRemoteDataSource {
     required String function,
     required Map<String, dynamic> params,
   }) async {
-    try {
-      final List<dynamic> rows = await supabase.rpc(function, params: params);
+    final List<String> functionCandidates =
+        function == 'technician_create_job' ||
+                function == 'technician_create_job_for_customer'
+            ? <String>['technician_create_job', 'technician_create_job_for_customer']
+            : <String>[function];
 
-      if (rows.isEmpty) {
-        throw StateError('$function returned no row.');
+    final String? originalTimestamp =
+        (params['p_client_created_at'] ?? params['p_created_at']) as String?;
+
+    PostgrestException? lastPostgrestError;
+
+    for (final String targetFunction in functionCandidates) {
+      final List<Map<String, dynamic>> paramVariations = <Map<String, dynamic>>[
+        if (originalTimestamp != null) ...<Map<String, dynamic>>[
+          <String, dynamic>{
+            ...params,
+            'p_client_created_at': originalTimestamp,
+          }..remove('p_created_at'),
+          <String, dynamic>{
+            ...params,
+            'p_created_at': originalTimestamp,
+          }..remove('p_client_created_at'),
+        ] else
+          params,
+      ];
+
+      for (final Map<String, dynamic> candidateParams in paramVariations) {
+        try {
+          final List<dynamic> rows = await supabase.rpc(
+            targetFunction,
+            params: candidateParams,
+          );
+
+          if (rows.isEmpty) {
+            throw StateError('$targetFunction returned no row.');
+          }
+
+          return JobModel.fromMap(rows.first as Map<String, dynamic>);
+        } on PostgrestException catch (error) {
+          lastPostgrestError = error;
+          if (_isSchemaCacheOrFunctionNotFoundError(error)) {
+            continue;
+          }
+          throw TechnicianJobCreationRejectedException(
+            reason: _technicianRejectReason(error.code),
+            serverMessage: error.message,
+          );
+        }
       }
-
-      return JobModel.fromMap(rows.first as Map<String, dynamic>);
-    } on PostgrestException catch (error) {
-      // Map the RPC's stable error codes onto the typed domain refusal so
-      // the UI can explain WHY the creation was refused.
-      throw TechnicianJobCreationRejectedException(
-        reason: _technicianRejectReason(error.code),
-        serverMessage: error.message,
-      );
     }
+
+    throw TechnicianJobCreationRejectedException(
+      reason: _technicianRejectReason(lastPostgrestError?.code),
+      serverMessage: lastPostgrestError?.message ?? 'Function not found on server.',
+    );
+  }
+
+  static bool _isSchemaCacheOrFunctionNotFoundError(PostgrestException error) {
+    return error.code == 'PGRST202' ||
+        error.code == '42883' ||
+        error.message.contains('schema cache') ||
+        error.message.contains('Could not find the function');
   }
 
   /// Maps the technician RPC error codes (see

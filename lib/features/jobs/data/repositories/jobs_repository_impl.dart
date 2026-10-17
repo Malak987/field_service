@@ -12,14 +12,19 @@ import 'package:field_service/core/sync/sync_processor.dart';
 import 'package:field_service/core/sync/sync_queue.dart';
 import 'package:field_service/core/database/app_database.dart';
 import 'package:field_service/core/database/tables/job_files_table.dart';
+import 'package:field_service/features/authentication/domain/entities/app_user.dart';
+import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
 import 'package:field_service/features/jobs/data/datasources/job_files_remote_data_source.dart';
+import 'package:field_service/features/jobs/data/datasources/jobs_local_data_source.dart';
 import 'package:field_service/features/jobs/data/datasources/jobs_remote_data_source.dart';
 import 'package:field_service/features/jobs/data/models/job_file_model.dart';
+import 'package:field_service/features/jobs/data/models/job_model.dart';
 import 'package:field_service/features/jobs/domain/entities/accessible_customer.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_category.dart';
 import 'package:field_service/features/jobs/domain/entities/job_customer_info.dart';
 import 'package:field_service/features/jobs/domain/entities/job_file.dart';
+import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 import 'package:field_service/features/jobs/domain/entities/new_customer_draft.dart';
 import 'package:field_service/features/jobs/domain/entities/technician_job_creation.dart';
 import 'package:field_service/features/jobs/domain/repositories/jobs_repository.dart';
@@ -56,6 +61,8 @@ class JobsRepositoryImpl implements JobsRepository {
     required FileStorage fileStorage,
     required JobFilesRemoteDataSource filesRemoteDataSource,
     required NetworkInfo networkInfo,
+    JobsLocalDataSource? localDataSource,
+    AuthenticationRepository? authRepository,
     Uuid? uuid,
     DateTime Function()? now,
   }) : _remoteDataSource = remoteDataSource,
@@ -65,6 +72,8 @@ class JobsRepositoryImpl implements JobsRepository {
        _fileStorage = fileStorage,
        _filesRemote = filesRemoteDataSource,
        _networkInfo = networkInfo,
+       _localDataSource = localDataSource,
+       _authRepository = authRepository,
        _uuid = uuid ?? const Uuid(),
        _now = now ?? (() => DateTime.now().toUtc());
 
@@ -75,6 +84,8 @@ class JobsRepositoryImpl implements JobsRepository {
   final FileStorage _fileStorage;
   final JobFilesRemoteDataSource _filesRemote;
   final NetworkInfo _networkInfo;
+  final JobsLocalDataSource? _localDataSource;
+  final AuthenticationRepository? _authRepository;
   final Uuid _uuid;
   final DateTime Function() _now;
 
@@ -142,18 +153,146 @@ class JobsRepositoryImpl implements JobsRepository {
 
   @override
   Future<List<Job>> getJobs() async {
-    final List<Job> jobs = await _remoteDataSource.getJobs();
-    for (final Job job in jobs) {
-      await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
+    final JobsLocalDataSource? local = _localDataSource;
+    if (!await _networkInfo.isConnected && local != null) {
+      return _getAuthorizedLocalJobs(local);
     }
-    return jobs;
+
+    try {
+      final List<Job> remoteJobs = await _remoteDataSource.getJobs();
+      if (local != null) {
+        final Set<String> protectedIds = await _syncQueue.unfinishedEntityIds(
+          SyncEntityType.job,
+        );
+        final List<JobModel> models = remoteJobs.map((Job j) {
+          if (j is JobModel) return j;
+          return JobModel(
+            id: j.id,
+            jobNumber: j.jobNumber,
+            customerId: j.customerId,
+            customerName: j.customerName,
+            assignedEmployeeId: j.assignedEmployeeId,
+            assignedEmployeeName: j.assignedEmployeeName,
+            jobType: j.jobType,
+            description: j.description,
+            workDescription: j.workDescription,
+            status: j.status,
+            assignedAt: j.assignedAt,
+            startedAt: j.startedAt,
+            completedAt: j.completedAt,
+            createdAt: j.createdAt,
+            updatedAt: j.updatedAt,
+            expiresAt: j.expiresAt,
+          );
+        }).toList();
+        await local.mergeRemoteRows(
+          models,
+          protectedEntityIds: protectedIds,
+          pulledAt: _now(),
+        );
+      }
+      for (final Job job in remoteJobs) {
+        await _syncQueue.recordRemoteJob(
+          jobId: job.id,
+          createdAt: job.createdAt,
+        );
+      }
+      return remoteJobs;
+    } catch (error, stackTrace) {
+      if (local != null) {
+        AppLogger.warning(
+          'Remote getJobs failed; returning local cached jobs.',
+          error: error,
+          stackTrace: stackTrace,
+        );
+        return _getAuthorizedLocalJobs(local);
+      }
+      rethrow;
+    }
   }
 
   @override
   Future<Job> getJobById(String id) async {
-    final Job job = await _remoteDataSource.getJobById(id);
-    await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
-    return job;
+    final JobsLocalDataSource? local = _localDataSource;
+    if (!await _networkInfo.isConnected && local != null) {
+      final Job? localJob = await local.getById(id);
+      if (localJob != null) {
+        final AppUser? user = await _authRepository?.getCurrentUser();
+        _verifyJobAccess(user: user, job: localJob);
+        return localJob;
+      }
+    }
+
+    try {
+      final Job job = await _remoteDataSource.getJobById(id);
+      if (local != null && job is JobModel) {
+        await local.insert(job);
+      }
+      await _syncQueue.recordRemoteJob(jobId: job.id, createdAt: job.createdAt);
+      return job;
+    } catch (error, stackTrace) {
+      if (local != null) {
+        final Job? localJob = await local.getById(id);
+        if (localJob != null) {
+          final AppUser? user = await _authRepository?.getCurrentUser();
+          _verifyJobAccess(user: user, job: localJob);
+          AppLogger.warning(
+            'Remote getJobById failed; returning local cached job $id.',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          return localJob;
+        }
+      }
+      rethrow;
+    }
+  }
+
+  Future<List<Job>> _getAuthorizedLocalJobs(JobsLocalDataSource local) async {
+    final AppUser? user = await _authRepository?.getCurrentUser();
+    if (user == null || !user.isActive || !user.hasValidRole) {
+      return const <Job>[];
+    }
+
+    if (user.isTechnician) {
+      final String? empId = user.employeeId;
+      if (empId == null || empId.trim().isEmpty) {
+        return const <Job>[];
+      }
+      return local.getAll(
+        currentUserId: empId.trim(),
+        isTechnician: true,
+      );
+    }
+
+    if (user.isAdmin) {
+      return local.getAll(
+        currentUserId: '',
+        isTechnician: false,
+      );
+    }
+
+    return const <Job>[];
+  }
+
+  void _verifyJobAccess({required AppUser? user, required Job job}) {
+    if (user == null || !user.isActive || !user.hasValidRole) {
+      throw StateError('An authenticated active session with a valid role is required.');
+    }
+
+    if (user.isTechnician) {
+      final String? empId = user.employeeId;
+      if (empId == null || empId.trim().isEmpty || job.assignedEmployeeId != empId.trim()) {
+        throw StateError('You are not authorized to view this job.');
+      }
+      return;
+    }
+
+    if (user.isAdmin) {
+      return;
+    }
+
+    throw StateError('You are not authorized to view this job.');
   }
 
   @override
@@ -279,6 +418,27 @@ class JobsRepositoryImpl implements JobsRepository {
     final String? cleanDescription = _cleanDescription(description);
     final DateTime localCreatedAt = _now().toUtc();
 
+    final AppUser? currentUser = await _authRepository?.getCurrentUser();
+    final JobModel localJobModel = JobModel(
+      id: jobId,
+      jobNumber: 0,
+      customerId: customerId,
+      customerName: customer.name,
+      assignedEmployeeId: currentUser?.employeeId,
+      assignedEmployeeName: currentUser?.name,
+      jobType: jobType,
+      description: cleanDescription,
+      workDescription: null,
+      status: const JobStatus('assigned'),
+      assignedAt: localCreatedAt,
+      startedAt: null,
+      completedAt: null,
+      createdAt: localCreatedAt,
+      updatedAt: localCreatedAt,
+      expiresAt: localCreatedAt.add(const Duration(days: 365)),
+    );
+    await _localDataSource?.insert(localJobModel);
+
     final SyncOperation queuedCreation = await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,
       jobId: jobId,
@@ -331,6 +491,27 @@ class JobsRepositoryImpl implements JobsRepository {
     final String jobId = _stableId(idempotencyKey, 'job');
     final String? cleanDescription = _cleanDescription(description);
     final DateTime localCreatedAt = _now().toUtc();
+
+    final AppUser? currentUser = await _authRepository?.getCurrentUser();
+    final JobModel localJobModel = JobModel(
+      id: jobId,
+      jobNumber: 0,
+      customerId: customerId.trim(),
+      customerName: null,
+      assignedEmployeeId: currentUser?.employeeId,
+      assignedEmployeeName: currentUser?.name,
+      jobType: jobType,
+      description: cleanDescription,
+      workDescription: null,
+      status: const JobStatus('assigned'),
+      assignedAt: localCreatedAt,
+      startedAt: null,
+      completedAt: null,
+      createdAt: localCreatedAt,
+      updatedAt: localCreatedAt,
+      expiresAt: localCreatedAt.add(const Duration(days: 365)),
+    );
+    await _localDataSource?.insert(localJobModel);
 
     final SyncOperation queuedCreation = await _enqueueTechnicianCreation(
       idempotencyKey: idempotencyKey,
@@ -444,6 +625,10 @@ class JobsRepositoryImpl implements JobsRepository {
 
     try {
       final Job job = await _syncProcessor.runSessionBound(push);
+      final JobsLocalDataSource? local = _localDataSource;
+      if (local != null && job is JobModel) {
+        await local.insert(job);
+      }
       // Best effort: the engine may already have pushed the same operation
       // (the RPC is idempotent, so that is harmless). A bookkeeping failure
       // here must never mask a successful creation.
