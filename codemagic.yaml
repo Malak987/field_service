@@ -1,0 +1,29 @@
+workflows:
+  ios-unsigned:
+    name: iOS Build - Unsigned Test
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Install CocoaPods
+        script: |
+          if [ -f ios/Podfile ]; then
+            cd ios
+            pod install
+            cd ..
+          fi
+
+      - name: Build iOS without signing
+        script: flutter build ios --debug --no-codesign
+
+    artifacts:
+      - build/ios/iphoneos/**/*.app
+      - /tmp/xcodebuild_logs/**/*.log
