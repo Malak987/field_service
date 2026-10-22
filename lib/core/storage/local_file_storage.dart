@@ -137,46 +137,78 @@ class LocalFileStorage {
     //    is free to clean up its temporary directories.
     await _fileStorage.write(relativePath: relativePath, bytes: bytes);
 
-    // 3) Register the metadata locally (source of truth for the UI).
-    await _database
-        .into(_database.jobFilesTable)
-        .insert(
-          JobFilesTableCompanion.insert(
-            id: fileId,
-            jobId: jobId,
-            localPath: relativePath,
-            remotePath: const Value(null),
-            fileType: fileType.name,
-            fileName: fileName,
-            mimeType: Value(mimeType),
-            sizeBytes: Value(bytes.length),
-            capturedAt: capturedAt ?? now,
-            syncStatus: const Value('pending'),
-            localUpdatedAt: Value(now),
-            lastSyncedAt: const Value(null),
+    // 3) + 4) Register the row and queue the upload in ONE transaction, after
+    //    checking the job's retention state in that same transaction. The
+    //    retention cleaner marks a job non-active before it lists its files,
+    //    so a write is either seen by the cleaner or refused here; it can no
+    //    longer leave a row without an operation (or the reverse). The bytes
+    //    live outside the database, so a refused or failed write removes
+    //    exactly the file written above. Files of unknown ownership (a crash
+    //    between steps 2 and 3) are never deleted automatically.
+    try {
+      await _database.transaction(() async {
+        final QueryRow? retention = await _database.customSelect(
+          'SELECT retention_state FROM local_job_retention WHERE job_id = ?',
+          variables: <Variable<Object>>[Variable<String>(jobId)],
+        ).getSingleOrNull();
+        final String? state = retention?.read<String?>('retention_state');
+        if (state != null && state != 'active') {
+          throw StateError(
+            'This task is no longer writable locally (retention state: $state).',
+          );
+        }
+
+        // Register the metadata locally (source of truth for the UI).
+        await _database
+            .into(_database.jobFilesTable)
+            .insert(
+              JobFilesTableCompanion.insert(
+                id: fileId,
+                jobId: jobId,
+                localPath: relativePath,
+                remotePath: const Value(null),
+                fileType: fileType.name,
+                fileName: fileName,
+                mimeType: Value(mimeType),
+                sizeBytes: Value(bytes.length),
+                capturedAt: capturedAt ?? now,
+                syncStatus: const Value('pending'),
+                localUpdatedAt: Value(now),
+                lastSyncedAt: const Value(null),
+              ),
+            );
+
+        // Queue the upload. The payload carries everything the future
+        // upload handler needs; the id is stable, so retries are idempotent.
+        await _syncQueue.enqueue(
+          SyncOperation(
+            id: _uuid.v4(),
+            entityType: SyncEntityType.jobFile,
+            entityId: fileId,
+            type: SyncOperationType.upload,
+            payload: <String, Object?>{
+              'fileId': fileId,
+              'jobId': jobId,
+              'localPath': relativePath,
+              'fileType': fileType.name,
+              'fileName': fileName,
+              'sizeBytes': bytes.length,
+              'mimeType': ?mimeType,
+            },
+            createdAt: now,
           ),
         );
-
-    // 4) Queue the upload. The payload carries everything the future
-    //    upload handler needs; the id is stable, so retries are idempotent.
-    await _syncQueue.enqueue(
-      SyncOperation(
-        id: _uuid.v4(),
-        entityType: SyncEntityType.jobFile,
-        entityId: fileId,
-        type: SyncOperationType.upload,
-        payload: <String, Object?>{
-          'fileId': fileId,
-          'jobId': jobId,
-          'localPath': relativePath,
-          'fileType': fileType.name,
-          'fileName': fileName,
-          'sizeBytes': bytes.length,
-          'mimeType': ?mimeType,
-        },
-        createdAt: now,
-      ),
-    );
+      });
+    } catch (_) {
+      // The transaction rolled back, so no row or operation references the
+      // file written in step 2; remove it (idempotent) and surface the error.
+      try {
+        await _fileStorage.delete(relativePath);
+      } catch (_) {
+        // Best effort: the original error below is the one that matters.
+      }
+      rethrow;
+    }
 
     return fileId;
   }

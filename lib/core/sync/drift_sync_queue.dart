@@ -307,17 +307,18 @@ class DriftSyncQueue implements SyncQueue {
   Future<void> requeueFailed() async {
     final String? ownerId = _currentUserId();
     if (ownerId == null || ownerId.isEmpty) return;
-    await _db.customStatement(
+    await _db.customUpdate(
       '''UPDATE sync_queue SET status=?, updated_at=?
          WHERE status=? AND (last_error IS NULL OR last_error NOT LIKE 'terminal:%')
            AND EXISTS (SELECT 1 FROM sync_operation_scope s
                        WHERE s.operation_id=sync_queue.id AND s.owner_user_id=?)''',
-      <Object?>[
-        SyncOperationStatus.pending.name,
-        _now().toIso8601String(),
-        SyncOperationStatus.failed.name,
-        ownerId,
+      variables: <Variable<Object>>[
+        Variable<String>(SyncOperationStatus.pending.name),
+        Variable<DateTime>(_now()),
+        Variable<String>(SyncOperationStatus.failed.name),
+        Variable<String>(ownerId),
       ],
+      updates: <TableInfo<Table, Object?>>{_table},
     );
   }
 
@@ -427,18 +428,19 @@ class DriftSyncQueue implements SyncQueue {
     if (jobId != null) {
       // A server-confirmed expired/deleted job invalidates its queued updates
       // and file uploads too. Keep every payload, but stop all retries.
-      await _db.customStatement(
+      await _db.customUpdate(
         '''UPDATE sync_queue SET status = 'blocked',
            attempt_count = attempt_count + 1, last_attempt_at = ?,
            last_error = ?, updated_at = ?
            WHERE id IN (SELECT operation_id FROM sync_operation_scope WHERE job_id = ?)
              AND status IN ('pending','inProgress','failed')''',
-        <Object?>[
-          now.toIso8601String(),
-          'terminal:$safeReason',
-          now.toIso8601String(),
-          jobId,
+        variables: <Variable<Object>>[
+          Variable<DateTime>(now),
+          Variable<String>('terminal:$safeReason'),
+          Variable<DateTime>(now),
+          Variable<String>(jobId),
         ],
+        updates: <TableInfo<Table, Object?>>{_table},
       );
     } else {
       await (_db.update(_table)..where((t) => t.id.equals(operationId))).write(
@@ -599,12 +601,17 @@ class DriftSyncQueue implements SyncQueue {
            WHERE job_id=? AND retention_state='active' ''',
         <Object?>[now.toUtc().toIso8601String(), jobId],
       );
-      await _db.customStatement(
+      await _db.customUpdate(
         '''UPDATE sync_queue SET status='blocked', attempt_count=attempt_count+1,
            last_attempt_at=?, last_error='terminal:local_retention_elapsed', updated_at=?
            WHERE id IN (SELECT operation_id FROM sync_operation_scope WHERE job_id=?)
              AND status IN ('pending','inProgress','failed')''',
-        <Object?>[now.toIso8601String(), now.toIso8601String(), jobId],
+        variables: <Variable<Object>>[
+          Variable<DateTime>(now),
+          Variable<DateTime>(now),
+          Variable<String>(jobId),
+        ],
+        updates: <TableInfo<Table, Object?>>{_table},
       );
     });
   }

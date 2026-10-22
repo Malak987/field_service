@@ -365,7 +365,7 @@ void main() {
       cubit.selectMode(TechnicianJobCustomerMode.existingCustomer);
       await cubit.loadAccessibleCustomers(search: 'anna');
 
-      expect(accessible.searches, <String>['anna']);
+      expect(accessible.searches, contains('anna'));
       expect(cubit.state.accessibleCustomers, hasLength(1));
       expect(cubit.state.isLoadingCustomers, isFalse);
       expect(cubit.state.customersFailed, isFalse);

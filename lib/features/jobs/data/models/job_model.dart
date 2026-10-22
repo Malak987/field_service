@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+import 'package:field_service/core/database/app_database.dart';
 import 'package:field_service/features/jobs/domain/entities/job.dart';
 import 'package:field_service/features/jobs/domain/entities/job_status.dart';
 
@@ -54,6 +56,47 @@ class JobModel extends Job {
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
       expiresAt: DateTime.parse(map['expires_at'] as String),
+    );
+  }
+
+  factory JobModel.fromLocalRow(LocalJob row) {
+    return JobModel(
+      id: row.id,
+      jobNumber: row.jobNumber.toInt(),
+      customerId: row.customerId,
+      customerName: null,
+      assignedEmployeeId: row.assignedEmployeeId,
+      assignedEmployeeName: null,
+      jobType: row.jobType,
+      description: row.description,
+      workDescription: null,
+      status: JobStatus(row.status),
+      assignedAt: row.assignedAt,
+      startedAt: row.startedAt,
+      completedAt: row.completedAt,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      expiresAt: row.expiresAt,
+    );
+  }
+
+  JobsTableCompanion toLocalCompanion({bool isNew = false}) {
+    return JobsTableCompanion(
+      id: Value(id),
+      jobNumber: Value(BigInt.from(jobNumber)),
+      customerId: Value(customerId),
+      assignedEmployeeId: Value(assignedEmployeeId),
+      jobType: Value(jobType),
+      description: Value(description),
+      status: Value(status.value),
+      assignedAt: Value(assignedAt),
+      startedAt: Value(startedAt),
+      completedAt: Value(completedAt),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      expiresAt: Value(expiresAt),
+      syncStatus: Value(isNew ? 'pending' : 'synced'),
+      lastSyncedAt: isNew ? const Value.absent() : Value(DateTime.now().toUtc()),
     );
   }
 

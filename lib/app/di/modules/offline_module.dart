@@ -12,6 +12,7 @@ import 'package:field_service/core/storage/app_file_storage.dart';
 import 'package:field_service/core/storage/file_storage.dart';
 import 'package:field_service/core/storage/local_file_storage.dart';
 import 'package:field_service/core/storage/local_job_retention_cleaner.dart';
+import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,6 +24,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// [SyncHandlerRegistry] from their own modules — the registry starts empty
 /// on purpose: an unhandled entity type fails loudly in the queue instead of
 /// being silently dropped or fake-synced.
+String? _resolveCurrentUserId(GetIt sl) {
+  try {
+    final String? supabaseUid = sl<SupabaseClient>().auth.currentUser?.id;
+    if (supabaseUid != null && supabaseUid.isNotEmpty) return supabaseUid;
+  } catch (_) {}
+  try {
+    final dynamic authRepo = sl<AuthenticationRepository>();
+    final dynamic user = authRepo.currentUser;
+    if (user != null) return user.id?.toString();
+  } catch (_) {}
+  return null;
+}
+
 void registerOfflineModule(GetIt sl) {
   // --- Local database -----------------------------------------------------
   // The factory decides *how* the database is opened (platform file via
@@ -35,7 +49,7 @@ void registerOfflineModule(GetIt sl) {
   sl.registerLazySingleton<SyncQueue>(
     () => DriftSyncQueue(
       sl<AppDatabase>(),
-      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
+      currentUserId: () => _resolveCurrentUserId(sl),
     ),
   );
 
@@ -63,7 +77,7 @@ void registerOfflineModule(GetIt sl) {
       queue: sl<SyncQueue>(),
       connectivity: sl<ConnectivityService>(),
       handlers: sl<SyncHandlerRegistry>(),
-      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
+      currentUserId: () => _resolveCurrentUserId(sl),
     ),
   );
 
@@ -81,7 +95,7 @@ void registerOfflineModule(GetIt sl) {
     () => LocalJobRetentionCleaner(
       database: sl<AppDatabase>(),
       fileStorage: sl<FileStorage>(),
-      currentUserId: () => sl<SupabaseClient>().auth.currentUser?.id,
+      currentUserId: () => _resolveCurrentUserId(sl),
     ),
   );
 

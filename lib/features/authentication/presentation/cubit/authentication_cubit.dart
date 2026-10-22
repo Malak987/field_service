@@ -180,7 +180,7 @@ class AuthenticationCubit extends Cubit<AuthenticationState> {
           state.status == AuthenticationStatus.passwordRecovery) {
         return;
       }
-      _emitFailure(error, clearUser: true);
+      _emitFailure(error, clearUser: false);
     }
   }
 

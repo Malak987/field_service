@@ -195,6 +195,10 @@ GRANT EXECUTE ON FUNCTION public.technician_accessible_customers(text)
 --   * two append-only events are recorded (`job_created`, `job_assigned`),
 --     attributed to the creating technician's own employee row;
 --   * returns the inserted (or already existing) job row.
+DROP FUNCTION IF EXISTS public.technician_create_customer_and_job(
+  uuid, uuid, text, text, text, text, text, text, text, text, text
+);
+
 CREATE OR REPLACE FUNCTION public.technician_create_customer_and_job(
   p_customer_id uuid,
   p_job_id      uuid,
@@ -206,7 +210,8 @@ CREATE OR REPLACE FUNCTION public.technician_create_customer_and_job(
   p_postal_code text DEFAULT NULL,
   p_notes       text DEFAULT NULL,
   p_job_type    text DEFAULT NULL,
-  p_description text DEFAULT NULL
+  p_description text DEFAULT NULL,
+  p_created_at  timestamptz DEFAULT now()
 )
 RETURNS SETOF public.jobs
 LANGUAGE plpgsql
@@ -327,9 +332,9 @@ BEGIN
     NULLIF(btrim(COALESCE(p_description, '')), ''),
     'assigned',
     now(),
+    COALESCE(p_created_at, now()),
     now(),
-    now(),
-    now() + INTERVAL '90 days'
+    COALESCE(p_created_at, now()) + INTERVAL '90 days'
   );
 
   -- 10) Append-only history, attributed to the creating technician.
@@ -345,13 +350,13 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.technician_create_customer_and_job(
-  uuid, uuid, text, text, text, text, text, text, text, text, text
+  uuid, uuid, text, text, text, text, text, text, text, text, text, timestamptz
 ) FROM public;
 REVOKE ALL ON FUNCTION public.technician_create_customer_and_job(
-  uuid, uuid, text, text, text, text, text, text, text, text, text
+  uuid, uuid, text, text, text, text, text, text, text, text, text, timestamptz
 ) FROM anon;
 GRANT EXECUTE ON FUNCTION public.technician_create_customer_and_job(
-  uuid, uuid, text, text, text, text, text, text, text, text, text
+  uuid, uuid, text, text, text, text, text, text, text, text, text, timestamptz
 ) TO authenticated;
 
 -- ---------------------------------------------------------------------------
@@ -365,11 +370,16 @@ GRANT EXECUTE ON FUNCTION public.technician_create_customer_and_job(
 --   `technician_accessible_customers`). Otherwise 42501 — a technician can
 --   never attach a job to a customer they have no business relationship with,
 --   and cannot probe customer ids.
+DROP FUNCTION IF EXISTS public.technician_create_job_for_customer(
+  uuid, uuid, text, text
+);
+
 CREATE OR REPLACE FUNCTION public.technician_create_job_for_customer(
   p_customer_id uuid,
   p_job_id      uuid,
   p_job_type    text,
-  p_description text DEFAULT NULL
+  p_description text DEFAULT NULL,
+  p_created_at  timestamptz DEFAULT now()
 )
 RETURNS SETOF public.jobs
 LANGUAGE plpgsql
@@ -464,9 +474,9 @@ BEGIN
     NULLIF(btrim(COALESCE(p_description, '')), ''),
     'assigned',
     now(),
+    COALESCE(p_created_at, now()),
     now(),
-    now(),
-    now() + INTERVAL '90 days'
+    COALESCE(p_created_at, now()) + INTERVAL '90 days'
   );
 
   INSERT INTO public.job_events (job_id, employee_id, event_type, occurred_at)
@@ -481,13 +491,13 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.technician_create_job_for_customer(
-  uuid, uuid, text, text
+  uuid, uuid, text, text, timestamptz
 ) FROM public;
 REVOKE ALL ON FUNCTION public.technician_create_job_for_customer(
-  uuid, uuid, text, text
+  uuid, uuid, text, text, timestamptz
 ) FROM anon;
 GRANT EXECUTE ON FUNCTION public.technician_create_job_for_customer(
-  uuid, uuid, text, text
+  uuid, uuid, text, text, timestamptz
 ) TO authenticated;
 
 COMMIT;

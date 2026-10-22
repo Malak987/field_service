@@ -9,6 +9,7 @@ import 'package:field_service/features/authentication/domain/entities/app_user.d
 import 'package:field_service/features/authentication/domain/entities/auth_session_event.dart';
 import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
 import 'package:field_service/features/authentication/presentation/utils/authentication_error_mapper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthenticationRepositoryImpl implements AuthenticationRepository {
@@ -149,12 +150,20 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
   }
 
   @override
-  Future<void> signOut() {
+  Future<void> signOut() async {
+    final User? user = _remoteDataSource.currentUser;
+    if (user != null) {
+      await _clearCachedAppUser(user.id);
+    }
     return _remoteDataSource.signOut();
   }
 
   @override
-  Future<void> clearLocalSession() {
+  Future<void> clearLocalSession() async {
+    final User? user = _remoteDataSource.currentUser;
+    if (user != null) {
+      await _clearCachedAppUser(user.id);
+    }
     return _remoteDataSource.clearLocalSession();
   }
 
@@ -326,18 +335,91 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
     return false;
   }
 
+  static const String _cachedProfilePrefix = 'cached_employee_profile_';
+
+  Future<void> _saveCachedAppUser(AppUserModel user) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final Map<String, dynamic> data = <String, dynamic>{
+        'id': user.employeeId,
+        'employee_code': user.employeeCode,
+        'name': user.name,
+        'phone': user.phone,
+        'email': user.email,
+        'role': user.role,
+        'is_active': user.isActive,
+      };
+      await prefs.setString('$_cachedProfilePrefix${user.id}', jsonEncode(data));
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'Failed to cache employee profile locally.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<AppUserModel?> _getCachedAppUser(String authUserId) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      final String? jsonStr = prefs.getString('$_cachedProfilePrefix$authUserId');
+      if (jsonStr == null || jsonStr.isEmpty) {
+        return null;
+      }
+      final Map<String, dynamic> map = Map<String, dynamic>.from(
+        jsonDecode(jsonStr) as Map,
+      );
+      return AppUserModel.fromMap(
+        map: map,
+        authUserId: authUserId,
+        email: map['email'] as String? ?? '',
+      );
+    } catch (error, stackTrace) {
+      AppLogger.warning(
+        'Failed to read cached employee profile.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  Future<void> _clearCachedAppUser(String authUserId) async {
+    try {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      await prefs.remove('$_cachedProfilePrefix$authUserId');
+    } catch (_) {}
+  }
+
   Future<AppUserModel> _getAppUser(User user) async {
-    // IMPORTANT: `employees.id` is the employee primary key whereas
-    // `employees.auth_user_id` references `auth.users.id`.
-    final Map<String, dynamic>? employee = await _supabase
-        .from('employees')
-        .select(
-      'id, auth_user_id, employee_code, name, phone, email, role, is_active',
-    )
-        .eq('auth_user_id', user.id)
-        .maybeSingle();
+    Map<String, dynamic>? employee;
+    try {
+      // IMPORTANT: `employees.id` is the employee primary key whereas
+      // `employees.auth_user_id` references `auth.users.id`.
+      employee = await _supabase
+          .from('employees')
+          .select(
+            'id, auth_user_id, employee_code, name, phone, email, role, is_active',
+          )
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+    } catch (error, stackTrace) {
+      // Network failure or offline mode: try to restore the trusted local profile if available.
+      AppLogger.warning(
+        'Network query for employee profile failed. Attempting offline fallback.',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      final AppUserModel? cached = await _getCachedAppUser(user.id);
+      if (cached != null) {
+        return cached;
+      }
+      // No local cached profile available for this account: rethrow so UI explains connection is required.
+      rethrow;
+    }
 
     if (employee == null) {
+      await _clearCachedAppUser(user.id);
       await _safeSignOut();
       throw const AuthException(
         'Employee profile was not found.',
@@ -348,6 +430,7 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
     final bool isActive = employee['is_active'] as bool? ?? false;
 
     if (!isActive) {
+      await _clearCachedAppUser(user.id);
       await _safeSignOut();
       throw const AuthException(
         'This employee account is inactive.',
@@ -362,12 +445,16 @@ class AuthenticationRepositoryImpl implements AuthenticationRepository {
     );
 
     if (!appUser.hasValidRole) {
+      await _clearCachedAppUser(user.id);
       await _safeSignOut();
       throw const AuthException(
         'Invalid employee role.',
         code: AuthenticationErrorMapper.codeInvalidRole,
       );
     }
+
+    // Save/update the trusted employee profile locally for offline restoration.
+    await _saveCachedAppUser(appUser);
 
     return appUser;
   }

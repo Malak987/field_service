@@ -38,6 +38,9 @@ import 'package:field_service/features/jobs/presentation/cubit/create_job_cubit.
 import 'package:field_service/features/jobs/presentation/cubit/jobs_cubit.dart';
 import 'package:field_service/features/jobs/presentation/cubit/technician_job_form_cubit.dart';
 import 'package:field_service/features/jobs/presentation/services/photo_picker.dart';
+import 'package:field_service/core/database/app_database.dart';
+import 'package:field_service/features/authentication/domain/repositories/authentication_repository.dart';
+import 'package:field_service/features/jobs/data/datasources/jobs_local_data_source.dart';
 import 'package:get_it/get_it.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -63,6 +66,10 @@ void registerJobsModule(GetIt sl) {
     () => JobFilesRemoteDataSourceImpl(sl<SupabaseClient>()),
   );
 
+  sl.registerLazySingleton<JobsLocalDataSource>(
+    () => DriftJobsLocalDataSource(sl<AppDatabase>()),
+  );
+
   sl.registerLazySingleton<JobsRepository>(
     () => JobsRepositoryImpl(
       remoteDataSource: sl<JobsRemoteDataSource>(),
@@ -71,10 +78,9 @@ void registerJobsModule(GetIt sl) {
       localFileStorage: sl<LocalFileStorage>(),
       fileStorage: sl<FileStorage>(),
       filesRemoteDataSource: sl<JobFilesRemoteDataSource>(),
-      // Complete Job is authoritative and online-only: the repository
-      // refuses it without connectivity instead of queueing a false local
-      // completion.
       networkInfo: sl<NetworkInfo>(),
+      localDataSource: sl<JobsLocalDataSource>(),
+      authRepository: sl<AuthenticationRepository>(),
     ),
   );
 
