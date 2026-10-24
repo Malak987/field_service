@@ -191,12 +191,11 @@ class JobsRepositoryImpl implements JobsRepository {
           pulledAt: _now(),
         );
       }
-      for (final Job job in remoteJobs) {
-        await _syncQueue.recordRemoteJob(
-          jobId: job.id,
-          createdAt: job.createdAt,
-        );
-      }
+      await _syncQueue.recordRemoteJobs(
+        remoteJobs.map(
+          (Job job) => MapEntry<String, DateTime>(job.id, job.createdAt),
+        ),
+      );
       return remoteJobs;
     } catch (error, stackTrace) {
       if (local != null) {

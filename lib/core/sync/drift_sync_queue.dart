@@ -358,6 +358,21 @@ class DriftSyncQueue implements SyncQueue {
   }
 
   @override
+  Future<void> recordRemoteJobs(
+    Iterable<MapEntry<String, DateTime>> jobs,
+  ) async {
+    final List<MapEntry<String, DateTime>> entries = jobs.toList(
+      growable: false,
+    );
+    if (entries.isEmpty) return;
+    await _db.transaction(() async {
+      for (final MapEntry<String, DateTime> job in entries) {
+        await recordRemoteJob(jobId: job.key, createdAt: job.value);
+      }
+    });
+  }
+
+  @override
   Future<void> markSynced(String operationId) async {
     final $SyncQueueTableTable t = _table;
     await _db.transaction(() async {

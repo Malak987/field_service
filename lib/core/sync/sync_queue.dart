@@ -26,6 +26,12 @@ abstract interface class SyncQueue {
     required DateTime createdAt,
   });
 
+  /// Records server-visible task ages in a single batch without guessing which
+  /// account owns them.
+  Future<void> recordRemoteJobs(
+    Iterable<MapEntry<String, DateTime>> jobs,
+  );
+
   /// The oldest operation that still needs to be pushed, or `null` when the
   /// queue has nothing left. Oldest-first ordering is what keeps the local and
   /// remote states consistent (a create always precedes its updates).
